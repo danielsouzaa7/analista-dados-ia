@@ -117,6 +117,10 @@ def _esquema(sessao: Sessao) -> str:
         perfil = _perfil_texto(t)
         blocos.append(bloco + (NL + perfil if perfil else ""))
     texto = NL.join(blocos)
+    nomes_pessoais = [c["nome"][:MAX_NOME] for t in sessao.tabelas for c in t.get("perfil", {}).get("colunas", [])
+                      if c.get("pii")]
+    if nomes_pessoais:  # no começo: o corte por MAX_ESQUEMA não pode apagar a marca
+        texto = f"Colunas com dado pessoal: {', '.join(nomes_pessoais)}{NL}{texto}"
     texto += f"{NL}{NL}Valores das colunas categóricas:{NL}{sessao.grounding}" if sessao.grounding else ""
     cortado = len(texto) > MAX_ESQUEMA
     return _como_dado(texto[:MAX_ESQUEMA] + (f"{NL}[esquema cortado]" if cortado else ""))

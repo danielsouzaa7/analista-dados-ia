@@ -10,7 +10,7 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Annotated, Literal
@@ -53,6 +53,7 @@ _REPRODUCOES = threading.BoundedSemaphore(4)  # cada reprodução dorme numa thr
 PRAZO_SSE = agent.LIMITE_SEGUNDOS + 15  # cliente que para de ler não segura a vaga
 _uso = {"dia": date.today(), "n": 0}  # em memória: reinicia com o processo e na virada do dia
 _LOCK = threading.Lock()
+_pendentes = 0  # sessões em criação, já contadas contra MAX_SESSOES
 _estat: dict = {}
 _dormir = time.sleep
 CABECALHOS = {
@@ -116,10 +117,20 @@ def _saida(s: sessions.Sessao) -> dict:
     return {"sessao": s.id, "tabelas": s.tabelas, "perguntas_sugeridas": perfil.perguntas_sugeridas(s.tabelas)}
 
 
-def _abrir_vaga_de_sessao() -> None:
-    sessions.limpar_expiradas(MAX_SESSOES)
-    if len(sessions.SESSOES) >= MAX_SESSOES:
-        raise ErroUsuario("Servidor cheio agora. Tente de novo mais tarde.")
+@contextmanager
+def _vaga_de_sessao() -> Iterator[None]:
+    """Reserva a vaga sob o lock: uploads simultâneos não passam do teto enquanto a sessão ainda é criada."""
+    global _pendentes
+    with _LOCK:
+        sessions.limpar_expiradas(MAX_SESSOES)
+        if len(sessions.SESSOES) + _pendentes >= MAX_SESSOES:
+            raise ErroUsuario("Servidor cheio agora. Tente de novo mais tarde.")
+        _pendentes += 1
+    try:
+        yield
+    finally:  # a sessão já está em SESSOES (ou a criação falhou)
+        with _LOCK:
+            _pendentes -= 1
 
 
 def _contar_pergunta() -> None:
@@ -384,20 +395,20 @@ def create_app() -> FastAPI:
 
     @app.post("/api/sessao/csv", response_model=SessaoOut)
     def sessao_csv(arquivo: UploadFile = File(...)) -> dict:
-        _abrir_vaga_de_sessao()
-        conteudo = arquivo.file.read(sessions.MAX_CSV_BYTES + 1)
-        return _saida(sessions.criar_de_csv(arquivo.filename or "dados.csv", conteudo))
+        with _vaga_de_sessao():
+            conteudo = arquivo.file.read(sessions.MAX_CSV_BYTES + 1)
+            return _saida(sessions.criar_de_csv(arquivo.filename or "dados.csv", conteudo))
 
     @app.post("/api/sessao/exemplo", response_model=ExemploOut)
     def sessao_exemplo() -> dict:
-        _abrir_vaga_de_sessao()
-        sessao = sessions.criar_de_csv("pedidos.csv", (config.DATA_DIR / "pedidos.csv").read_bytes())
+        with _vaga_de_sessao():
+            sessao = sessions.criar_de_csv("pedidos.csv", (config.DATA_DIR / "pedidos.csv").read_bytes())
         return {**_saida(sessao), "perguntas": [e["pergunta"] for e in _exemplos()]}
 
     @app.post("/api/sessao/postgres", response_model=SessaoOut)
     def sessao_postgres(corpo: PostgresIn) -> dict:
-        _abrir_vaga_de_sessao()
-        return _saida(sessions.criar_de_postgres(corpo.url))
+        with _vaga_de_sessao():
+            return _saida(sessions.criar_de_postgres(corpo.url))
 
     @app.post("/api/conversa/nova")
     def conversa_nova(corpo: ConversaIn) -> dict:

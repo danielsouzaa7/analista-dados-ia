@@ -127,6 +127,7 @@ def test_lotado_remove_a_mais_antiga_sem_pergunta() -> None:
     usada.perguntou = True
     nova = sessions.criar_de_csv("c.csv", CSV_B)
     agora = time.time()
+    velha.criada, usada.criada, nova.criada = agora - 500, agora - 900, agora - 1
     velha.ultimo_uso, usada.ultimo_uso, nova.ultimo_uso = agora - 500, agora - 900, agora - 1
     pasta = velha.caminho_db.parent
     sessions.limpar_expiradas(maximo=3)
@@ -153,10 +154,10 @@ def test_lotado_nao_remove_sessao_com_a_primeira_pergunta_em_andamento() -> None
 
 def test_lotado_nao_remove_sessao_nova_com_menos_de_150_s() -> None:
     nova = sessions.criar_de_csv("a.csv", CSV_A)
-    nova.ultimo_uso -= sessions.IDADE_MINIMA - 5
+    nova.criada -= sessions.IDADE_MINIMA - 5
     sessions.limpar_expiradas(maximo=1)
     assert nova.id in sessions.SESSOES
-    nova.ultimo_uso -= 10
+    nova.criada -= 10
     sessions.limpar_expiradas(maximo=1)
     assert nova.id not in sessions.SESSOES
 
@@ -177,3 +178,70 @@ def test_csv_muito_largo_e_recusado_rapido(pasta_sessoes: Path) -> None:
 
 def test_nome_de_arquivo_enorme_vira_tabela_de_ate_64_caracteres() -> None:
     assert len(sessions.criar_de_csv("a" * 5000 + ".csv", CSV_A).tabelas[0]["nome"]) <= 64
+
+
+
+def _largo(n: int = 100_000) -> tuple[str, str]:
+    return ",".join(f"c{i}" for i in range(n)), ",".join("1" for _ in range(n))
+
+
+@pytest.mark.parametrize("montar", [
+    lambda cab, lin: f"lixo\n{cab}\n{lin}\n",
+    lambda cab, lin: f"\n{cab}\n{lin}\n",
+    lambda cab, lin: f'"a\nb",{cab}\n{lin}\n',
+    lambda cab, lin: ",".join(f'"c{i}\nz"' if i % 150 == 0 else f"c{i}" for i in range(100_000)) + f"\n{lin}\n",
+], ids=["lixo_antes", "primeira_linha_vazia", "quebra_entre_aspas", "aspas_a_cada_150"])
+def test_csv_largo_com_truque_no_cabecalho_nao_gasta_cpu(montar) -> None:
+    cab, lin = _largo()
+    desde = time.perf_counter()
+    try:  # a linha de lixo vira o cabeçalho: vale recusar ou ler estreito, nunca gastar CPU com 100 mil colunas
+        colunas = sessions.criar_de_csv("a.csv", montar(cab, lin).encode()).tabelas[0]["colunas"]
+        assert len(colunas) <= 200
+    except ErroUsuario:
+        pass
+    assert time.perf_counter() - desde < 2
+
+
+def test_csv_com_fim_de_linha_so_cr_e_aceito() -> None:
+    linhas = "".join(f"{i},x,3,4,y\r" for i in range(100))  # sem LF, o split antigo via uma linha só
+    s = sessions.criar_de_csv("a.csv", ("a,b,c,d,e\r" + linhas).encode())
+    assert len(s.tabelas[0]["colunas"]) == 5 and s.tabelas[0]["linhas"] == 100
+
+
+def test_csv_com_200_colunas_aceito_e_201_recusado() -> None:
+    def csv_de(n: int) -> bytes:
+        return (",".join(f"c{i}" for i in range(n)) + "\n" + ",".join("1" for _ in range(n)) + "\n").encode()
+    assert len(sessions.criar_de_csv("a.csv", csv_de(200)).tabelas[0]["colunas"]) == 200
+    with pytest.raises(ErroUsuario, match="mais de 200 colunas"):
+        sessions.criar_de_csv("a.csv", csv_de(201))
+
+
+def test_csv_com_texto_de_500_virgulas_entre_aspas_e_aceito() -> None:
+    conteudo = ('id,descricao\n1,"' + ",".join("xxx" for _ in range(500)) + '"\n').encode()
+    assert sessions.criar_de_csv("a.csv", conteudo).tabelas[0]["linhas"] == 1
+
+
+def test_pedidos_csv_continua_com_13_colunas_e_8000_linhas() -> None:
+    from app import config
+    t = sessions.criar_de_csv("pedidos.csv", (config.DATA_DIR / "pedidos.csv").read_bytes()).tabelas[0]
+    assert len(t["colunas"]) == 13 and t["linhas"] == 8000
+
+
+def test_keepalive_nao_tranca_a_vaga_da_sessao_sem_pergunta() -> None:
+    a = sessions.criar_de_csv("a.csv", CSV_A)
+    a.criada -= sessions.IDADE_MINIMA + 1
+    sessions.obter(a.id)  # keepalive renova ultimo_uso, mas não a idade
+    sessions.limpar_expiradas(maximo=1)
+    assert a.id not in sessions.SESSOES
+
+
+def test_keepalive_nao_impede_o_ttl_de_10_min_da_sessao_sem_pergunta(monkeypatch: pytest.MonkeyPatch) -> None:
+    a = sessions.criar_de_csv("a.csv", CSV_A)
+    monkeypatch.setattr(time, "time", lambda: a.criada + 601)
+    a.ultimo_uso = a.criada + 600  # keepalive um segundo antes
+    sessions.limpar_expiradas()
+    assert a.id not in sessions.SESSOES
+
+
+def test_nome_de_tabela_com_prefixo_t_continua_em_64_caracteres() -> None:
+    assert len(sessions.criar_de_csv("2024_" + "vendas" * 20 + ".csv", CSV_A).tabelas[0]["nome"]) <= 64

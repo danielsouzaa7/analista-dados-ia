@@ -1,4 +1,6 @@
 """Sessões isoladas: cada uma tem o próprio banco DuckDB (CSV) ou a própria URL Postgres (só em memória)."""
+import csv
+import io
 import re
 import secrets
 import shutil
@@ -26,9 +28,10 @@ class Sessao:
     caminho_db: Path | None = None
     pg_url: str | None = field(default=None, repr=False)  # nunca em disco nem em log
     ultimo_uso: float = field(default_factory=time.time)
+    criada: float = field(default_factory=time.time)  # idade não é renovada por keepalive
     tabelas: list[dict] = field(default_factory=list)
     historico: list[dict] = field(default_factory=list)  # últimos turnos (memória da conversa), só no servidor
-    perguntou: bool = False  # já perguntou (ao vivo ou gravada): vale 1 h e não é expulsa por lotação
+    perguntou: bool = False  # só pergunta ao vivo aceita: vale 1 h e não é expulsa por lotação
     turnos: int = 0  # respostas dadas na conversa atual (índice do feedback)
     grounding: str = ""  # valores das colunas categóricas, para o prompt
     conversa: int = 0  # sobe em "nova conversa": resposta em andamento não grava turno na memória nova
@@ -39,10 +42,10 @@ SESSOES: dict[str, Sessao] = {}
 
 
 def _nome_tabela(nome_arquivo: str) -> str:
-    nome = re.sub(r"[^a-z0-9_]", "_", Path(nome_arquivo).stem.lower()).strip("_")[:perfil.MAX_NOME]
+    nome = re.sub(r"[^a-z0-9_]", "_", Path(nome_arquivo).stem.lower()).strip("_")
     if not nome:
         return "dados"
-    return nome if nome[0].isalpha() else f"t_{nome}"
+    return (nome if nome[0].isalpha() else f"t_{nome}")[:perfil.MAX_NOME]
 
 
 def _checar_cabecalho(colunas: list[tuple]) -> None:
@@ -54,12 +57,22 @@ def _checar_cabecalho(colunas: list[tuple]) -> None:
                           "ou com caracteres de controle.")
 
 
+def _checar_largura(conteudo: bytes) -> None:
+    """O DuckDB gasta CPU com cabeçalho enorme antes da checagem: mede o 1º registro não vazio, respeitando aspas."""
+    cabeca = conteudo[:1 << 20].decode("utf-8", "replace")
+    try:
+        for d in ",;\t|":
+            registro = next((r for r in csv.reader(io.StringIO(cabeca, newline=""), delimiter=d) if r), [])
+            if len(registro) > perfil.MAX_COLUNAS_PERFIL:
+                raise ErroUsuario(_MSG_LARGO)
+    except csv.Error:
+        raise ErroUsuario(_MSG_LARGO) from None
+
+
 def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
     if len(conteudo) > MAX_CSV_BYTES:
         raise ErroUsuario("O arquivo passa de 20 MB. Envie um CSV menor.")
-    primeira = conteudo.split(b"\n", 1)[0]  # o DuckDB gasta CPU com cabeçalho enorme antes da checagem
-    if max(primeira.count(d) for d in b",;\t|") >= perfil.MAX_COLUNAS_PERFIL:
-        raise ErroUsuario(_MSG_LARGO)
+    _checar_largura(conteudo)
     sid = secrets.token_urlsafe(16)
     pasta = config.SESSIONS_DIR / sid
     pasta.mkdir(parents=True)
@@ -69,7 +82,7 @@ def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
         csv.write_bytes(conteudo)
         con = duckdb.connect(str(pasta / "dados.duckdb"))
         try:
-            con.execute(f'CREATE TABLE "{tabela}" AS SELECT * FROM read_csv_auto(?)', [str(csv)])
+            con.execute(f'CREATE TABLE "{tabela}" AS SELECT * FROM read_csv(?, skip=0, header=true)', [str(csv)])
             colunas = con.execute(
                 "SELECT column_name, data_type FROM information_schema.columns "
                 "WHERE table_name = ? ORDER BY ordinal_position", [tabela]).fetchall()
@@ -146,10 +159,10 @@ def limpar_expiradas(maximo: int | None = None) -> None:
     """Remove as vencidas; com `maximo`, se ainda lotar, abre vaga tirando a mais antiga sem pergunta."""
     agora = time.time()
     for sid, s in list(SESSOES.items()):
-        if agora - s.ultimo_uso > (TTL_SEGUNDOS if s.perguntou else TTL_SEM_PERGUNTA):
+        if agora - (s.ultimo_uso if s.perguntou else s.criada) > (TTL_SEGUNDOS if s.perguntou else TTL_SEM_PERGUNTA):
             _remover(sid)
     if maximo is not None and len(SESSOES) >= maximo:
-        sem_pergunta = [(s.ultimo_uso, sid) for sid, s in SESSOES.items() if not s.perguntou and agora - s.ultimo_uso > IDADE_MINIMA]
+        sem_pergunta = [(s.criada, sid) for sid, s in SESSOES.items() if not s.perguntou and agora - s.criada > IDADE_MINIMA]
         if sem_pergunta:
             _remover(min(sem_pergunta)[1])
 

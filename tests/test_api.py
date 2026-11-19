@@ -257,9 +257,18 @@ def test_lotado_libera_vaga_da_sessao_sem_pergunta(client: TestClient, monkeypat
     monkeypatch.setattr(main, "MAX_SESSOES", 1)
     sessions.SESSOES.clear()
     velha = client.post("/api/sessao/exemplo").json()["sessao"]
-    sessions.SESSOES[velha].ultimo_uso -= sessions.IDADE_MINIMA + 1  # só sessão parada há mais de 150 s é expulsa
+    sessions.SESSOES[velha].criada -= sessions.IDADE_MINIMA + 1  # só sessão parada há mais de 150 s é expulsa
     nova = client.post("/api/sessao/exemplo")
     assert nova.status_code == 200 and velha not in sessions.SESSOES
+
+
+def test_upload_simultaneo_nao_passa_do_teto_de_sessoes(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    monkeypatch.setattr(main, "MAX_SESSOES", 5)
+    sessions.SESSOES.clear()
+    with ThreadPoolExecutor(20) as pool:
+        codigos = list(pool.map(lambda _: client.post("/api/sessao/exemplo").status_code, range(20)))
+    assert len(sessions.SESSOES) <= 5 and codigos.count(200) == len(sessions.SESSOES)
 
 
 def test_cabecalhos_de_seguranca(client: TestClient) -> None:

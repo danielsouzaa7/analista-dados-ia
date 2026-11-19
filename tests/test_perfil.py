@@ -191,3 +191,8 @@ def test_coluna_inteira_com_epoch_nao_e_telefone() -> None:
 @pytest.mark.parametrize("nome", ["telefone2", "email1", "cpf_2"])
 def test_pii_por_nome_aceita_digito_depois_da_palavra(nome: str) -> None:
     assert perfil.detectar_pii(nome, []) is not None
+
+
+def test_pii_com_espacos_e_marcada() -> None:
+    assert perfil.detectar_pii("doc", ["529 982 247 25", "111 444 777 35"]) == "cpf"
+    assert perfil.detectar_pii("contato", ["(11) 98765 4321", "(21) 91234 5678"]) == "telefone"

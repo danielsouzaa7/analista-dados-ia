@@ -18,6 +18,9 @@ const EXEMPLOS_FALLBACK = [
   "Pedidos com cupom têm ticket médio diferente? A diferença é significativa?",
 ].map((pergunta) => ({ id: null, botao: pergunta, pergunta, depende_de: null, seguranca: false }));
 
+// Sem :focus-visible o navegador lança SyntaxError; e o toque (Android) não deve ser tratado como teclado.
+const focoTeclado = (el) => { try { return el?.matches(":focus-visible"); } catch { return false; } };
+
 const estado = { gravacoes: [], sessao: null, fonte: null, exemplos: [], ocupado: false, abort: null, turnos: [], carregando: false };
 
 // ---------- utilidades ----------
@@ -225,12 +228,12 @@ $("form-pg").addEventListener("submit", async (ev) => {
 // ---------- conversa ----------
 function definirOcupado(ocupado) {
   // o botão acionado pelo teclado vai ficar disabled: sem isso o foco cai no body
-  if (ocupado && document.activeElement?.matches("button:focus-visible")) $("pergunta").focus({ preventScroll: true });
+  if (ocupado && document.activeElement?.tagName === "BUTTON" && focoTeclado(document.activeElement)) $("pergunta").focus({ preventScroll: true });
   estado.ocupado = ocupado;
   $("enviar").disabled = ocupado;
   $("insights").disabled = ocupado;
   $("testar-seguranca").disabled = ocupado;
-  if (!ocupado && document.activeElement === $("cancelar")) $("pergunta").focus({ preventScroll: true });
+  if (!ocupado && document.activeElement === $("cancelar") && focoTeclado(document.activeElement)) $("pergunta").focus({ preventScroll: true });
   $("cancelar").hidden = !ocupado;
   $("form-pergunta").setAttribute("aria-busy", String(ocupado));
   document.querySelectorAll(".chip-exemplo, .chip-sugestao").forEach((b) => { b.disabled = ocupado; });
@@ -262,11 +265,13 @@ async function enviar(pergunta, { exemplo_id = null, substituir = null } = {}) {
     aoTentar: () => enviar(pergunta, { exemplo_id, substituir: turno }),
     aoFeedback: enviarFeedback,
   });
-  estado.turnos.forEach((t) => t.tirarSugestoes());
   const lista = $("conversa-lista");
+  // os chips em foco somem com tirarSugestoes: o foco do teclado cairia no body
+  if (lista.contains(document.activeElement) && focoTeclado(document.activeElement)) $("pergunta").focus({ preventScroll: true });
+  estado.turnos.forEach((t) => t.tirarSugestoes());
   $("vazio").hidden = true;
   if (substituir && substituir.el.parentNode === lista) {
-    if (substituir.el.contains(document.activeElement)) $("pergunta").focus({ preventScroll: true });
+    if (substituir.el.contains(document.activeElement) && focoTeclado(document.activeElement)) $("pergunta").focus({ preventScroll: true });
     lista.replaceChild(turno.el, substituir.el);
   } else lista.append(turno.el);
   estado.turnos.push(turno);

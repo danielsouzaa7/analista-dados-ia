@@ -13,9 +13,9 @@ MAX_COLUNAS_PERFIL = 200  # acima disso o SELECT único de agregados estoura a p
 MAX_NOME = 64
 
 _PII = {
-    "cpf": re.compile(r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}"),
+    "cpf": re.compile(r"\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s]?\d{2}"),
     "email": re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+"),
-    "telefone": re.compile(r"(\+?55)?\s?\(?\d{2}\)?\s?9?\d{4}-?\d{4}"),
+    "telefone": re.compile(r"(\+?55)?\s?\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}"),
 }
 # Palavra inteira, também em camelCase ("cpfCliente"): por isso o (?i:...) só na palavra e não no limite.
 _NOME_PII = re.compile(
@@ -40,7 +40,7 @@ def detectar_pii(nome: str, valores: list, inteira: bool = False) -> str | None:
     for tipo, regex in _PII.items():
         if tipo != "email" and _ID.search(nome) and all(t.isdigit() for t in textos):
             continue  # id numérico de 11 dígitos não é CPF; e-mail ou CPF formatado em coluna de id é
-        # epoch (10 dígitos) em coluna inteira não é telefone
+        # shortcut: telefone fixo de 10 dígitos em coluna inteira de nome neutro não é marcado (evita falso positivo com epoch); upgrade: validar DDD
         bate = [bool(regex.fullmatch(t)) and not (inteira and tipo == "telefone" and len(t) != 11) for t in textos]
         if textos and sum(bate) / len(textos) >= MIN_PII:
             return tipo
