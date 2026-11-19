@@ -27,6 +27,7 @@ MAX_CHAMADAS_LLM = 12
 MAX_REANALISES = 2
 LIMITE_SEGUNDOS = 120
 MAX_LINHAS_GRAFICO = 5000
+MAX_LINHAS_PYTHON = 100_000  # o df tem que ser o resultado inteiro: estatística numa parte sai errada
 MAX_TURNOS = 3
 MAX_RESUMO, MAX_RESULTADOS = 2000, 10_000
 ESPERAS_429 = (5.0, 10.0)
@@ -169,11 +170,14 @@ def _rodar(nome: str, args: dict, sessao: Sessao, timeout: float) -> tuple[str, 
                  "total_linhas": len(r.linhas)}
         return sql_tool.para_texto(r), extra
     if nome == "rodar_python":
-        r = sql_tool.executar(sessao, args["sql"], timeout=timeout)
+        r = sql_tool.executar(sessao, args["sql"], limite=MAX_LINHAS_PYTHON, timeout=timeout)
         res = python_tool.rodar(args["codigo"], _csv(r), timeout=timeout)
         if res["erro"]:
             raise ErroUsuario(f"Erro no Python: {res['erro']}")
-        return res["saida"] or "(o código não imprimiu nada)", {"saida": res["saida"]}
+        aviso = (f"Atenção: o df recebeu só as {MAX_LINHAS_PYTHON} primeiras linhas do SELECT (resultado cortado). "
+                 "Agregue no SQL antes de calcular.\n") if r.truncado else ""
+        saida = aviso + (res["saida"] or "(o código não imprimiu nada)")
+        return saida, {"saida": saida}
     if nome == "gerar_grafico":
         if args["tipo"] not in graficos.TIPOS:
             raise ErroUsuario(f"Tipo de gráfico inválido. Use um destes: {', '.join(graficos.TIPOS)}.")

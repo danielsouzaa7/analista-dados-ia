@@ -188,6 +188,32 @@ def test_erro_de_ferramenta_volta_ao_llm(s: Sessao) -> None:
     assert r["passos"][1]["tipo"] == "sql" and r["passos"][1]["sql"] == "DROP TABLE vendas"
 
 
+def test_python_recebe_todas_as_linhas_e_avisa_quando_corta(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A avaliação real pegou a correlação calculada só sobre as 1000 primeiras linhas, sem aviso.
+    grande = sessions.criar_de_csv("pedidos.csv", b"v\n" + b"".join(b"%d\n" % i for i in range(1500)))
+    recebido: list[str] = []
+
+    def falso(codigo: str, csv: str, timeout: float = 30) -> dict:
+        recebido.append(csv)
+        return {"saida": "ok\n", "erro": None}
+
+    monkeypatch.setattr(python_tool, "rodar", falso)
+    roteiro = [texto("plano"), chamada("rodar_python", sql="SELECT v FROM pedidos", codigo="print(len(df))"),
+               texto("Feito.")]
+    llm = LlmFalso(list(roteiro))
+    eventos(llm, grande)
+    assert recebido[0].count("\n") == 1501  # cabeçalho + 1500 linhas
+    assert "ok" in llm.chamadas[-1][-1]["content"] and "cortad" not in llm.chamadas[-1][-1]["content"]
+
+    monkeypatch.setattr(agent, "MAX_LINHAS_PYTHON", 1000)
+    llm = LlmFalso(list(roteiro))
+    evs = eventos(llm, grande)
+    assert recebido[1].count("\n") == 1001
+    aviso = llm.chamadas[-1][-1]["content"]
+    assert "1000 primeiras linhas" in aviso  # o modelo sabe que o df não é o resultado inteiro
+    assert "1000 primeiras linhas" in next(e for e in evs if e["evento"] == "ferramenta_fim")["saida"]
+
+
 def test_python_usa_resultado_do_sql(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
     recebido: dict = {}
 
