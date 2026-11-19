@@ -114,7 +114,12 @@ Publicação no Hugging Face Spaces: crie um Space do tipo Docker, adicione `sdk
 ```
 
 - Os testes usam um LLM falso. Os do sandbox rodam o Deno de verdade e são pulados sem `deno` no PATH. Os testes do sandbox levam alguns minutos.
-- Regressão com cassetes: `tests/test_regressao.py` reproduz respostas gravadas do LLM pelo agente real, sem chamar o Gemini. Sem cassete, é pulado.
+- Regressão com cassetes: `tests/test_regressao.py` reproduz respostas gravadas do LLM pelo agente real, sem chamar o Gemini. Sem cassete, é pulado; os casos que usam Python também são pulados sem `deno`.
+- E2E no navegador (Playwright): `tests/e2e/test_fluxo.py` só roda com o app no ar e `E2E_URL` definida (`pip install playwright && playwright install chromium`; com chave, gasta 1 pergunta da cota):
+
+```bash
+E2E_URL=http://127.0.0.1:8000 .venv/Scripts/python -m pytest -q tests/e2e
+```
 - Postgres real: o teste `test_postgres_real` só roda com `PG_TEST_URL`:
 
 ```bash
