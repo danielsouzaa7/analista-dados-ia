@@ -12,6 +12,12 @@ CSV = b"x,y\n1,2\n3,4\n5,6\n"
 PG_TEST_URL = os.environ.get("PG_TEST_URL")
 
 
+@pytest.fixture(autouse=True)
+def _sem_liberar_interno(monkeypatch: pytest.MonkeyPatch) -> None:
+    # o job postgres-real do CI define PG_PERMITIR_INTERNO=1; os testes de SSRF precisam do padrão (desligado)
+    monkeypatch.setattr(config, "PG_PERMITIR_INTERNO", False)
+
+
 @pytest.fixture
 def s() -> Sessao:
     return sessions.criar_de_csv("dados.csv", CSV)
