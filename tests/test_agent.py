@@ -213,6 +213,12 @@ def test_python_recebe_todas_as_linhas_e_avisa_quando_corta(monkeypatch: pytest.
     assert "1000 primeiras linhas" in aviso  # o modelo sabe que o df não é o resultado inteiro
     assert "1000 primeiras linhas" in next(e for e in evs if e["evento"] == "ferramenta_fim")["saida"]
 
+    monkeypatch.setattr(agent, "MAX_BYTES_PYTHON", 30)  # células largas: o teto de bytes corta antes do de linhas
+    llm = LlmFalso(list(roteiro))
+    eventos(llm, grande)
+    assert len(recebido[2]) <= 30 and recebido[2].startswith("v\r\n0\r\n")
+    assert f"{recebido[2].count(chr(10)) - 1} primeiras linhas" in llm.chamadas[-1][-1]["content"]
+
 
 def test_python_usa_resultado_do_sql(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
     recebido: dict = {}

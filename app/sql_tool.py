@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from app.sessions import Sessao
 
 MAX_CHARS = 10_000
+MAX_CELULAS = 2_000_000  # teto de linhas x colunas trazidas do DuckDB numa consulta
 LIMITES_DUCKDB = {"memory_limit": "512MB", "threads": 2, "max_temp_directory_size": "0B"}
 # Funções que executam SQL escondido em string (postgres_execute contorna o READ_ONLY).
 _FUNCOES_PERIGOSAS = re.compile(r"\bpostgres_(execute|query)\b", re.I)
@@ -148,6 +149,7 @@ def executar(sessao: Sessao, sql: str, limite: int = 1000, timeout: float = 30) 
     try:
         cur = con.execute(sql)
         colunas = [d[0] for d in cur.description]
+        limite = min(limite, max(1, MAX_CELULAS // max(1, len(colunas))))  # o fetch vira objetos Python fora do memory_limit
         linhas = cur.fetchmany(limite + 1)
     except duckdb.InterruptException:
         raise ErroUsuario("A consulta passou do tempo limite de 30 s e foi interrompida.") from None

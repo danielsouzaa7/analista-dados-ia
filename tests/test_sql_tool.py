@@ -17,6 +17,13 @@ def s() -> Sessao:
     return sessions.criar_de_csv("dados.csv", CSV)
 
 
+def test_teto_de_celulas_reduz_as_linhas_de_consulta_larga(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sql_tool, "MAX_CELULAS", 4)
+    r = executar(s, "SELECT x, y FROM dados ORDER BY x", limite=100)
+    assert r.linhas == [(1, 2), (3, 4)] and r.truncado  # 4 células / 2 colunas = 2 linhas
+    assert executar(s, "SELECT x FROM dados ORDER BY x", limite=100).linhas == [(1,), (3,), (5,)]
+
+
 def test_select_ok(s: Sessao) -> None:
     r = executar(s, "SELECT x, y FROM dados ORDER BY x")
     assert r.colunas == ["x", "y"]

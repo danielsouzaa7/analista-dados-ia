@@ -106,6 +106,7 @@ Dado pessoal: uma coluna é marcada `pii` (`cpf`, `email`, `telefone`) pelo nome
 | Corpo JSON | 16 KB | `main.LIMITE_CORPO` |
 | Upload de CSV | 20 MB (limite por Content-Length; corpo chunked recusado) | `sessions.MAX_CSV_BYTES` |
 | Linhas devolvidas ao LLM | 1.000 por consulta, 50 no texto; 5.000 no gráfico | `sql_tool.executar`, `para_texto`, `agent.MAX_LINHAS_GRAFICO` |
+| Linhas no `df` do Python | 100.000; acima disso a saída começa com um aviso de corte para o modelo agregar no SQL | `agent.MAX_LINHAS_PYTHON` |
 | Texto de resultado | 10.000 caracteres | `sql_tool.MAX_CHARS` |
 | Saída do Python | 10.000 caracteres; leitura do processo até 1 MB | `python_tool.MAX_CHARS`, `MAX_STDOUT_BYTES` |
 | Sandboxes simultâneos | 2 | `python_tool.SEMAFORO` |

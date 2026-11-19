@@ -28,6 +28,7 @@ MAX_REANALISES = 2
 LIMITE_SEGUNDOS = 120
 MAX_LINHAS_GRAFICO = 5000
 MAX_LINHAS_PYTHON = 100_000  # o df tem que ser o resultado inteiro: estatística numa parte sai errada
+MAX_BYTES_PYTHON = 20 * 1024 * 1024  # células largas não podem estourar os 512 MB do V8 do sandbox
 MAX_TURNOS = 3
 MAX_RESUMO, MAX_RESULTADOS = 2000, 10_000
 ESPERAS_429 = (5.0, 10.0)
@@ -154,12 +155,19 @@ def _linhas_do_evento(linhas: list) -> list[list]:
     return saida
 
 
-def _csv(r: sql_tool.Resultado) -> str:
+def _csv(r: sql_tool.Resultado) -> tuple[str, int]:
+    """CSV para o df do Python, com teto de tamanho (em caracteres). Devolve (csv, linhas que couberam)."""
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(r.colunas)
-    w.writerows(r.linhas)
-    return buf.getvalue()
+    for n, linha in enumerate(r.linhas):
+        antes = buf.tell()
+        w.writerow(linha)
+        if buf.tell() > MAX_BYTES_PYTHON:
+            buf.seek(antes)
+            buf.truncate()
+            return buf.getvalue(), n
+    return buf.getvalue(), len(r.linhas)
 
 
 def _rodar(nome: str, args: dict, sessao: Sessao, timeout: float) -> tuple[str, dict]:
@@ -171,11 +179,12 @@ def _rodar(nome: str, args: dict, sessao: Sessao, timeout: float) -> tuple[str, 
         return sql_tool.para_texto(r), extra
     if nome == "rodar_python":
         r = sql_tool.executar(sessao, args["sql"], limite=MAX_LINHAS_PYTHON, timeout=timeout)
-        res = python_tool.rodar(args["codigo"], _csv(r), timeout=timeout)
+        dados, cabem = _csv(r)
+        res = python_tool.rodar(args["codigo"], dados, timeout=timeout)
         if res["erro"]:
             raise ErroUsuario(f"Erro no Python: {res['erro']}")
-        aviso = (f"Atenção: o df recebeu só as {MAX_LINHAS_PYTHON} primeiras linhas do SELECT (resultado cortado). "
-                 "Agregue no SQL antes de calcular.\n") if r.truncado else ""
+        aviso = (f"Atenção: o df recebeu só as {cabem} primeiras linhas do SELECT (resultado cortado). "
+                 "Agregue no SQL antes de calcular.\n") if r.truncado or cabem < len(r.linhas) else ""
         saida = aviso + (res["saida"] or "(o código não imprimiu nada)")
         return saida, {"saida": saida}
     if nome == "gerar_grafico":
