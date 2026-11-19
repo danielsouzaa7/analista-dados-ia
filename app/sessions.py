@@ -3,6 +3,7 @@ import re
 import secrets
 import shutil
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from app.errors import ErroUsuario
 
 MAX_CSV_BYTES = 20 * 1024 * 1024
 TTL_SEGUNDOS = 3600
+TTL_SEM_PERGUNTA = 600  # upload que ninguém usou não segura a vaga por 1 h
 
 
 @dataclass
@@ -26,6 +28,8 @@ class Sessao:
     historico: list[dict] = field(default_factory=list)  # últimos turnos (memória da conversa), só no servidor
     turnos: int = 0  # respostas dadas na conversa atual (índice do feedback)
     grounding: str = ""  # valores das colunas categóricas, para o prompt
+    conversa: int = 0  # sobe em "nova conversa": resposta em andamento não grava turno na memória nova
+    turnos_avaliados: set[int] = field(default_factory=set)  # um voto por turno
 
 
 SESSOES: dict[str, Sessao] = {}
@@ -36,6 +40,15 @@ def _nome_tabela(nome_arquivo: str) -> str:
     if not nome:
         return "dados"
     return nome if nome[0].isalpha() else f"t_{nome}"
+
+
+def _checar_cabecalho(colunas: list[tuple]) -> None:
+    nomes = [n for n, _ in colunas]
+    if len(nomes) > perfil.MAX_COLUNAS_PERFIL:
+        raise ErroUsuario(f"O CSV tem mais de {perfil.MAX_COLUNAS_PERFIL} colunas. Envie um CSV mais estreito.")
+    if any(len(n) > perfil.MAX_NOME or any(unicodedata.category(ch) in ("Cc", "Cf") for ch in n) for n in nomes):
+        raise ErroUsuario(f"Cabeçalho inválido: nomes de coluna com mais de {perfil.MAX_NOME} caracteres "
+                          "ou com caracteres de controle.")
 
 
 def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
@@ -54,6 +67,7 @@ def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
             colunas = con.execute(
                 "SELECT column_name, data_type FROM information_schema.columns "
                 "WHERE table_name = ? ORDER BY ordinal_position", [tabela]).fetchall()
+            _checar_cabecalho(colunas)
             linhas = con.execute(f'SELECT count(*) FROM "{tabela}"').fetchone()[0]
             dados_perfil, grounding = perfil.perfilar(con, tabela)
         finally:
@@ -61,6 +75,9 @@ def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
         csv.unlink()
         if not colunas or linhas == 0:
             raise duckdb.Error("sem dados")
+    except ErroUsuario:
+        shutil.rmtree(pasta, ignore_errors=True)
+        raise
     except (duckdb.Error, UnicodeDecodeError):
         shutil.rmtree(pasta, ignore_errors=True)
         raise ErroUsuario("Não consegui ler esse CSV. Confira se é um arquivo CSV válido com cabeçalho.") from None
@@ -113,14 +130,22 @@ def _perfilar_postgres(sessao: Sessao) -> None:
         con.close()
 
 
-def limpar_expiradas() -> None:
+def _remover(sid: str) -> None:
+    sessao = SESSOES.pop(sid, None)  # outra requisição pode ter removido antes
+    if sessao and sessao.caminho_db:
+        shutil.rmtree(sessao.caminho_db.parent, ignore_errors=True)
+
+
+def limpar_expiradas(maximo: int | None = None) -> None:
+    """Remove as vencidas; com `maximo`, se ainda lotar, abre vaga tirando a mais antiga sem pergunta."""
     agora = time.time()
     for sid, s in list(SESSOES.items()):
-        if agora - s.ultimo_uso <= TTL_SEGUNDOS:
-            continue
-        sessao = SESSOES.pop(sid, None)  # outra requisição pode ter removido antes
-        if sessao and sessao.caminho_db:
-            shutil.rmtree(sessao.caminho_db.parent, ignore_errors=True)
+        if agora - s.ultimo_uso > (TTL_SEGUNDOS if s.turnos else TTL_SEM_PERGUNTA):
+            _remover(sid)
+    if maximo is not None and len(SESSOES) >= maximo:
+        sem_pergunta = [(s.ultimo_uso, sid) for sid, s in SESSOES.items() if not s.turnos]
+        if sem_pergunta:
+            _remover(min(sem_pergunta)[1])
 
 
 def obter(sid: str) -> Sessao:

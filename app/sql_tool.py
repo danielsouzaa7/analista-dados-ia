@@ -1,8 +1,10 @@
 """SQL só leitura: valida, abre conexão travada, aplica timeout/limite e redige segredos."""
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
+import socket
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -105,15 +107,28 @@ def parametros_pg(url: str) -> dict:
             "user": unquote(u.username or ""), "password": unquote(u.password or "")}
 
 
+def _ip_do_destino(host: str) -> str:
+    """IP a fixar na conexão. ValueError (mesma resposta) se o host é vazio, não resolve ou não é público."""
+    try:
+        ips = list(dict.fromkeys(i[4][0].split("%")[0] for i in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)))
+    except OSError:
+        ips = []
+    # Host vazio viraria o socket local do Postgres, mesmo com a variável de teste ligada.
+    if not host or not ips or not (config.PG_PERMITIR_INTERNO or all(ipaddress.ip_address(i).is_global for i in ips)):
+        raise ValueError("destino não permitido")
+    return ips[0]
+
+
 def _abrir_postgres(url: str) -> duckdb.DuckDBPyConnection:
     p = parametros_pg(url)
+    ip = _ip_do_destino(p["host"])  # o hostaddr abaixo impede DNS rebinding entre a checagem e a conexão
     con = duckdb.connect(config=LIMITES_DUCKDB)
     try:
         con.execute("LOAD postgres")
         # Segredo temporário: a senha não aparece em duckdb_databases() (a URL no ATTACH apareceria).
         con.execute("CREATE TEMPORARY SECRET pgsec (TYPE postgres, HOST ?, PORT ?, DATABASE ?, USER ?, PASSWORD ?)",
                     [p["host"], p["port"], p["database"], p["user"], p["password"]])
-        con.execute("ATTACH 'connect_timeout=10' AS pg (TYPE postgres, SECRET pgsec, READ_ONLY)")
+        con.execute(f"ATTACH 'connect_timeout=10 hostaddr={ip}' AS pg (TYPE postgres, SECRET pgsec, READ_ONLY)")
         con.execute("USE pg")
         con.execute("SET enable_external_access=false")  # testado: o scanner do Postgres continua funcionando
         con.execute("SET autoload_known_extensions=false")

@@ -1,8 +1,10 @@
 """API FastAPI. Endpoints síncronos (DuckDB e subprocess são bloqueantes; o FastAPI usa o threadpool)."""
+import asyncio
 import json
 import logging
 import math
 import os
+import statistics
 import threading
 import time
 import uuid
@@ -18,7 +20,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StringConstraints
-from starlette.background import BackgroundTask
 
 from app import agent, config, perfil, prompts, sessions
 from app.errors import ErroUsuario
@@ -48,13 +49,15 @@ _ID_GRAVACAO = r"^[a-z0-9_]+$"
 _SUBSTANTIVOS = {"plano", "llm", "ferramenta_inicio", "rascunho"}  # depois disso não dá mais para trocar pela gravação
 MSG_INTERNO = "Algo deu errado do nosso lado. Tente de novo."
 _VAGAS = threading.BoundedSemaphore(1)  # 1 pergunta por vez, segurada até o fim do stream
+_REPRODUCOES = threading.BoundedSemaphore(4)  # cada reprodução dorme numa thread do pool
+PRAZO_SSE = agent.LIMITE_SEGUNDOS + 15  # cliente que para de ler não segura a vaga
 _uso = {"dia": date.today(), "n": 0}  # em memória: reinicia com o processo e na virada do dia
 _LOCK = threading.Lock()
 _estat: dict = {}
 _dormir = time.sleep
 CABECALHOS = {
     "Content-Security-Policy": (
-        "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; "
+        "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
         "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
         "frame-ancestors 'self' https://huggingface.co https://*.hf.space"),  # sem X-Frame-Options: o HF usa iframe
@@ -104,10 +107,9 @@ class ExemploItem(BaseModel):
     seguranca: bool
 
 
-def obter_llm() -> agent.LlmFn:
-    if not config.LLM_API_KEY:
-        raise HTTPException(503, "O serviço de IA não está configurado (falta a LLM_API_KEY).")
-    return agent.llm_padrao()
+def obter_llm() -> agent.LlmFn | None:
+    """None sem chave: o exemplo ainda pode ser reproduzido da gravação (decide `perguntar`)."""
+    return agent.llm_padrao() if config.LLM_API_KEY else None
 
 
 def _saida(s: sessions.Sessao) -> dict:
@@ -115,7 +117,7 @@ def _saida(s: sessions.Sessao) -> dict:
 
 
 def _abrir_vaga_de_sessao() -> None:
-    sessions.limpar_expiradas()
+    sessions.limpar_expiradas(MAX_SESSOES)
     if len(sessions.SESSOES) >= MAX_SESSOES:
         raise ErroUsuario("Servidor cheio agora. Tente de novo mais tarde.")
 
@@ -155,6 +157,8 @@ def _zerar_metricas() -> None:
 
 
 def _percentil(ordenados: list[int], p: float) -> int | None:
+    if p == 0.5:  # mesma mediana do scripts/avaliar.py
+        return round(statistics.median(ordenados)) if ordenados else None
     return ordenados[min(len(ordenados) - 1, math.ceil(p * len(ordenados)) - 1)] if ordenados else None
 
 
@@ -208,7 +212,7 @@ def _snapshot_metricas() -> dict:
 
 def _sse(evento: dict) -> bytes:
     dados = {k: v for k, v in evento.items() if k != "evento"}
-    return f"event: {evento['evento']}\ndata: {json.dumps(dados, ensure_ascii=False, default=str)}\n\n".encode()
+    return f"event: {evento['evento']}\ndata: {json.dumps(dados, ensure_ascii=False, default=str, allow_nan=False)}\n\n".encode()
 
 
 def _ids_gravacoes() -> list[str]:
@@ -219,10 +223,8 @@ def _ids_gravacoes() -> list[str]:
 
 def _gravacao(exemplo_id: str | None) -> Path | None:
     """Só ids que existem na pasta de gravações (o id já passou pelo regex): nunca um caminho livre."""
-    if exemplo_id is None:
-        return None
-    if exemplo_id not in _ids_gravacoes():
-        raise ErroUsuario("Exemplo desconhecido.")
+    if exemplo_id is None or exemplo_id not in _ids_gravacoes():
+        return None  # sem gravação, a pergunta do exemplo roda ao vivo
     return GRAVACOES / f"{exemplo_id}.jsonl"
 
 
@@ -252,7 +254,7 @@ def _so_gravacao(caminho: Path) -> Iterator[bytes]:
     _registrar(_linha_de_log({}, None, None, int((time.perf_counter() - desde) * 1000), True))
 
 
-def _liberador():
+def _liberador(vaga: threading.BoundedSemaphore | None = None):
     """Devolve a vaga uma única vez (no fim do stream ou, se ele nem começar, no fim da resposta)."""
     liberada = []
 
@@ -261,7 +263,7 @@ def _liberador():
             if liberada:
                 return
             liberada.append(True)
-        _VAGAS.release()
+        (vaga or _VAGAS).release()
 
     return liberar
 
@@ -290,14 +292,40 @@ def _ao_vivo(corpo: PerguntaIn, sessao: sessions.Sessao, llm: agent.LlmFn, grava
             saida["erro_tipo"] = "interno"
             yield _sse({"evento": "erro", "mensagem": MSG_INTERNO})
             yield _sse({"evento": "fim"})
+    except GeneratorExit:
+        saida["erro_tipo"] = "cancelado"  # o cliente foi embora no meio: não conta como respondida
+        raise
     finally:
         liberar()
         _registrar(_linha_de_log(saida, metricas, resposta, int((time.perf_counter() - desde) * 1000), reproduzido))
 
 
+class _RespostaSSE(StreamingResponse):
+    """O uvicorn espera o socket esvaziar sem prazo: o timeout aqui devolve a vaga a quem parou de ler."""
+
+    def __init__(self, gerador: Iterator[bytes], liberar=None) -> None:
+        super().__init__(gerador, media_type="text/event-stream", headers=CABECALHOS_SSE)
+        self._liberar = liberar
+
+    async def __call__(self, scope, receive, send) -> None:
+        try:
+            async with asyncio.timeout(PRAZO_SSE):
+                await super().__call__(scope, receive, send)
+        except TimeoutError:
+            log.warning("Stream SSE encerrado pelo prazo")
+        finally:
+            if self._liberar:
+                self._liberar()
+
+
 def _resposta_sse(gerador: Iterator[bytes], liberar=None) -> StreamingResponse:
-    return StreamingResponse(gerador, media_type="text/event-stream", headers=CABECALHOS_SSE,
-                             background=BackgroundTask(liberar) if liberar else None)
+    return _RespostaSSE(gerador, liberar)
+
+
+def _reproducao(gravacao: Path) -> StreamingResponse:
+    if not _REPRODUCOES.acquire(blocking=False):
+        raise HTTPException(429, "Muita gente usando agora. Tente de novo em um minuto.")
+    return _resposta_sse(_so_gravacao(gravacao), _liberador(_REPRODUCOES))
 
 
 def _exemplos() -> list[dict]:
@@ -374,32 +402,40 @@ def create_app() -> FastAPI:
     @app.post("/api/conversa/nova")
     def conversa_nova(corpo: ConversaIn) -> dict:
         sessao = sessions.obter(corpo.sessao)
-        sessao.historico, sessao.turnos = [], 0
+        sessao.historico, sessao.turnos, sessao.turnos_avaliados = [], 0, set()
+        sessao.conversa += 1
         return {"ok": True}
 
     @app.post("/api/feedback", status_code=204)
     def feedback(corpo: FeedbackIn) -> Response:
-        sessions.obter(corpo.sessao)
+        sessao = sessions.obter(corpo.sessao)
         with _LOCK:
+            if corpo.turno > sessao.turnos or corpo.turno in sessao.turnos_avaliados:
+                raise ErroUsuario("Esse turno não existe ou já foi avaliado.")
+            sessao.turnos_avaliados.add(corpo.turno)
             _estat[corpo.nota] += 1
             if corpo.motivo:
                 _estat["por_motivo"][corpo.motivo] += 1
         return Response(status_code=204)
 
     @app.post("/api/perguntar")
-    def perguntar(corpo: PerguntaIn, llm: agent.LlmFn = Depends(obter_llm)) -> StreamingResponse:
+    def perguntar(corpo: PerguntaIn, llm: agent.LlmFn | None = Depends(obter_llm)) -> StreamingResponse:
         sessao = sessions.obter(corpo.sessao)
         gravacao = _gravacao(corpo.exemplo_id)
+        if llm is None:
+            if gravacao:
+                return _reproducao(gravacao)
+            raise HTTPException(503, "O serviço de IA não está configurado (falta a LLM_API_KEY).")
         if not _VAGAS.acquire(blocking=False):
             if gravacao:
-                return _resposta_sse(_so_gravacao(gravacao))
+                return _reproducao(gravacao)
             raise HTTPException(429, "Muita gente usando agora. Tente de novo em um minuto.")
         try:
             _contar_pergunta()
         except HTTPException:
             _VAGAS.release()
             if gravacao:
-                return _resposta_sse(_so_gravacao(gravacao))
+                return _reproducao(gravacao)
             raise
         liberar = _liberador()
         return _resposta_sse(_ao_vivo(corpo, sessao, llm, gravacao, liberar), liberar)

@@ -137,6 +137,8 @@ def _consumir(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, c
             eventos.append({**evento, "t_ms": int((time.monotonic() - inicio) * 1000)})
     except (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError) as e:
         erro_infra = type(e).__name__
+    if erro_infra or any(_eh_infra(e.get("mensagem", "")) for e in eventos if e["evento"] == "erro"):
+        return eventos, erro_infra  # o stream de uma cota estourada não pode apagar a gravação boa
     linhas = [json.dumps(e, ensure_ascii=False) for e in eventos]
     (pasta / f"{caso['id']}.jsonl").write_text(
         "".join(lin.replace(chave, "[REDIGIDO]") + "\n" for lin in linhas), encoding="utf-8")
@@ -183,6 +185,7 @@ def rodar_todos(casos: list[dict], llm: Callable, pausa: float, chave: str, past
     acompanhamento, que continua a sessão do caso de que depende."""
     sessoes: dict[str, sessions.Sessao] = {}
     resultados: list[dict] = []
+    infra_ids: set[str] = set()
     for i, caso in enumerate(casos):
         if i:
             time.sleep(pausa)
@@ -190,6 +193,10 @@ def rodar_todos(casos: list[dict], llm: Callable, pausa: float, chave: str, past
         sessoes[caso["id"]] = sessao
         cassete: list = []
         r = rodar_caso(caso, sessao, gravar_llm(llm, cassete) if pasta_cassetes else llm, pasta, chave)
+        if caso.get("depende_de") in infra_ids:  # sem a resposta anterior, a falha é da cota, não do agente
+            r["infra"], r["acerto"] = True, False
+        if r["infra"]:
+            infra_ids.add(caso["id"])
         resultados.append(r)
         print(f"{caso['id']}: {'OK' if r['acerto'] else 'infra' if r['infra'] else 'FALHOU'} ({r['ms'] / 1000:.1f} s)")
         if pasta_cassetes and r["acerto"]:

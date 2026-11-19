@@ -5,6 +5,7 @@ import csv
 import functools
 import io
 import json
+import math
 import os
 import re
 import time
@@ -31,6 +32,11 @@ MAX_RESUMO, MAX_RESULTADOS = 2000, 10_000
 ESPERAS_429 = (5.0, 10.0)
 MODELO_RESERVA = os.environ.get("LLM_MODEL_FALLBACK", "gemini-flash-lite-latest")
 MARCADOR = "SUGESTOES:"
+_DOBRA = str.maketrans("abcdefghijklmnopqrstuvwxyzõÕ", "ABCDEFGHIJKLMNOPQRSTUVWXYZOO")  # mesmo tamanho: índices valem no original
+MAX_NOME, MAX_ESQUEMA = 64, 8000  # nomes e esquema vão a até 13 chamadas por pergunta
+MAX_CELULA, MAX_BYTES_LINHAS = 200, 200_000  # ferramenta_fim vai para o navegador
+NL = chr(10)
+_TAG_DADOS = re.compile(r"</?dados>", re.IGNORECASE)
 _dormir = time.sleep
 
 TIPOS = {"consultar_banco": "sql", "rodar_python": "python", "gerar_grafico": "grafico"}
@@ -76,6 +82,7 @@ MSG_MAX_CHAMADAS = ("A análise precisou de mais de 8 chamadas de ferramenta e f
 MSG_MAX_LLM = ("A análise precisou de mais de 12 chamadas ao modelo e foi interrompida. "
                "Tente uma pergunta mais específica.")
 MSG_COTA = "O limite gratuito do modelo de IA foi atingido (cota). Espere um minuto e tente de novo."
+MSG_RECUSADO = "O serviço de IA recusou o pedido."
 MSG_INDISPONIVEL = "O serviço de IA não respondeu agora. Tente de novo em instantes."
 _TIPO_ERRO = {MSG_LIMITE: "limite_tempo", MSG_MAX_CHAMADAS: "limite_ferramentas", MSG_MAX_LLM: "limite_llm",
               MSG_VAZIA: "resposta_vazia"}
@@ -86,32 +93,54 @@ def _perfil_texto(tabela: dict) -> str:
     for c in tabela.get("perfil", {}).get("colunas", []):
         if c.get("nulos_pct") is None:
             continue
-        faixa = f", de {c['min']} a {c['max']}" if "min" in c else ""
+        faixa = f", de {c['min']} a {c['max']}" if "min" in c and not c.get("pii") else ""
         pessoal = f", DADO PESSOAL ({c['pii']})" if c.get("pii") else ""
-        linhas.append(f"    {c['nome']}: {c['distintos']} distintos, {c['nulos_pct']}% nulos{faixa}{pessoal}")
-    return "\n".join(linhas)
+        linhas.append(f"    {c['nome'][:MAX_NOME]}: {c['distintos']} distintos, {c['nulos_pct']}% nulos{faixa}{pessoal}")
+    return NL.join(linhas)
+
+
+def _como_dado(texto: str) -> str:
+    """O conteúdo do CSV não pode fechar o delimitador nem virar instrução."""
+    return f"<dados>{NL}{_TAG_DADOS.sub('', texto)}{NL}</dados>"
 
 
 def _esquema(sessao: Sessao) -> str:
     blocos = []
     for t in sessao.tabelas:
-        bloco = f"- {t['nome']}({', '.join(c['nome'] + ' ' + c['tipo'] for c in t['colunas'])})"
+        colunas = ", ".join(c["nome"][:MAX_NOME] + " " + c["tipo"] for c in t["colunas"])
+        bloco = f"- {t['nome'][:MAX_NOME]}({colunas})"
         perfil = _perfil_texto(t)
-        blocos.append(bloco + ("\n" + perfil if perfil else ""))
-    texto = "\n".join(blocos)
-    return texto + (f"\n\nValores das colunas categóricas:\n{sessao.grounding}" if sessao.grounding else "")
+        blocos.append(bloco + (NL + perfil if perfil else ""))
+    texto = NL.join(blocos)
+    texto += f"{NL}{NL}Valores das colunas categóricas:{NL}{sessao.grounding}" if sessao.grounding else ""
+    return _como_dado(texto[:MAX_ESQUEMA])
 
 
 def _historico(sessao: Sessao) -> str:
     if not sessao.historico:
         return ""
-    return "\n\n" + prompts.HISTORICO + "\n---\n".join(t["resumo"] for t in sessao.historico)
+    return prompts.HISTORICO + _como_dado(f"{NL}---{NL}".join(t["resumo"] for t in sessao.historico))
 
 
 def _j(v: object) -> object:
-    if v is None or isinstance(v, (int, float, str, bool)):
-        return v
-    return float(v) if isinstance(v, Decimal) else str(v)
+    if isinstance(v, Decimal):
+        v = float(v)
+    if isinstance(v, float) and not math.isfinite(v):
+        return None  # NaN/Infinity não existem em JSON
+    if isinstance(v, str):
+        return v[:MAX_CELULA]
+    return v if v is None or isinstance(v, (int, float, bool)) else str(v)[:MAX_CELULA]
+
+
+def _linhas_do_evento(linhas: list) -> list[list]:
+    saida, bytes_ = [], 0
+    for lin in linhas:
+        linha = [_j(v) for v in lin]
+        bytes_ += len(json.dumps(linha, ensure_ascii=False))
+        if bytes_ > MAX_BYTES_LINHAS:
+            break
+        saida.append(linha)
+    return saida
 
 
 def _csv(r: sql_tool.Resultado) -> str:
@@ -126,7 +155,7 @@ def _rodar(nome: str, args: dict, sessao: Sessao, timeout: float) -> tuple[str, 
     """Roda uma ferramenta: devolve o texto para o LLM e os campos extras de ferramenta_fim (levanta ErroUsuario)."""
     if nome == "consultar_banco":
         r = sql_tool.executar(sessao, args["sql"], timeout=timeout)
-        extra = {"colunas": r.colunas, "linhas": [[_j(v) for v in lin] for lin in r.linhas],
+        extra = {"colunas": r.colunas, "linhas": _linhas_do_evento(r.linhas),
                  "total_linhas": len(r.linhas)}
         return sql_tool.para_texto(r), extra
     if nome == "rodar_python":
@@ -214,11 +243,12 @@ class _Retentor:
 
     def alimentar(self, delta: str, final: bool = False) -> str:
         self.total += delta
-        corte = self.total.find(MARCADOR)
+        dobrado = self.total.translate(_DOBRA)
+        corte = dobrado.find(MARCADOR)
         if corte < 0:
             corte = len(self.total)
             if not final:
-                corte -= next((k for k in range(len(MARCADOR) - 1, 0, -1) if self.total.endswith(MARCADOR[:k])), 0)
+                corte -= next((k for k in range(len(MARCADOR) - 1, 0, -1) if dobrado.endswith(MARCADOR[:k])), 0)
         corte = max(corte, self.emitido)
         saida, self.emitido = self.total[self.emitido:corte], corte
         return saida
@@ -226,7 +256,8 @@ class _Retentor:
 
 def _separar(texto: str) -> tuple[str, list[str]]:
     """(corpo, sugestões): sugestões com dígitos são descartadas (os números não passariam pela conferência)."""
-    corpo, _, resto = texto.partition(MARCADOR)
+    corte = texto.translate(_DOBRA).find(MARCADOR)
+    corpo, resto = (texto, "") if corte < 0 else (texto[:corte].rstrip("*_# " + NL), texto[corte + len(MARCADOR):])
     sugestoes = []
     for linha in resto.splitlines():
         item = linha.strip().lstrip("-*• ").strip()
@@ -243,6 +274,8 @@ def _turno(llm: LlmFn, messages: list[dict], tools: list[dict] | None, restante:
     m["llm"] += 1
     desde, ret, chamadas, usage, modelo = time.perf_counter(), _Retentor(), [], {}, config.LLM_MODEL
     for tipo, valor in llm(messages, tools, restante):
+        if time.perf_counter() - desde > restante:  # o timeout do SDK é por leitura, não total
+            raise ErroUsuario(MSG_LIMITE)
         if tipo == "texto":
             delta = ret.alimentar(valor)
             if delta and not plano:
@@ -292,8 +325,11 @@ def _guardar_turno(sessao: Sessao, pergunta: str, resposta: str, passos: list[di
 def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inicio: float) -> Iterator[dict]:
     passos, resultados = saida["passos"], []
     anteriores = [t["resultados"] for t in sessao.historico]
+    conversa = sessao.conversa
+    historico = _historico(sessao)
     messages: list[dict] = [
-        {"role": "system", "content": prompts.SISTEMA + _esquema(sessao) + _historico(sessao)},
+        {"role": "system", "content": prompts.SISTEMA + _esquema(sessao)},
+        *([{"role": "user", "content": historico}] if historico else []),
         {"role": "user", "content": pergunta}]
     texto_plano, _ = yield from _turno(
         llm, messages + [{"role": "user", "content": prompts.PLANO}], None, _restante(inicio), True, m, 1)
@@ -323,7 +359,8 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
             continue
         saida.update(resposta=corpo, sugestoes=sugestoes,
                      aviso=f"Alguns números não puderam ser conferidos: {', '.join(faltam)}" if faltam else None)
-        _guardar_turno(sessao, pergunta, corpo, passos, resultados)
+        if sessao.conversa == conversa:  # "nova conversa" no meio da resposta não recebe o turno antigo
+            _guardar_turno(sessao, pergunta, corpo, passos, resultados)
         yield {"evento": "resposta", "texto": corpo, "aviso": saida["aviso"], "reanalises": saida["reanalises"],
                "sugestoes": sugestoes, "conferido": not faltam, "turno": sessao.turnos}
         return
@@ -344,6 +381,8 @@ def executar(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict | None = Non
         erro, tipo = str(e), _TIPO_ERRO.get(str(e), "validacao")
     except openai.RateLimitError:
         erro, tipo = MSG_COTA, "cota"
+    except openai.BadRequestError:
+        erro, tipo = MSG_RECUSADO, "requisicao"
     except openai.APIError:
         erro, tipo = MSG_INDISPONIVEL, "provedor"
     if erro:

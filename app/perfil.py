@@ -9,13 +9,18 @@ AMOSTRA_PII = 200
 MAX_EXEMPLOS = 5
 MIN_PII = 0.6
 MAX_TABELAS_PERFIL = 10
+MAX_COLUNAS_PERFIL = 200  # acima disso o SELECT único de agregados estoura a pilha nativa do DuckDB
+MAX_NOME = 64
 
 _PII = {
     "cpf": re.compile(r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}"),
     "email": re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+"),
     "telefone": re.compile(r"(\+?55)?\s?\(?\d{2}\)?\s?9?\d{4}-?\d{4}"),
 }
-_NOME_PII = re.compile(r"(?:^|_)(cpf|e_?mail|telefone|celular|fone)(?:$|_)")
+# Palavra inteira, também em camelCase ("cpfCliente"): por isso o (?i:...) só na palavra e não no limite.
+_NOME_PII = re.compile(
+    r"(?:^|[^A-Za-z0-9]|(?<=[a-z0-9])(?=[A-Z]))((?i:cpf|e[-_ ]?mail|telefone|celular|fone))(?:$|[^A-Za-z0-9]|(?=[A-Z]))")
+_INTEIRO = re.compile(r"^U?(TINY|SMALL|BIG|HUGE)?INT(EGER)?$", re.I)
 _NUMERICO = re.compile(r"^(U?(TINY|SMALL|BIG|HUGE)?INT(EGER)?|DOUBLE|FLOAT\d?|REAL|DECIMAL.*|NUMERIC.*)$", re.I)
 _DATA = re.compile(r"^(DATE|TIMESTAMP.*)$", re.I)
 _ID = re.compile(r"(?:^|_)id(?:$|_)", re.I)
@@ -27,9 +32,12 @@ def _aspas(nome: str) -> str:
 
 def detectar_pii(nome: str, valores: list) -> str | None:
     """'cpf' | 'email' | 'telefone' | None: pelo nome da coluna ou por >= 60% dos valores não nulos."""
-    achado = _NOME_PII.search(nome.lower())
+    achado = _NOME_PII.search(nome)
     if achado:
-        return "email" if "mail" in achado.group(1) else "telefone" if achado.group(1) != "cpf" else "cpf"
+        palavra = achado.group(1).lower()
+        return "email" if "mail" in palavra else "cpf" if palavra == "cpf" else "telefone"
+    if _ID.search(nome):  # id de texto com 11 dígitos não é CPF
+        return None
     textos = [str(v).strip() for v in valores if v is not None]
     for tipo, regex in _PII.items():
         if textos and sum(bool(regex.fullmatch(t)) for t in textos) / len(textos) >= MIN_PII:
@@ -39,7 +47,7 @@ def detectar_pii(nome: str, valores: list) -> str | None:
 
 def _minimo(colunas: list[dict]) -> dict:
     return {"colunas": [{"nome": c["nome"], "tipo": c["tipo"], "nulos_pct": None, "distintos": None,
-                         "pii": _NOME_PII.search(c["nome"].lower()) and detectar_pii(c["nome"], []) or None}
+                         "pii": detectar_pii(c["nome"], [])}
                         for c in colunas]}
 
 
@@ -69,14 +77,16 @@ def _coluna(con: duckdb.DuckDBPyConnection, src: str, tabela: str, c: dict, est:
     nn, distintos, minimo, maximo = est
     item = {"nome": c["nome"], "tipo": c["tipo"],
             "nulos_pct": round(100 * (total - nn) / total, 1) if total else 0.0, "distintos": distintos}
-    if minimo is not None:
-        item.update(min=minimo, max=maximo)
-    valores = _valores(con, src, c["nome"]) if c["tipo"].upper() == "VARCHAR" else []
+    texto = c["tipo"].upper() == "VARCHAR"
+    # Coluna inteira também é amostrada: CPF e telefone sem pontuação viram BIGINT.
+    valores = _valores(con, src, c["nome"]) if texto or _INTEIRO.match(c["tipo"]) else []
     item["pii"] = detectar_pii(c["nome"], valores)
-    if valores and item["pii"] is None:
+    if minimo is not None and item["pii"] is None:  # faixa de dado pessoal é dado pessoal
+        item.update(min=minimo, max=maximo)
+    if texto and item["pii"] is None:
         item["exemplos"] = [_limpo(v) for v in valores[:MAX_EXEMPLOS]]
         if distintos <= LIMITE_VALORES:
-            return item, f"- {tabela}.{c['nome']}: valores possíveis: {', '.join(_limpo(v) for v in valores)}"
+            return item, f"- {tabela}.{c['nome'][:MAX_NOME]}: valores possíveis: {', '.join(_limpo(v) for v in valores)}"
     return item, ""
 
 
@@ -89,6 +99,8 @@ def perfilar(con: duckdb.DuckDBPyConnection, tabela: str, colunas: list[dict] | 
     try:
         if colunas is None:
             colunas = [{"nome": r[0], "tipo": r[1]} for r in con.execute(f"DESCRIBE SELECT * FROM {src}").fetchall()]
+        if len(colunas) > MAX_COLUNAS_PERFIL:
+            return _minimo(colunas), ""
         *ests, total = _estatisticas(con, src, colunas)
         feitos = [_coluna(con, src, tabela, c, e, total) for c, e in zip(colunas, ests, strict=True)]
     except duckdb.Error:

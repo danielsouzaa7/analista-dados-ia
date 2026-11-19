@@ -16,3 +16,6 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-3.5-flash-lite")
 DATA_DIR = RAIZ / "data"
 SESSIONS_DIR = DATA_DIR / "sessions"
 SANDBOX_DIR = RAIZ / "sandbox"
+
+# Só para teste local e CI: libera Postgres em endereço interno (sem isso, só IP público: evita SSRF).
+PG_PERMITIR_INTERNO = os.environ.get("PG_PERMITIR_INTERNO") == "1"

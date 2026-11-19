@@ -1,7 +1,12 @@
+import subprocess
+import sys
+from pathlib import Path
+
 import duckdb
 import pytest
 
 from app import perfil, sessions
+from app.errors import ErroUsuario
 
 
 @pytest.fixture
@@ -94,3 +99,77 @@ def test_sessao_csv_ja_traz_perfil() -> None:
     cols = s.tabelas[0]["perfil"]["colunas"]
     assert [c["nome"] for c in cols] == ["regiao", "valor"] and cols[1]["max"] == "250"
     assert "d.regiao" in s.grounding and "Norte" in s.grounding
+
+
+def _tabela_larga(n: int) -> duckdb.DuckDBPyConnection:
+    c = duckdb.connect()
+    c.execute("CREATE TABLE w AS SELECT " + ", ".join(f"1 AS c{i}" for i in range(n)))
+    return c
+
+
+def test_perfil_acima_do_teto_de_colunas_devolve_minimo() -> None:
+    p, grounding = perfil.perfilar(_tabela_larga(perfil.MAX_COLUNAS_PERFIL + 1), "w")
+    assert len(p["colunas"]) == perfil.MAX_COLUNAS_PERFIL + 1 and grounding == ""
+    assert p["colunas"][0]["nulos_pct"] is None
+
+
+def test_csv_com_mil_colunas_e_recusado_sem_derrubar_o_processo(tmp_path) -> None:
+    # 1000 colunas estouram a pilha nativa do DuckDB: só um subprocesso prova que o processo sobrevive
+    codigo = (
+        "import sys; from pathlib import Path\n"
+        "from app import config, sessions\nfrom app.errors import ErroUsuario\n"
+        "config.SESSIONS_DIR = Path(sys.argv[1])\n"
+        "csv = ','.join(f'c{i}' for i in range(1000)) + chr(10) + ','.join('1' for _ in range(1000)) + chr(10)\n"
+        "try:\n    sessions.criar_de_csv('l.csv', csv.encode())\nexcept ErroUsuario:\n    print('recusado')\n")
+    r = subprocess.run([sys.executable, "-c", codigo, str(tmp_path)], capture_output=True, text=True,
+                       cwd=Path(__file__).resolve().parent.parent, timeout=60)
+    assert r.returncode == 0 and "recusado" in r.stdout
+    assert not any(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("cabecalho", [",".join(f"c{i}" for i in range(201)), "a\u200bb,c", "a\x07b,c", "n" * 65 + ",c"])
+def test_csv_com_cabecalho_ruim_e_recusado_e_apaga_a_pasta(pasta_sessoes, cabecalho: str) -> None:
+    linha = ",".join("1" for _ in cabecalho.split(","))
+    with pytest.raises(ErroUsuario):
+        sessions.criar_de_csv("d.csv", f"{cabecalho}\n{linha}\n".encode())
+    assert not list(pasta_sessoes.iterdir())
+
+
+def test_csv_no_teto_de_colunas_e_aceito() -> None:
+    cab = ",".join(f"c{i}" for i in range(perfil.MAX_COLUNAS_PERFIL))
+    s = sessions.criar_de_csv("d.csv", f"{cab}\n{','.join('1' for _ in range(perfil.MAX_COLUNAS_PERFIL))}\n".encode())
+    assert len(s.tabelas[0]["colunas"]) == perfil.MAX_COLUNAS_PERFIL
+
+
+def test_pii_numerica_nao_expoe_minimo_nem_maximo() -> None:
+    c = duckdb.connect()
+    c.execute("CREATE TABLE p AS SELECT * FROM (VALUES (12345678901, 11987654321, 5), (23456789012, 11976543210, 7), "
+              "(34567890123, 11965432109, 9)) v(documento, fone, qtd)")
+    p, _ = perfil.perfilar(c, "p")
+    assert _col(p, "fone")["pii"] == "telefone" and "min" not in _col(p, "fone")
+    assert _col(p, "documento")["pii"] == "cpf" and "max" not in _col(p, "documento")
+    assert _col(p, "qtd")["pii"] is None and _col(p, "qtd")["min"] == "5" and "exemplos" not in _col(p, "qtd")
+
+
+@pytest.mark.parametrize("nome", ["E-mail", "CPF Cliente", "cpfCliente", "Telefone (celular)", "clienteCpf", "E_MAIL"])
+def test_pii_por_nome_variacoes(nome: str) -> None:
+    assert perfil.detectar_pii(nome, []) is not None
+    assert perfil._minimo([{"nome": nome, "tipo": "VARCHAR"}])["colunas"][0]["pii"] is not None
+
+
+@pytest.mark.parametrize("nome", ["cpfs_pendentes_x1", "telefonema", "emailing", "profone"])
+def test_pii_por_nome_nao_pega_palavra_parecida(nome: str) -> None:
+    assert perfil.detectar_pii(nome, []) is None
+
+
+def test_id_de_texto_com_onze_digitos_nao_e_pii() -> None:
+    assert perfil.detectar_pii("pedido_id", ["00012345678", "00012345679"]) is None
+    assert perfil.detectar_pii("codigo", ["00012345678", "00012345679"]) == "cpf"
+
+
+def test_grounding_corta_nome_de_coluna_em_64_caracteres() -> None:
+    c = duckdb.connect()
+    nome = "x" * 80
+    c.execute(f'CREATE TABLE g AS SELECT * FROM (VALUES (\'a\'), (\'b\')) v("{nome}")')
+    _, grounding = perfil.perfilar(c, "g")
+    assert "x" * 64 in grounding and "x" * 65 not in grounding

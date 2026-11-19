@@ -104,3 +104,61 @@ def test_titulos_truncados_e_sem_dados() -> None:
     assert len(g["titulo"]) == 200 and len(g["subtitulo"]) == 200
     with pytest.raises(ErroUsuario, match="sem dados"):
         moldar("ranking", ["a", "b"], [])
+
+
+def test_eixo_decimal_ordena_como_numero_e_aparece_sem_zeros_sobrando() -> None:
+    linhas = [(Decimal("10"), 1), (Decimal("9"), 5), (Decimal("2.5"), 3)]
+    g = moldar("tendencia", ["x", "v"], linhas)
+    assert [p["x"] for p in g["dados"]] == [2.5, 9, 10]
+    assert "(10)" in g["resumo"] and "(10.0)" not in g["resumo"] and "(2,5)" in g["resumo"]
+
+
+def test_resumo_nao_muda_o_ano_nem_inteiro_em_float() -> None:
+    g = moldar("tendencia", ["ano", "v"], [(2024, 1), (2025.0, 3)])
+    assert "(2024)" in g["resumo"] and "(2025)" in g["resumo"]
+
+
+def test_valor_pequeno_nao_vira_zero_no_resumo() -> None:
+    g = moldar("ranking", ["c", "v"], [("a", 0.004), ("b", 0.002)])
+    assert "0,0040" in g["resumo"] and "(0,00)" not in g["resumo"]
+
+
+@pytest.mark.parametrize("r_alvo,forca", [(0.35, "moderada"), (0.65, "forte"), (0.2, "fraca")])
+def test_forca_da_correlacao_usa_cortes_do_front(r_alvo: float, forca: str) -> None:
+    # y = r*x + ruído ortogonal: r exato com 4 pontos (x centrado, ruído de soma e produto nulos com x)
+    xs = [-3.0, -1.0, 1.0, 3.0]
+    ruido = [1.0, -1.0, -1.0, 1.0]
+    k = r_alvo * math.sqrt(sum(v * v for v in xs) / sum(v * v for v in ruido)) * math.sqrt(1 / r_alvo**2 - 1)
+    linhas = [(x, r_alvo * x + k * n) for x, n in zip(xs, ruido, strict=True)]
+    g = moldar("dispersao", ["x", "y"], linhas)
+    assert math.isclose(g["dados"]["tendencia"]["r"], r_alvo, abs_tol=1e-9) and f"Relação {forca}" in g["resumo"]
+
+
+def test_dispersao_com_variancia_quase_nula_nao_tem_tendencia() -> None:
+    g = moldar("dispersao", ["x", "y"], [(0, 0.1), (1, 0.1), (2, 0.1)])  # a média de 0.1 em float deixa um resíduo
+    assert g["dados"]["tendencia"] is None
+
+
+def test_tendencia_serie_de_referencia_ignora_primeiro_ponto_nulo_e_mantem_o_ultimo() -> None:
+    linhas = [(0, None, "B"), (1, 5, "A"), (2, 6, "A"), (3, 7, "B")]
+    g = moldar("tendencia", ["t", "v", "s"], linhas, serie="s")
+    assert "subiu de 5 (1) para 6 (2)" in g["resumo"]
+    grande = [(i, i, "") for i in range(1000)]
+    g = moldar("tendencia", ["t", "v", "s"], grande, serie="s")
+    assert g["dados"][-1]["x"] == 999
+
+
+@pytest.mark.parametrize("tipo,linhas,extra", [
+    ("ranking", [("a", float("nan")), ("b", float("inf")), ("c", 1e308), ("d", 1e308)], {}),
+    ("composicao", [("a", 1e308), ("b", 1e308), ("c", -float("inf"))], {}),
+    ("tendencia", [(float("nan"), 1), (float("inf"), 2), (1, 1e308), (2, 1e308), (3, -1e308)], {}),
+    ("mapa_calor", [("a", float("inf"), 1e308), ("b", 1, 1e308), ("c", 2, float("nan"))], {"valor": "v"}),
+    ("dispersao", [(1e200, 1e200), (2e200, 5e200), (-3e200, 1e200), (float("nan"), 1), (1, float("inf"))], {}),
+])
+def test_nada_nao_finito_sai_do_moldar(tipo: str, linhas: list, extra: dict) -> None:
+    colunas = ["x", "y", "v"] if tipo == "mapa_calor" else ["x", "y"]
+    try:
+        g = moldar(tipo, colunas, linhas, **extra)
+    except ErroUsuario:
+        return  # recusar com texto também serve: o que não pode é emitir NaN/inf
+    json.dumps(g, allow_nan=False)

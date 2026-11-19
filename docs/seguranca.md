@@ -28,12 +28,12 @@ Premissa de projeto: o LLM é não confiável. Nada do que ele produz (SQL, Pyth
 | Prompt | Instruções de não inventar números e de só agregar colunas de dado pessoal. Não é barreira de segurança: qualquer garantia abaixo vale mesmo que o modelo seja induzido |
 | Ferramentas | Argumentos validados (JSON, tipos); tipo de gráfico só dentre `graficos.TIPOS`; ferramenta desconhecida vira erro devolvido ao LLM; no máximo 8 ferramentas, 12 chamadas ao LLM e 120 s |
 | SQL | Um único `SELECT`, árvore sintática analisada com lista de proibição de funções que executam SQL de texto, falha fechada; conexão somente leitura; no CSV, `enable_external_access=false`, extensões sem autoinstall e `lock_configuration=true`; `memory_limit` 512 MB, 2 threads, sem arquivos temporários; 30 s |
-| Postgres | `ATTACH ... READ_ONLY` com `SECRET` temporário (a senha não aparece em `duckdb_databases()`); timeout de conexão de 10 s; recomendação de usuário só com `GRANT SELECT`; a URL nunca vai ao LLM, ao disco, à tela nem aos logs (`redigir`, `repr` sem a URL, exceções com `from None`) |
+| Postgres | `ATTACH ... READ_ONLY` com `SECRET` temporário (a senha não aparece em `duckdb_databases()`); timeout de conexão de até 20 s; recomendação de usuário só com `GRANT SELECT`; a URL nunca vai ao LLM, ao disco, à tela nem aos logs (`redigir`, `repr` sem a URL, exceções com `from None`) |
 | Python | Pyodide em Deno sem rede, ambiente, execução, FFI, escrita nem leitura fora de `node_modules` e `pyodide_cache`; ambiente do subprocesso mínimo; 30 s; saída lida até 1 MB e depois o processo é morto; no máximo 2 sandboxes; linha final com nonce aleatório e cópias guardadas de `JSON.stringify` e `Deno.stdout.writeSync` |
 | API | Corpo JSON até 16 KB, upload até 20 MB por `Content-Length` e corpo chunked recusado; entradas com limites (Pydantic); 422 genérico que não ecoa o corpo; middleware que engole exceções e registra só o tipo; uma pergunta por vez, teto diário, 200 sessões; `/docs` desligado |
 | Navegador | CSP (`script-src 'self'` e cdnjs, `object-src 'none'`, `frame-ancestors` só do próprio site e do Hugging Face), `nosniff`, `Referrer-Policy: no-referrer`; texto do servidor por `textContent`; ECharts com SRI; id de sessão de 128 bits (`token_urlsafe(16)`) enviado no corpo, fora da URL |
 | Contêiner | O código da aplicação pertence ao root (`COPY` antes de `USER user`); só `data` e `sandbox` são graváveis pelo usuário `user` (uid 1000) |
-| Dado pessoal | Colunas que parecem CPF, e-mail ou telefone são marcadas; seus valores não vão ao prompt |
+| Dado pessoal | Colunas que parecem CPF, e-mail ou telefone são marcadas e ficam fora do perfil enviado à IA. A IA é instruída a só agregá-las, mas os resultados das consultas não são mascarados (alias, `substr` ou `\|\|` contornariam qualquer filtro) |
 
 ## Relatório de red team
 
@@ -94,7 +94,7 @@ Conferido pelos revisores, sem achado:
 
 ## Riscos aceitos
 
-- **SSRF pela URL do Postgres do próprio visitante**: o servidor abre uma conexão de rede para o endereço informado, inclusive endereços internos. Só há `READ_ONLY` e timeout de 10 s. Documentado na tela e no README.
+- **SSRF pela URL do Postgres do próprio visitante**: o servidor abre uma conexão de rede para o endereço informado. Só IPs públicos são aceitos (`getaddrinfo` + `is_global` para todos os IPs; host vazio recusado; a mesma mensagem para "não resolve" e "não é público"), e a conexão é fixada no IP checado (`hostaddr`, contra DNS rebinding). Endereços internos só com `PG_PERMITIR_INTERNO=1` (teste local e CI). Resta a Internet pública: há `READ_ONLY` e o timeout real é de até 20 s (o `sslmode=prefer` tenta duas vezes), não 10 s. Está documentado aqui e no README, não na tela.
 - **Host, usuário e banco do Postgres** são visíveis em `duckdb_secrets()` (a senha vem redigida).
 - **Memória do WASM** pode chegar a cerca de 4 GB por execução; o limite vem do contêiner.
 - **Contadores por processo** (teto diário, sessões, semáforos): o desenho assume 1 worker.

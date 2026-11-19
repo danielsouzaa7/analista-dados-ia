@@ -253,6 +253,14 @@ def test_servidor_cheio(client: TestClient, monkeypatch: pytest.MonkeyPatch, rot
     assert r.status_code == 400 and r.json()["detail"] == "Servidor cheio agora. Tente de novo mais tarde."
 
 
+def test_lotado_libera_vaga_da_sessao_sem_pergunta(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(main, "MAX_SESSOES", 1)
+    sessions.SESSOES.clear()
+    velha = client.post("/api/sessao/exemplo").json()["sessao"]
+    nova = client.post("/api/sessao/exemplo")
+    assert nova.status_code == 200 and velha not in sessions.SESSOES
+
+
 def test_cabecalhos_de_seguranca(client: TestClient) -> None:
     h = client.get("/").headers
     assert h["x-content-type-options"] == "nosniff" and h["referrer-policy"] == "no-referrer"
@@ -323,13 +331,16 @@ def test_memoria_entre_perguntas_pela_api(client: TestClient) -> None:
 
 def test_feedback_agrega_e_valida(client: TestClient) -> None:
     s = _upload(client)
+    sessions.SESSOES[s["sessao"]].turnos = 2
     corpo = {"sessao": s["sessao"], "turno": 1, "nota": "nao_util", "motivo": "numeros_errados"}
     assert client.post("/api/feedback", json=corpo).status_code == 204
-    assert client.post("/api/feedback", json={"sessao": s["sessao"], "turno": 1, "nota": "util"}).status_code == 204
+    assert client.post("/api/feedback", json={"sessao": s["sessao"], "turno": 2, "nota": "util"}).status_code == 204
     assert client.post("/api/feedback", json={**corpo, "nota": "otimo"}).status_code == 422
     assert client.post("/api/feedback", json={**corpo, "motivo": "xyz"}).status_code == 422
     assert client.post("/api/feedback", json={**corpo, "turno": "a"}).status_code == 422
     assert client.post("/api/feedback", json={**corpo, "sessao": "nada"}).status_code == 400
+    assert client.post("/api/feedback", json=corpo).status_code == 400  # um voto por turno
+    assert client.post("/api/feedback", json={**corpo, "turno": 3}).status_code == 400  # turno que não existe
     fb = client.get("/api/metricas").json()["feedback"]
     assert fb == {"util": 1, "nao_util": 1, "por_motivo": {"numeros_errados": 1}}
 
@@ -441,10 +452,10 @@ def test_exemplo_id_invalido_recusado(client: TestClient, exemplo_id: str) -> No
     assert _perguntar(client, s["sessao"], "Qual?", exemplo_id=exemplo_id).status_code == 422
 
 
-def test_exemplo_id_inexistente_recusado(client: TestClient) -> None:
+def test_exemplo_id_sem_gravacao_responde_ao_vivo(client: TestClient) -> None:
     s = _upload(client)
     r = _perguntar(client, s["sessao"], "Qual?", exemplo_id="nao_existe")
-    assert r.status_code == 400 and "Exemplo" in r.json()["detail"]
+    assert r.status_code == 200 and dict(_eventos(r))["resposta"]["texto"] == "O total é 350."
 
 
 def test_gravacao_ignora_linhas_quebradas(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -454,3 +465,75 @@ def test_gravacao_ignora_linhas_quebradas(monkeypatch: pytest.MonkeyPatch) -> No
     c = _client_sem_llm()
     evs = _eventos(_perguntar(c, _upload(c)["sessao"], "Qual?", exemplo_id="ruim"))
     assert evs == [("fim", {"gravacao": True})]
+
+
+def test_nova_conversa_sobe_o_contador_e_libera_votos(client: TestClient) -> None:
+    s = _upload(client)
+    sessao = sessions.SESSOES[s["sessao"]]
+    sessao.turnos, sessao.turnos_avaliados = 1, {1}
+    client.post("/api/conversa/nova", json={"sessao": s["sessao"]})
+    assert sessao.conversa == 1 and sessao.turnos_avaliados == set()
+
+
+def test_sem_chave_com_exemplo_reproduz_gravacao(monkeypatch: pytest.MonkeyPatch) -> None:
+    _gravar("exemplo_a", GRAVACAO)
+    monkeypatch.setattr(config, "LLM_API_KEY", "")
+    c = TestClient(create_app())
+    evs = _eventos(_perguntar(c, _upload(c)["sessao"], "Qual?", exemplo_id="exemplo_a"))
+    assert evs[-1][0] == "fim" and evs[0][1]["gravacao"] is True
+    assert _perguntar(c, _upload(c)["sessao"], "Qual?").status_code == 503
+
+
+def test_reproducoes_simultaneas_tem_teto(monkeypatch: pytest.MonkeyPatch) -> None:
+    _gravar("exemplo_a", GRAVACAO)
+    monkeypatch.setattr(main, "_VAGAS", threading.BoundedSemaphore(0))
+    monkeypatch.setattr(main, "_REPRODUCOES", threading.BoundedSemaphore(0))
+    c = _client_sem_llm()
+    assert _perguntar(c, _upload(c)["sessao"], "Qual?", exemplo_id="exemplo_a").status_code == 429
+
+
+def test_sse_recusa_nan_e_a_gravacao_ignora_nan() -> None:
+    assert b"null" in main._sse({"evento": "x", "v": None})
+    with pytest.raises(ValueError):
+        main._sse({"evento": "x", "v": float("nan")})
+
+
+def test_stream_cancelado_conta_como_erro_cancelado() -> None:
+    s = sessions.criar_de_csv("d.csv", CSV)
+    gerador = main._ao_vivo(main.PerguntaIn(sessao=s.id, pergunta="Oi?"), s,
+                            LlmFalso([texto("plano"), texto("Oi.")]), None, lambda: None)
+    next(gerador)
+    gerador.close()
+    assert main._estat["erros"] == {"cancelado": 1}
+
+
+def test_p50_usa_a_mediana() -> None:
+    main._estat["execucoes"] = [{"ms": ms, "respondida": True, "conferido": True, "reanalises": 0,
+                                 "tokens_entrada": None, "tokens_saida": None} for ms in (100, 200, 300, 1000)]
+    assert main._snapshot_metricas()["p50_ms"] == 250
+
+
+def test_csp_fixa_o_script_do_echarts() -> None:
+    csp = main.CABECALHOS["Content-Security-Policy"]
+    assert "https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js" in csp
+    assert "script-src 'self' https://cdnjs.cloudflare.com;" not in csp
+
+
+def test_cliente_lento_nao_segura_a_vaga(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+    monkeypatch.setattr(main, "PRAZO_SSE", 0.1)
+    liberou: list[bool] = []
+
+    async def gerador():
+        yield b"x"
+
+    async def send(_):
+        await asyncio.sleep(5)  # cliente que parou de ler
+
+    async def rodar() -> None:
+        resposta = main._RespostaSSE(gerador(), lambda: liberou.append(True))
+        await resposta({"type": "http", "asgi": {"spec_version": "2.3"}, "method": "GET", "headers": []},
+                       lambda: asyncio.sleep(5), send)
+
+    asyncio.run(asyncio.wait_for(rodar(), 3))
+    assert liberou == [True]

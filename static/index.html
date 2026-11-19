@@ -171,7 +171,7 @@
             <div><dt>Números conferidos</dt><dd>Cada número da resposta precisa bater com os resultados das ferramentas, com margem de 1%. Se não bater, o agente refaz a análise até 2 vezes.</dd></div>
             <div><dt>Limites</dt><dd>No máximo 8 ferramentas, 12 chamadas ao modelo e 120 s por pergunta. Uma pergunta por vez, com teto diário.</dd></div>
             <div><dt>Memória curta</dt><dd>Lembra as 3 últimas perguntas da sessão, para entender "e só em São Paulo?". Nova conversa apaga tudo.</dd></div>
-            <div><dt>Dado pessoal fica de fora</dt><dd>Colunas que parecem CPF, e-mail ou telefone são marcadas e seus valores não vão à IA.</dd></div>
+            <div><dt>Dado pessoal fica de fora</dt><dd>Colunas que parecem CPF, e-mail ou telefone são marcadas e ficam fora do perfil enviado à IA. A IA é instruída a só agregá-las, mas os resultados das consultas não são mascarados. Não envie dados pessoais reais.</dd></div>
           </dl>
           <h3>Decisões técnicas</h3>
           <ul class="lista-simples">

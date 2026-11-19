@@ -26,7 +26,7 @@ O app roda em hospedagem gratuita (a primeira visita pode demorar a acordar) e t
 - **SQL validado pela árvore sintática**, com falha fechada e conexão somente leitura ([decisão 5](docs/decisoes.md)).
 - **Sandbox WASM sem permissões**: Pyodide dentro de Deno, que é quem isola ([decisão 3](docs/decisoes.md)).
 - **Memória curta**: 3 turnos, com resumo, para perguntas de acompanhamento.
-- **Grounding e LGPD**: perfil dos dados, valores categóricos no prompt e colunas com CPF, e-mail ou telefone marcadas e fora do prompt.
+- **Grounding e LGPD**: perfil dos dados, valores categóricos no prompt e colunas com CPF, e-mail ou telefone marcadas e fora do perfil enviado à IA. A IA é instruída a só agregá-las, mas os resultados das consultas não são mascarados: não envie dados pessoais reais.
 - **Trace e métricas**: cascata de tempos por pergunta, painel de métricas da demo, log JSON sem conteúdo.
 - **Avaliação, gravações e cassetes**: casos com resposta esperada calculada em pandas, e regressão offline sem chamar o LLM.
 - **Red team**: 4 rodadas de revisão de segurança com achados, correções e testes em [docs/seguranca.md](docs/seguranca.md).
@@ -137,7 +137,7 @@ Os dados têm padrões de propósito: picos no almoço (11h-14h) e no jantar (18
 - Uma pergunta por vez no servidor inteiro, com teto diário; os contadores ficam em memória (1 worker) e reiniciam com o processo.
 - A hospedagem gratuita "dorme": a primeira visita demora. Cada execução de Python leva alguns segundos (carregar Pyodide e pandas).
 - **Os dados e as perguntas vão para o Google Gemini** (plano gratuito, que pode usar os dados para melhorar produtos). Não envie dados sensíveis.
-- Risco aceito: a URL do Postgres informada faz o servidor abrir uma conexão de rede (SSRF para endereços internos), só com `READ_ONLY` e timeout de 10 s. Use um usuário só com `GRANT SELECT`.
+- Risco aceito: a URL do Postgres informada faz o servidor abrir uma conexão de rede (SSRF): só IPs públicos são aceitos e a conexão é fixada no IP checado; resta a Internet pública, com `READ_ONLY` e timeout de até 20 s. Use um usuário só com `GRANT SELECT`.
 - A conferência verifica que o número existe nos resultados, não que está no lugar certo.
 - A detecção de dado pessoal é por nome da coluna e padrão (CPF, e-mail, telefone); não cobre outros tipos, e não impede que o visitante digite o dado na pergunta.
 - Memória de 3 turnos por sessão, sem memória entre sessões. Sessões expiram em 1 h.

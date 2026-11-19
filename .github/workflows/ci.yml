@@ -69,6 +69,7 @@ jobs:
           --health-retries 10
     env:
       PG_TEST_URL: postgresql://postgres:teste@127.0.0.1:5432/postgres
+      PG_PERMITIR_INTERNO: "1"  # o Postgres do job é local
     steps:
       - uses: actions/checkout@v4
 

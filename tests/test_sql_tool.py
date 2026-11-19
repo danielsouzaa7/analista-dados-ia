@@ -1,4 +1,5 @@
 import os
+import socket
 
 import pytest
 
@@ -95,7 +96,8 @@ def test_redigir_remove_url_e_senha() -> None:
     assert "senhaSecreta123" not in msg and "postgresql://" not in msg
 
 
-def test_url_postgres_invalida_nao_vaza_senha() -> None:
+def test_url_postgres_invalida_nao_vaza_senha(monkeypatch) -> None:
+    monkeypatch.setattr(config, "PG_PERMITIR_INTERNO", True)  # chega a tentar conectar na porta 1
     url = "postgresql://usuario:senhaSecreta123@127.0.0.1:1/banco"
     with pytest.raises(ErroUsuario) as e:
         sessions.criar_de_postgres(url)
@@ -110,7 +112,8 @@ def test_url_nao_postgres_recusada() -> None:
 
 
 @pytest.mark.skipif(not PG_TEST_URL, reason="PG_TEST_URL não definida")
-def test_postgres_real() -> None:
+def test_postgres_real(monkeypatch) -> None:
+    monkeypatch.setattr(config, "PG_PERMITIR_INTERNO", True)  # o Postgres do teste é local
     s = sessions.criar_de_postgres(PG_TEST_URL)
     assert any(t["nome"] == "vendas_pg" for t in s.tabelas)
     assert executar(s, "SELECT sum(v) FROM vendas_pg").linhas == [(6,)]
@@ -238,3 +241,59 @@ def test_falsos_positivos_aceitos(sql: str) -> None:
 def test_funcoes_proibidas_recusadas(sql: str) -> None:
     with pytest.raises(ErroUsuario):
         validar_sql(sql)
+
+
+def _dns(monkeypatch: pytest.MonkeyPatch, *ips: str) -> None:
+    resposta = [(socket.AF_INET6 if ":" in ip else socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0)) for ip in ips]
+    monkeypatch.setattr(sql_tool.socket, "getaddrinfo", lambda *a, **k: resposta)
+
+
+@pytest.mark.parametrize("ips", [("10.0.0.5",), ("127.0.0.1",), ("169.254.169.254",), ("::1",),
+                                 ("93.184.216.34", "10.0.0.5")])
+def test_ssrf_recusa_destino_interno_inclusive_se_so_um_ip_for_interno(monkeypatch, ips) -> None:
+    _dns(monkeypatch, *ips)
+    with pytest.raises(ValueError):
+        sql_tool._ip_do_destino("db.exemplo.com")
+
+
+def test_ssrf_recusa_host_vazio_e_que_nao_resolve(monkeypatch) -> None:
+    with pytest.raises(ValueError):
+        sql_tool._ip_do_destino("")
+    monkeypatch.setattr(sql_tool.socket, "getaddrinfo", lambda *a, **k: (_ for _ in ()).throw(socket.gaierror()))
+    with pytest.raises(ValueError):
+        sql_tool._ip_do_destino("nao-existe.invalid")
+
+
+def test_ssrf_mesma_mensagem_para_interno_e_nao_resolve(monkeypatch) -> None:
+    mensagens = set()
+    for ips in (("10.0.0.5",), ()):
+        _dns(monkeypatch, *ips)
+        with pytest.raises(ErroUsuario) as e:
+            sql_tool.abrir(Sessao(id="1", tipo="postgres", pg_url="postgresql://u:p@db.exemplo.com/d"))
+        mensagens.add(str(e.value))
+    assert len(mensagens) == 1 and "Não consegui conectar" in mensagens.pop()
+
+
+def test_ssrf_liberado_so_com_a_variavel(monkeypatch) -> None:
+    _dns(monkeypatch, "127.0.0.1")
+    monkeypatch.setattr(config, "PG_PERMITIR_INTERNO", True)
+    assert sql_tool._ip_do_destino("localhost") == "127.0.0.1"
+    with pytest.raises(ValueError):
+        sql_tool._ip_do_destino("")  # vazio vira socket local: continua recusado
+
+
+def test_attach_fixa_o_ip_e_mantem_o_host_no_secret(monkeypatch) -> None:
+    _dns(monkeypatch, "93.184.216.34")
+    chamadas: list[tuple] = []
+
+    class Falsa:
+        def execute(self, sql, params=None):
+            chamadas.append((sql, params))
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(sql_tool.duckdb, "connect", lambda **k: Falsa())
+    sql_tool.abrir(Sessao(id="1", tipo="postgres", pg_url="postgresql://u:p@db.exemplo.com:5432/d"))
+    assert any(p and p[0] == "db.exemplo.com" for _, p in chamadas)  # SNI/TLS seguem o nome
+    assert any("hostaddr=93.184.216.34" in sql for sql, _ in chamadas)

@@ -107,3 +107,36 @@ def test_perfil_do_postgres_usa_amostra_e_nao_derruba_a_sessao(monkeypatch) -> N
     sessions._perfilar_postgres(sessao)
     assert amostras == [5000] and sessao.tabelas[0]["perfil"]["colunas"][0]["distintos"] == 2
     assert "t.cidade" in sessao.grounding
+
+
+def test_sessao_sem_pergunta_expira_em_10_min_e_a_com_pergunta_em_1_h(monkeypatch: pytest.MonkeyPatch) -> None:
+    muda = sessions.criar_de_csv("a.csv", CSV_A)
+    usada = sessions.criar_de_csv("b.csv", CSV_B)
+    usada.turnos = 1
+    monkeypatch.setattr(time, "time", lambda: max(muda.ultimo_uso, usada.ultimo_uso) + 601)
+    sessions.limpar_expiradas()
+    assert muda.id not in sessions.SESSOES and usada.id in sessions.SESSOES
+    monkeypatch.setattr(time, "time", lambda: usada.ultimo_uso + 3601)
+    sessions.limpar_expiradas()
+    assert usada.id not in sessions.SESSOES
+
+
+def test_lotado_remove_a_mais_antiga_sem_pergunta() -> None:
+    velha = sessions.criar_de_csv("a.csv", CSV_A)
+    usada = sessions.criar_de_csv("b.csv", CSV_B)
+    usada.turnos = 2
+    nova = sessions.criar_de_csv("c.csv", CSV_B)
+    agora = time.time()
+    velha.ultimo_uso, usada.ultimo_uso, nova.ultimo_uso = agora - 5, agora - 9, agora - 1
+    pasta = velha.caminho_db.parent
+    sessions.limpar_expiradas(maximo=3)
+    assert set(sessions.SESSOES) == {usada.id, nova.id} and not pasta.exists()
+    sessions.limpar_expiradas(maximo=3)  # há vaga: não remove mais nada
+    assert len(sessions.SESSOES) == 2
+
+
+def test_lotado_so_com_sessoes_com_pergunta_nao_remove_nenhuma() -> None:
+    a = sessions.criar_de_csv("a.csv", CSV_A)
+    a.turnos = 1
+    sessions.limpar_expiradas(maximo=1)
+    assert a.id in sessions.SESSOES

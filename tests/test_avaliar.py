@@ -116,7 +116,7 @@ def test_seguranca_falha_quando_algo_vaza_ou_muda(sessao, tmp_path, monkeypatch,
     assert CHAVE not in (tmp_path / "seguranca.jsonl").read_text(encoding="utf-8")
 
 
-def test_acompanhamento_usa_a_sessao_do_caso_anterior_e_infra_propaga(tmp_path, monkeypatch) -> None:
+def test_acompanhamento_usa_a_sessao_do_caso_anterior(tmp_path, monkeypatch) -> None:
     casos = [CASO, {**CASO, "id": "depois", "depende_de": "total"}]
     vistas = []
 
@@ -129,6 +129,31 @@ def test_acompanhamento_usa_a_sessao_do_caso_anterior_e_infra_propaga(tmp_path, 
     monkeypatch.setattr(avaliar, "criar_sessao", lambda: sessions.criar_de_csv("pedidos.csv", CSV))
     res = avaliar.rodar_todos(casos, lambda *a: None, pausa=0, chave=CHAVE, pasta=tmp_path)
     assert vistas[0] == vistas[1] and len(vistas) == 2 and all(r["acerto"] for r in res)
+
+
+def test_acompanhamento_de_pergunta_que_caiu_por_infra_tambem_e_infra(tmp_path, monkeypatch) -> None:
+    casos = [CASO, {**CASO, "id": "depois", "depende_de": "total"}]
+
+    def executar(pergunta, sessao, llm):
+        if pergunta == CASO["pergunta"]:
+            yield {"evento": "erro", "mensagem": "O limite gratuito do modelo de IA foi atingido."}
+        else:  # sem a resposta anterior, o acompanhamento erraria por causa da cota, não do agente
+            yield {"evento": "resposta", "texto": "não sei"}
+        yield {"evento": "fim"}
+
+    monkeypatch.setattr(avaliar.agent, "executar", executar, raising=False)
+    monkeypatch.setattr(avaliar, "criar_sessao", lambda: sessions.criar_de_csv("pedidos.csv", CSV))
+    res = avaliar.rodar_todos([casos[0], {**casos[1], "pergunta": "e no mês seguinte?"}], lambda *a: None,
+                              pausa=0, chave=CHAVE, pasta=tmp_path)
+    assert [r["infra"] for r in res] == [True, True] and not any(r["acerto"] for r in res)
+
+
+def test_caso_com_infra_nao_sobrescreve_a_gravacao_boa(sessao, tmp_path, monkeypatch) -> None:
+    boa = '{"evento": "fim"}' + chr(10)
+    (tmp_path / "total.jsonl").write_text(boa, encoding="utf-8")
+    msg = "O limite gratuito do modelo de IA foi atingido."
+    rodar(CASO, sessao, tmp_path, monkeypatch, agente([{"evento": "erro", "mensagem": msg}], None))
+    assert (tmp_path / "total.jsonl").read_text(encoding="utf-8") == boa
 
 
 def test_selecao_de_casos_inclui_dependencia() -> None:
@@ -199,3 +224,10 @@ def test_so_acertos_viram_cassete(tmp_path, monkeypatch) -> None:
     avaliar.rodar_todos([ok, CASO], lambda m, t, r: iter([("texto", "x")]), pausa=0, chave=CHAVE,
                         pasta=tmp_path / "g", pasta_cassetes=tmp_path / "c")
     assert [p.name for p in (tmp_path / "c").iterdir()] == ["ok.json"]
+
+
+def test_400_do_provedor_e_falha_do_agente_nao_infra(sessao, tmp_path, monkeypatch) -> None:
+    msg = "O serviço de IA recusou o pedido."
+    r = rodar(CASO, sessao, tmp_path, monkeypatch, agente([{"evento": "erro", "mensagem": msg}], None))
+    assert r["infra"] is False and r["acerto"] is False
+    assert (tmp_path / "total.jsonl").exists()
