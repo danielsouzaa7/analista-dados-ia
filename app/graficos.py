@@ -135,7 +135,7 @@ def _minimos_quadrados(pts: list[tuple[float, float]]) -> dict | None:
     mx, my = sum(p[0] for p in pts) / n, sum(p[1] for p in pts) / n
     sxx = sum((p[0] - mx) ** 2 for p in pts)
     syy = sum((p[1] - my) ** 2 for p in pts)
-    if n < 2 or len({p[0] for p in pts}) < 2 or len({p[1] for p in pts}) < 2:  # variância "quase" zero é resíduo de float
+    if n < 2 or len({p[0] for p in pts}) < 2 or len({p[1] for p in pts}) < 2 or sxx == 0 or syy == 0:  # variância "quase" zero é resíduo de float
         return None
     sxy = sum((p[0] - mx) * (p[1] - my) for p in pts)
     a = sxy / sxx

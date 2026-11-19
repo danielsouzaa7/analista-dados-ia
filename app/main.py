@@ -241,7 +241,7 @@ def _reproduzir(caminho: Path, pular_recebido: bool = False) -> Iterator[dict]:
         ms = ev.get("ms")
         pausa = ms / 1000 * PAUSA_GRAVACAO if isinstance(ms, (int, float)) and not isinstance(ms, bool) else 0
         _dormir(min(PAUSA_MAXIMA, max(pausa, PAUSA_RASCUNHO if ev["evento"] == "rascunho" else 0)))
-        yield {**ev, "gravacao": True}
+        yield {**{k: v for k, v in ev.items() if k != "turno"}, "gravacao": True}  # o voto numa gravada daria 400
 
 
 def _so_gravacao(caminho: Path) -> Iterator[bytes]:
@@ -437,6 +437,7 @@ def create_app() -> FastAPI:
             if gravacao:
                 return _reproducao(gravacao)
             raise
+        sessao.perguntou = True  # só a pergunta ao vivo aceita: 429 e gravação não seguram a vaga da sessão
         liberar = _liberador()
         return _resposta_sse(_ao_vivo(corpo, sessao, llm, gravacao, liberar), liberar)
 

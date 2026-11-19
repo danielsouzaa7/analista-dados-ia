@@ -112,7 +112,7 @@ def test_perfil_do_postgres_usa_amostra_e_nao_derruba_a_sessao(monkeypatch) -> N
 def test_sessao_sem_pergunta_expira_em_10_min_e_a_com_pergunta_em_1_h(monkeypatch: pytest.MonkeyPatch) -> None:
     muda = sessions.criar_de_csv("a.csv", CSV_A)
     usada = sessions.criar_de_csv("b.csv", CSV_B)
-    usada.turnos = 1
+    usada.perguntou = True
     monkeypatch.setattr(time, "time", lambda: max(muda.ultimo_uso, usada.ultimo_uso) + 601)
     sessions.limpar_expiradas()
     assert muda.id not in sessions.SESSOES and usada.id in sessions.SESSOES
@@ -124,10 +124,10 @@ def test_sessao_sem_pergunta_expira_em_10_min_e_a_com_pergunta_em_1_h(monkeypatc
 def test_lotado_remove_a_mais_antiga_sem_pergunta() -> None:
     velha = sessions.criar_de_csv("a.csv", CSV_A)
     usada = sessions.criar_de_csv("b.csv", CSV_B)
-    usada.turnos = 2
+    usada.perguntou = True
     nova = sessions.criar_de_csv("c.csv", CSV_B)
     agora = time.time()
-    velha.ultimo_uso, usada.ultimo_uso, nova.ultimo_uso = agora - 5, agora - 9, agora - 1
+    velha.ultimo_uso, usada.ultimo_uso, nova.ultimo_uso = agora - 500, agora - 900, agora - 1
     pasta = velha.caminho_db.parent
     sessions.limpar_expiradas(maximo=3)
     assert set(sessions.SESSOES) == {usada.id, nova.id} and not pasta.exists()
@@ -137,6 +137,43 @@ def test_lotado_remove_a_mais_antiga_sem_pergunta() -> None:
 
 def test_lotado_so_com_sessoes_com_pergunta_nao_remove_nenhuma() -> None:
     a = sessions.criar_de_csv("a.csv", CSV_A)
-    a.turnos = 1
+    a.perguntou = True
+    a.ultimo_uso -= 1000
     sessions.limpar_expiradas(maximo=1)
     assert a.id in sessions.SESSOES
+
+
+def test_lotado_nao_remove_sessao_com_a_primeira_pergunta_em_andamento() -> None:
+    a = sessions.criar_de_csv("a.csv", CSV_A)
+    a.perguntou = True  # perguntou, mas ainda não deu turno
+    a.ultimo_uso -= 1000
+    sessions.limpar_expiradas(maximo=1)
+    assert a.id in sessions.SESSOES and a.caminho_db.parent.exists()
+
+
+def test_lotado_nao_remove_sessao_nova_com_menos_de_150_s() -> None:
+    nova = sessions.criar_de_csv("a.csv", CSV_A)
+    nova.ultimo_uso -= sessions.IDADE_MINIMA - 5
+    sessions.limpar_expiradas(maximo=1)
+    assert nova.id in sessions.SESSOES
+    nova.ultimo_uso -= 10
+    sessions.limpar_expiradas(maximo=1)
+    assert nova.id not in sessions.SESSOES
+
+
+def test_idade_minima_passa_do_prazo_do_sse() -> None:
+    from app import main
+    assert sessions.IDADE_MINIMA > main.PRAZO_SSE
+
+
+def test_csv_muito_largo_e_recusado_rapido(pasta_sessoes: Path) -> None:
+    cabecalho = ",".join(f"c{i}" for i in range(100_000))
+    desde = time.perf_counter()
+    with pytest.raises(ErroUsuario, match="mais de 200 colunas"):
+        sessions.criar_de_csv("a.csv", f"{cabecalho}\n{','.join('1' for _ in range(100_000))}\n".encode())
+    assert time.perf_counter() - desde < 1
+    assert not list(pasta_sessoes.glob("*"))
+
+
+def test_nome_de_arquivo_enorme_vira_tabela_de_ate_64_caracteres() -> None:
+    assert len(sessions.criar_de_csv("a" * 5000 + ".csv", CSV_A).tabelas[0]["nome"]) <= 64

@@ -162,3 +162,8 @@ def test_nada_nao_finito_sai_do_moldar(tipo: str, linhas: list, extra: dict) -> 
     except ErroUsuario:
         return  # recusar com texto também serve: o que não pode é emitir NaN/inf
     json.dumps(g, allow_nan=False)
+
+
+def test_dispersao_com_valores_minusculos_nao_divide_por_zero() -> None:
+    g = moldar("dispersao", ["x", "y"], [(1e-200, 1.0), (2e-200, 2.0), (3e-200, 3.0)])  # o quadrado vira 0.0
+    assert g["dados"]["tendencia"] is None

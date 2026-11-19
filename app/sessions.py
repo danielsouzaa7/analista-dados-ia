@@ -15,6 +15,8 @@ from app.errors import ErroUsuario
 MAX_CSV_BYTES = 20 * 1024 * 1024
 TTL_SEGUNDOS = 3600
 TTL_SEM_PERGUNTA = 600  # upload que ninguém usou não segura a vaga por 1 h
+IDADE_MINIMA = 150  # sessão sem pergunta só é expulsa depois disso (> PRAZO_SSE de main.py)
+_MSG_LARGO = f"O CSV tem mais de {perfil.MAX_COLUNAS_PERFIL} colunas. Envie um CSV mais estreito."
 
 
 @dataclass
@@ -26,6 +28,7 @@ class Sessao:
     ultimo_uso: float = field(default_factory=time.time)
     tabelas: list[dict] = field(default_factory=list)
     historico: list[dict] = field(default_factory=list)  # últimos turnos (memória da conversa), só no servidor
+    perguntou: bool = False  # já perguntou (ao vivo ou gravada): vale 1 h e não é expulsa por lotação
     turnos: int = 0  # respostas dadas na conversa atual (índice do feedback)
     grounding: str = ""  # valores das colunas categóricas, para o prompt
     conversa: int = 0  # sobe em "nova conversa": resposta em andamento não grava turno na memória nova
@@ -36,7 +39,7 @@ SESSOES: dict[str, Sessao] = {}
 
 
 def _nome_tabela(nome_arquivo: str) -> str:
-    nome = re.sub(r"[^a-z0-9_]", "_", Path(nome_arquivo).stem.lower()).strip("_")
+    nome = re.sub(r"[^a-z0-9_]", "_", Path(nome_arquivo).stem.lower()).strip("_")[:perfil.MAX_NOME]
     if not nome:
         return "dados"
     return nome if nome[0].isalpha() else f"t_{nome}"
@@ -45,7 +48,7 @@ def _nome_tabela(nome_arquivo: str) -> str:
 def _checar_cabecalho(colunas: list[tuple]) -> None:
     nomes = [n for n, _ in colunas]
     if len(nomes) > perfil.MAX_COLUNAS_PERFIL:
-        raise ErroUsuario(f"O CSV tem mais de {perfil.MAX_COLUNAS_PERFIL} colunas. Envie um CSV mais estreito.")
+        raise ErroUsuario(_MSG_LARGO)
     if any(len(n) > perfil.MAX_NOME or any(unicodedata.category(ch) in ("Cc", "Cf") for ch in n) for n in nomes):
         raise ErroUsuario(f"Cabeçalho inválido: nomes de coluna com mais de {perfil.MAX_NOME} caracteres "
                           "ou com caracteres de controle.")
@@ -54,6 +57,9 @@ def _checar_cabecalho(colunas: list[tuple]) -> None:
 def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
     if len(conteudo) > MAX_CSV_BYTES:
         raise ErroUsuario("O arquivo passa de 20 MB. Envie um CSV menor.")
+    primeira = conteudo.split(b"\n", 1)[0]  # o DuckDB gasta CPU com cabeçalho enorme antes da checagem
+    if max(primeira.count(d) for d in b",;\t|") >= perfil.MAX_COLUNAS_PERFIL:
+        raise ErroUsuario(_MSG_LARGO)
     sid = secrets.token_urlsafe(16)
     pasta = config.SESSIONS_DIR / sid
     pasta.mkdir(parents=True)
@@ -140,10 +146,10 @@ def limpar_expiradas(maximo: int | None = None) -> None:
     """Remove as vencidas; com `maximo`, se ainda lotar, abre vaga tirando a mais antiga sem pergunta."""
     agora = time.time()
     for sid, s in list(SESSOES.items()):
-        if agora - s.ultimo_uso > (TTL_SEGUNDOS if s.turnos else TTL_SEM_PERGUNTA):
+        if agora - s.ultimo_uso > (TTL_SEGUNDOS if s.perguntou else TTL_SEM_PERGUNTA):
             _remover(sid)
     if maximo is not None and len(SESSOES) >= maximo:
-        sem_pergunta = [(s.ultimo_uso, sid) for sid, s in SESSOES.items() if not s.turnos]
+        sem_pergunta = [(s.ultimo_uso, sid) for sid, s in SESSOES.items() if not s.perguntou and agora - s.ultimo_uso > IDADE_MINIMA]
         if sem_pergunta:
             _remover(min(sem_pergunta)[1])
 

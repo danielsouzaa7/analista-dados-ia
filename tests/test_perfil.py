@@ -132,7 +132,7 @@ def test_csv_com_cabecalho_ruim_e_recusado_e_apaga_a_pasta(pasta_sessoes, cabeca
     linha = ",".join("1" for _ in cabecalho.split(","))
     with pytest.raises(ErroUsuario):
         sessions.criar_de_csv("d.csv", f"{cabecalho}\n{linha}\n".encode())
-    assert not list(pasta_sessoes.iterdir())
+    assert not pasta_sessoes.exists() or not list(pasta_sessoes.iterdir())  # a recusa antecipada nem cria a pasta
 
 
 def test_csv_no_teto_de_colunas_e_aceito() -> None:
@@ -173,3 +173,21 @@ def test_grounding_corta_nome_de_coluna_em_64_caracteres() -> None:
     c.execute(f'CREATE TABLE g AS SELECT * FROM (VALUES (\'a\'), (\'b\')) v("{nome}")')
     _, grounding = perfil.perfilar(c, "g")
     assert "x" * 64 in grounding and "x" * 65 not in grounding
+
+
+@pytest.mark.parametrize("nome", ["usuario_id", "id_cliente", "cliente_id"])
+def test_pii_formatada_em_coluna_de_id_e_marcada(nome: str) -> None:
+    assert perfil.detectar_pii(nome, ["ana@exemplo.com", "bia@exemplo.com"]) == "email"
+    assert perfil.detectar_pii(nome, ["000.456.789-10", "111.456.789-10"]) == "cpf"
+    assert perfil.detectar_pii(nome, ["00012345678", "00012345679"]) is None
+
+
+def test_coluna_inteira_com_epoch_nao_e_telefone() -> None:
+    assert perfil.detectar_pii("criado", ["1700000000", "1700000001"], inteira=True) is None
+    assert perfil.detectar_pii("fone_x", ["11987654321", "11976543210"], inteira=True) == "telefone"
+    assert perfil.detectar_pii("codigo", ["1198765432", "1197654321"]) == "telefone"
+
+
+@pytest.mark.parametrize("nome", ["telefone2", "email1", "cpf_2"])
+def test_pii_por_nome_aceita_digito_depois_da_palavra(nome: str) -> None:
+    assert perfil.detectar_pii(nome, []) is not None

@@ -257,6 +257,7 @@ def test_lotado_libera_vaga_da_sessao_sem_pergunta(client: TestClient, monkeypat
     monkeypatch.setattr(main, "MAX_SESSOES", 1)
     sessions.SESSOES.clear()
     velha = client.post("/api/sessao/exemplo").json()["sessao"]
+    sessions.SESSOES[velha].ultimo_uso -= sessions.IDADE_MINIMA + 1  # só sessão parada há mais de 150 s é expulsa
     nova = client.post("/api/sessao/exemplo")
     assert nova.status_code == 200 and velha not in sessions.SESSOES
 
@@ -537,3 +538,42 @@ def test_cliente_lento_nao_segura_a_vaga(monkeypatch: pytest.MonkeyPatch) -> Non
 
     asyncio.run(asyncio.wait_for(rodar(), 3))
     assert liberou == [True]
+
+
+def test_reproducao_nao_traz_turno_e_nao_marca_a_sessao(monkeypatch: pytest.MonkeyPatch) -> None:
+    _gravar("exemplo_a", GRAVACAO)
+    monkeypatch.setattr(config, "LLM_API_KEY", "")
+    c = TestClient(create_app())
+    sid = _upload(c)["sessao"]
+    assert sessions.SESSOES[sid].perguntou is False
+    evs = _eventos(_perguntar(c, sid, "Qual?", exemplo_id="exemplo_a"))
+    assert all("turno" not in d for _, d in evs) and sessions.SESSOES[sid].perguntou is False
+
+
+def test_pergunta_ao_vivo_marca_a_sessao_e_nova_conversa_mantem(client: TestClient) -> None:
+    sid = _upload(client)["sessao"]
+    _perguntar(client, sid)
+    client.post("/api/conversa/nova", json={"sessao": sid})
+    sessao = sessions.SESSOES[sid]
+    assert sessao.perguntou is True and sessao.turnos == 0
+    sessao.ultimo_uso -= 601
+    sessions.limpar_expiradas()
+    assert sid in sessions.SESSOES  # TTL de 1 h, não de 10 min
+
+
+def test_visitante_novo_recebe_servidor_cheio_sem_expulsar_ninguem(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(main, "MAX_SESSOES", 1)
+    c = TestClient(create_app(), raise_server_exceptions=False)
+    primeira = _upload(c)["sessao"]
+    r = c.post("/api/sessao/csv", files={"arquivo": ("dados.csv", CSV, "text/csv")})
+    assert r.status_code == 400 and "cheio" in r.json()["detail"] and primeira in sessions.SESSOES
+
+
+def test_pergunta_recusada_com_429_nao_marca_a_sessao(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    sid = _upload(client)["sessao"]
+    monkeypatch.setattr(main, "_VAGAS", threading.BoundedSemaphore(0))
+    assert _perguntar(client, sid).status_code == 429
+    monkeypatch.setattr(main, "_VAGAS", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(main, "_uso", {"dia": date.today(), "n": main.LIMITE_DIARIO})
+    assert _perguntar(client, sid).status_code == 429
+    assert sessions.SESSOES[sid].perguntou is False

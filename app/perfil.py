@@ -19,7 +19,7 @@ _PII = {
 }
 # Palavra inteira, também em camelCase ("cpfCliente"): por isso o (?i:...) só na palavra e não no limite.
 _NOME_PII = re.compile(
-    r"(?:^|[^A-Za-z0-9]|(?<=[a-z0-9])(?=[A-Z]))((?i:cpf|e[-_ ]?mail|telefone|celular|fone))(?:$|[^A-Za-z0-9]|(?=[A-Z]))")
+    r"(?:^|[^A-Za-z0-9]|(?<=[a-z0-9])(?=[A-Z]))((?i:cpf|e[-_ ]?mail|telefone|celular|fone))(?:$|[^A-Za-z]|(?=[A-Z]))")
 _INTEIRO = re.compile(r"^U?(TINY|SMALL|BIG|HUGE)?INT(EGER)?$", re.I)
 _NUMERICO = re.compile(r"^(U?(TINY|SMALL|BIG|HUGE)?INT(EGER)?|DOUBLE|FLOAT\d?|REAL|DECIMAL.*|NUMERIC.*)$", re.I)
 _DATA = re.compile(r"^(DATE|TIMESTAMP.*)$", re.I)
@@ -30,17 +30,19 @@ def _aspas(nome: str) -> str:
     return '"' + nome.replace('"', '""') + '"'
 
 
-def detectar_pii(nome: str, valores: list) -> str | None:
+def detectar_pii(nome: str, valores: list, inteira: bool = False) -> str | None:
     """'cpf' | 'email' | 'telefone' | None: pelo nome da coluna ou por >= 60% dos valores não nulos."""
     achado = _NOME_PII.search(nome)
     if achado:
         palavra = achado.group(1).lower()
         return "email" if "mail" in palavra else "cpf" if palavra == "cpf" else "telefone"
-    if _ID.search(nome):  # id de texto com 11 dígitos não é CPF
-        return None
     textos = [str(v).strip() for v in valores if v is not None]
     for tipo, regex in _PII.items():
-        if textos and sum(bool(regex.fullmatch(t)) for t in textos) / len(textos) >= MIN_PII:
+        if tipo != "email" and _ID.search(nome) and all(t.isdigit() for t in textos):
+            continue  # id numérico de 11 dígitos não é CPF; e-mail ou CPF formatado em coluna de id é
+        # epoch (10 dígitos) em coluna inteira não é telefone
+        bate = [bool(regex.fullmatch(t)) and not (inteira and tipo == "telefone" and len(t) != 11) for t in textos]
+        if textos and sum(bate) / len(textos) >= MIN_PII:
             return tipo
     return None
 
@@ -80,7 +82,7 @@ def _coluna(con: duckdb.DuckDBPyConnection, src: str, tabela: str, c: dict, est:
     texto = c["tipo"].upper() == "VARCHAR"
     # Coluna inteira também é amostrada: CPF e telefone sem pontuação viram BIGINT.
     valores = _valores(con, src, c["nome"]) if texto or _INTEIRO.match(c["tipo"]) else []
-    item["pii"] = detectar_pii(c["nome"], valores)
+    item["pii"] = detectar_pii(c["nome"], valores, bool(_INTEIRO.match(c["tipo"])))
     if minimo is not None and item["pii"] is None:  # faixa de dado pessoal é dado pessoal
         item.update(min=minimo, max=maximo)
     if texto and item["pii"] is None:

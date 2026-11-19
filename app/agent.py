@@ -36,7 +36,8 @@ _DOBRA = str.maketrans("abcdefghijklmnopqrstuvwxyzõÕ", "ABCDEFGHIJKLMNOPQRSTUV
 MAX_NOME, MAX_ESQUEMA = 64, 8000  # nomes e esquema vão a até 13 chamadas por pergunta
 MAX_CELULA, MAX_BYTES_LINHAS = 200, 200_000  # ferramenta_fim vai para o navegador
 NL = chr(10)
-_TAG_DADOS = re.compile(r"</?dados>", re.IGNORECASE)
+_TAG_DADOS = re.compile(r"<\s*/?\s*dados\s*>", re.IGNORECASE)
+_MARCADOR = re.compile(r"(?m)^[ *_#]*" + MARCADOR)  # só no começo da linha: "minhas sugestões:" na prosa é texto
 _dormir = time.sleep
 
 TIPOS = {"consultar_banco": "sql", "rodar_python": "python", "gerar_grafico": "grafico"}
@@ -101,19 +102,24 @@ def _perfil_texto(tabela: dict) -> str:
 
 def _como_dado(texto: str) -> str:
     """O conteúdo do CSV não pode fechar o delimitador nem virar instrução."""
-    return f"<dados>{NL}{_TAG_DADOS.sub('', texto)}{NL}</dados>"
+    while (limpo := _TAG_DADOS.sub("", texto)) != texto:  # "</da</dados>dos>" vira tag depois da 1ª passada
+        texto = limpo
+    return f"<dados>{NL}{texto}{NL}</dados>"
 
 
 def _esquema(sessao: Sessao) -> str:
     blocos = []
     for t in sessao.tabelas:
-        colunas = ", ".join(c["nome"][:MAX_NOME] + " " + c["tipo"] for c in t["colunas"])
+        pessoais = {c["nome"] for c in t.get("perfil", {}).get("colunas", []) if c.get("pii")}
+        colunas = ", ".join(c["nome"][:MAX_NOME] + " " + c["tipo"] + (" PESSOAL" if c["nome"] in pessoais else "")
+                            for c in t["colunas"])
         bloco = f"- {t['nome'][:MAX_NOME]}({colunas})"
         perfil = _perfil_texto(t)
         blocos.append(bloco + (NL + perfil if perfil else ""))
     texto = NL.join(blocos)
     texto += f"{NL}{NL}Valores das colunas categóricas:{NL}{sessao.grounding}" if sessao.grounding else ""
-    return _como_dado(texto[:MAX_ESQUEMA])
+    cortado = len(texto) > MAX_ESQUEMA
+    return _como_dado(texto[:MAX_ESQUEMA] + (f"{NL}[esquema cortado]" if cortado else ""))
 
 
 def _historico(sessao: Sessao) -> str:
@@ -244,11 +250,14 @@ class _Retentor:
     def alimentar(self, delta: str, final: bool = False) -> str:
         self.total += delta
         dobrado = self.total.translate(_DOBRA)
-        corte = dobrado.find(MARCADOR)
-        if corte < 0:
+        achado = _MARCADOR.search(dobrado)
+        if achado:
+            corte = achado.start()
+        else:
             corte = len(self.total)
-            if not final:
-                corte -= next((k for k in range(len(MARCADOR) - 1, 0, -1) if dobrado.endswith(MARCADOR[:k])), 0)
+            inicio_linha = dobrado.rfind(NL) + 1  # a última linha pode ser o começo do marcador
+            if not final and MARCADOR.startswith(dobrado[inicio_linha:].lstrip(" *_#")):
+                corte = inicio_linha
         corte = max(corte, self.emitido)
         saida, self.emitido = self.total[self.emitido:corte], corte
         return saida
@@ -256,8 +265,8 @@ class _Retentor:
 
 def _separar(texto: str) -> tuple[str, list[str]]:
     """(corpo, sugestões): sugestões com dígitos são descartadas (os números não passariam pela conferência)."""
-    corte = texto.translate(_DOBRA).find(MARCADOR)
-    corpo, resto = (texto, "") if corte < 0 else (texto[:corte].rstrip("*_# " + NL), texto[corte + len(MARCADOR):])
+    achado = _MARCADOR.search(texto.translate(_DOBRA))
+    corpo, resto = (texto, "") if achado is None else (texto[:achado.start()], texto[achado.end():])
     sugestoes = []
     for linha in resto.splitlines():
         item = linha.strip().lstrip("-*• ").strip()
@@ -359,10 +368,11 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
             continue
         saida.update(resposta=corpo, sugestoes=sugestoes,
                      aviso=f"Alguns números não puderam ser conferidos: {', '.join(faltam)}" if faltam else None)
-        if sessao.conversa == conversa:  # "nova conversa" no meio da resposta não recebe o turno antigo
+        guardou = sessao.conversa == conversa  # "nova conversa" no meio da resposta não recebe o turno antigo
+        if guardou:
             _guardar_turno(sessao, pergunta, corpo, passos, resultados)
         yield {"evento": "resposta", "texto": corpo, "aviso": saida["aviso"], "reanalises": saida["reanalises"],
-               "sugestoes": sugestoes, "conferido": not faltam, "turno": sessao.turnos}
+               "sugestoes": sugestoes, "conferido": not faltam, "turno": sessao.turnos if guardou else None}
         return
 
 
