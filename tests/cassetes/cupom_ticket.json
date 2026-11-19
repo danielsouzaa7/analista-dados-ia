@@ -1,0 +1,300 @@
+{
+ "id": "cupom_ticket",
+ "pergunta": "Pedidos com cupom têm ticket médio diferente? A diferença é significativa?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "1."
+   ],
+   [
+    "texto",
+    " Calcular o ticket médio (valor_pedido) para pedidos com cupom e sem"
+   ],
+   [
+    "texto",
+    " cupom.\n2. Extrair os valores individuais dos pedidos de ambos os grupos para análise estatística.\n3."
+   ],
+   [
+    "texto",
+    " Executar um teste de hipótese (teste t de Student) em Python para verificar se a diferença entre as médias é estat"
+   ],
+   [
+    "texto",
+    "isticamente significativa.\n4. Apresentar os resultados"
+   ],
+   [
+    "texto",
+    " comparativos"
+   ],
+   [
+    "texto",
+    " e a conclusão do teste.\n\n"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 985,
+     "saida": 89
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_890081758819611902",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT \\n    CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS tipo_cupom,\\n    COUNT(*) AS qtd_pedidos,\\n    AVG(valor_pedido) AS ticket_medio,\\n    STDDEV(valor_pedido) AS desvio_padrao\\nFROM pedidos\\nGROUP BY cupom\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0T9Ht6yW7uqz1VFzPXElCE3/6MSalSpRkKMgvpI7Wa92qn2+fwaGQ/MhBy3HegpiteRE2sT0gj1Vtjf+4AL0vpQcOIYKhCL2Jk0R0IGDMortsklCdiAn3tCH18pL+t2LoG+3v7IY5Dwh+u42gvs5JwVPU+8q4="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1549,
+     "saida": 90
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_6145563355386587883",
+     "nome": "rodar_python",
+     "args": "{\"sql\":\"SELECT cupom, valor_pedido FROM pedidos\",\"codigo\":\"from scipy import stats\\n\\ncom_cupom = df[df['tipo_cupom'] == 'Com Cupom']['ticket_medio'] # na verdade precisamos dos valores individuais\\n# Vamos refazer o SQL no python para pegar todos os dados ou rodar o teste t direto via scipy com arrays individuais\\nprint(\\\"Executando teste t...\\\")\\n\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TWAQBbXOLTKdaJSDfD5bsBjXQTavk4LiaG5ffTbT+zj/7c+WRDeXs6cuujiEnkEAAZ1bjUCFaYCGNrwlOt332kVU2+4uTO8KiesS9p7e2lVO4tZa1MxTqflc+CflFtmDnljOrXSiPKX6yLB2BMUK42BQvkGI="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1772,
+     "saida": 102
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_6065697738482097283",
+     "nome": "rodar_python",
+     "args": "{\"sql\":\"SELECT cupom, valor_pedido FROM pedidos\",\"codigo\":\"import numpy as np\\n# Usando estatísticas descritivas e teste t manual ou statsmodels/numpy\\ncom_cupom = df[df['cupom'] == True]['valor_pedido']\\nsem_cupom = df[df['cupom'] == False]['valor_pedido']\\n\\nn1 = len(com_cupom)\\nn2 = len(sem_cupom)\\nm1 = com_cupom.mean()\\nm2 = sem_cupom.mean()\\ns1 = com_cupom.std(ddof=1)\\ns2 = sem_cupom.std(ddof=1)\\n\\n# Teste t de Welch\\nt_stat = (m1 - m2) / np.sqrt((s1**2 / n1) + (s2**2 / n2))\\n# Graus de liberdade aproximados (Welch-Satterthwaite)\\ndf_welch = ((s1**2/n1 + s2**2/n2)**2) / (((s1**2/n1)**2 / (n1-1)) + ((s2**2/n2)**2 / (n2-1)))\\n\\nprint(f\\\"Média com cupom: {m1:.2f}\\\")\\nprint(f\\\"Média sem cupom: {m2:.2f}\\\")\\nprint(f\\\"Estatística t: {t_stat:.4f}\\\")\\nprint(f\\\"Graus de liberdade: {df_welch:.2f}\\\")\\n\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0T6tcNqCawYKHpL8jD/EfULEBZlsIxZ4aFoWsa9bCMf6/QCveOCvLAAhAYt7xeI1Jadm7UKI7lpEmGTORJHO7Ar1YcBjjyAtIaov2sVxK4+Uy8Nc+nMoVvRblF3jOK5JJh1mh5ED5DscPhZGOommM6yF90aiE="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1990,
+     "saida": 362
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_1891527532934289402",
+     "nome": "gerar_grafico",
+     "args": "{\"x\":\"tipo_cupom\",\"sql\":\"SELECT \\n    CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS tipo_cupom,\\n    AVG(valor_pedido) AS ticket_medio\\nFROM pedidos\\nGROUP BY cupom\",\"y\":\"ticket_medio\",\"tipo\":\"ranking\",\"titulo\":\"Comparação do Ticket Médio entre Pedidos com e sem Cupom\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TlZD+per/oe0rN18oQ0m6FYv75m4nze/z8YGuTD+33XY28gfeJusodHoWlGVgOqjZySpOeM7Jg1viTv4Ejp6/3DpFOoNGzvIhqiXpwnkPqt6yRkW+cd2VWSNtdXK9H+o4FiWXiToQpHW8I6KYLJ9ybFOsJLU="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2420,
+     "saida": 106
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Sim"
+   ],
+   [
+    "texto",
+    ", pedidos com cupom apresentam um ticket médio diferente (menor) em relação aos pedidos"
+   ],
+   [
+    "texto",
+    " sem cupom, e essa diferença é **estatisticamente significativa**.\n\n### Detalhes da Análise:\n-"
+   ],
+   [
+    "texto",
+    " **Pedidos com Cupom:** \n  - Quantidade: 1.620 pedidos\n  - Ticket Méd"
+   ],
+   [
+    "texto",
+    "io: R$ 52,01\n  - Desvio Padrão: R$ 26,18"
+   ],
+   [
+    "texto",
+    "\n- **Pedidos sem Cupom:** \n  - Quantidade: 6.380 pedidos\n  "
+   ],
+   [
+    "texto",
+    "- Ticket Médio: R$ 63,90\n  - Desvio Padrão: R$"
+   ],
+   [
+    "texto",
+    " 32,05\n\n### Conclusão Estatística:\nA diferença entre as médias é de R$ 11"
+   ],
+   [
+    "texto",
+    ",89. O teste t de Welch resultou em uma estatística $t$ de aproximadamente $-15,56$ ("
+   ],
+   [
+    "texto",
+    "com um p-valor extremamente próximo de zero), o que nos permite rejeitar a hipótese nula de que os tickets méd"
+   ],
+   [
+    "texto",
+    "ios são iguais. Portanto, a diferença observada não é fruto do acaso.\n\nSUGESTOES:\n- Como o uso de"
+   ],
+   [
+    "texto",
+    " cupons impacta o valor total do desconto concedido?\n- A taxa de entrega difere entre pedidos com e sem cupom"
+   ],
+   [
+    "texto",
+    "?\n- Qual categoria de culinária possui a maior adesão a cupons?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2641,
+     "saida": 299
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_7721033247526477426",
+     "nome": "rodar_python",
+     "args": "{\"codigo\":\"dif = 63.89744357366765 - 52.00867283950603\\nprint(f\\\"Diferenca exata: {dif}\\\")\\nprint(f\\\"Formatado BR: {dif:,.2f}\\\".replace(\\\",\\\", \\\"X\\\").replace(\\\".\\\", \\\",\\\").replace(\\\"X\\\", \\\".\\\"))\\n\",\"sql\":\"SELECT 1\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TQZ1U7MAaMPUkfBmhYqMJgqJitIiyJCW6XTHrOYZyzQU8E1FNhgWdn+RzrqKHfsU98czovoKlUfAUx5bP/QAs92LnKQqwRU46ZkaZ4vRr/zMuu5olqEcTQBDyidnDdKO7D2M/bYuVAV2+Sf45wI9nZemGIbY="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2983,
+     "saida": 109
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Para"
+   ],
+   [
+    "texto",
+    " responder à sua pergunta com rigor e precisão utilizando exclusivamente os dados fornecidos pelas ferramentas:"
+   ],
+   [
+    "texto",
+    "\n\nO ticket médio dos pedidos com cupom e sem cupom foi obtido diretamente do banco de dados:\n- **Com"
+   ],
+   [
+    "texto",
+    " Cupom:** R$ 52,01 (1.620 pedidos, desvio padrão de R$ 26,"
+   ],
+   [
+    "texto",
+    "18)\n- **Sem Cupom:** R$ 63,90 (6.380"
+   ],
+   [
+    "texto",
+    " pedidos, desvio padrão de R$ 32,05)\n\nA diferença absoluta entre os dois valores é de R$ 1"
+   ],
+   [
+    "texto",
+    "1,89 (calculada exatamente como 63,8974... - 52,00"
+   ],
+   [
+    "texto",
+    "86...). O teste t de Welch aplicado aos dados resultou em uma estatística $t$ de $-15"
+   ],
+   [
+    "texto",
+    ",5570$, comprovando que a diferença entre os grupos é estatisticamente significativa.\n\nSUGESTOES:"
+   ],
+   [
+    "texto",
+    "\n- Como o uso de cupons impacta o valor total do desconto concedido?\n- A taxa de entrega difere entre"
+   ],
+   [
+    "texto",
+    " pedidos com e sem cupom?\n- Qual categoria de culinária possui a maior adesão a cupons?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3143,
+     "saida": 253
+    }
+   ]
+  ]
+ ]
+}

@@ -1,0 +1,169 @@
+{
+ "id": "pedidos_mes",
+ "pergunta": "Como evoluiu o número de pedidos mês a mês?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "1."
+   ],
+   [
+    "texto",
+    " Escrever o plano de análise.\n2. Consultar o banco de dados para contar"
+   ],
+   [
+    "texto",
+    " a quantidade de pedidos agrupados por mês.\n3. Gerar um gráfico de tendência com a evolução mensal.\n4. Responder com os"
+   ],
+   [
+    "texto",
+    " números consolidados e o gráfico.\n\n```python\nimport duckdb\n\ncon = duckdb.connect()\nquery"
+   ],
+   [
+    "texto",
+    " = \"\"\"\n    SELECT strftime(data_hora, '%Y-%m') AS mes, count(pedido_id) AS total"
+   ],
+   [
+    "texto",
+    "_pedidos\n    FROM pedidos\n    GROUP BY mes\n    ORDER BY mes\n\"\"\"\ndf = con."
+   ],
+   [
+    "texto",
+    "execute(query).df()\nprint(df)\n```"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 982,
+     "saida": 138
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_753918388280413676",
+     "nome": "gerar_grafico",
+     "args": "{\"sql\":\"SELECT strftime(data_hora, '%Y-%m') AS mes, count(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY mes\\nORDER BY mes\",\"x\":\"mes\",\"titulo\":\"Evolução do Número de Pedidos Mês a Mês\",\"tipo\":\"tendencia\",\"y\":\"total_pedidos\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TkYD17DEcGvZKDFoAdQrJOOIL0zer8OtTetZC38D/KRYQ3gmp5ICjvv9BmXjQ8sGy7NIJkx45QeT4JyyEJNhlpG1NhnjgaPXfY1i40XQPVyBXBHVOX0DDB+N17f5UH9HvxIljKhBsBHngyIaeOytEQkFYfrI="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1595,
+     "saida": 95
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_6984768965250024449",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT strftime(data_hora, '%Y-%m') AS mes, count(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY mes\\nORDER BY mes\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TFqeVLCQNle3+T0xyjWaH6bezUZqrd6cewfK1BWSc1BNEH4hkiu8jPvGNOF0U/IqTTr6UlqCxIjEQ+7z+9rPQvqNBbLIWqrH5XR8Q2JiYIRz+KgrW6Syb6WbQgdUcJuTlyv/CpsKFsxFxdHjhxxEijOVoWiw="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1934,
+     "saida": 55
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "A evolução"
+   ],
+   [
+    "texto",
+    " do número de pedidos mês a mês ao longo do ano de 2025 apresentou"
+   ],
+   [
+    "texto",
+    " um crescimento geral, registrando seu ponto mais baixo em fevereiro e o maior volume no mês de dezembro.\n\nAbaixo estão"
+   ],
+   [
+    "texto",
+    " os totais mensais de pedidos:\n- **Janeiro de 2025:** 570 pedidos"
+   ],
+   [
+    "texto",
+    "\n- **Fevereiro de 2025:** 494 pedidos\n- **Março de"
+   ],
+   [
+    "texto",
+    " 2025:** 610 pedidos\n- **Abril de 2025:** "
+   ],
+   [
+    "texto",
+    "606 pedidos\n- **Maio de 2025:** 676 pedidos\n- **"
+   ],
+   [
+    "texto",
+    "Junho de 2025:** 690 pedidos\n- **Julho de 202"
+   ],
+   [
+    "texto",
+    "5:** 673 pedidos\n- **Agosto de 2025:** 673 pedidos\n- **Setembro"
+   ],
+   [
+    "texto",
+    " de 2025:** 652 pedidos\n- **Outubro de 2025:**"
+   ],
+   [
+    "texto",
+    " 700 pedidos\n- **Novembro de 2025:** 716 pedidos\n"
+   ],
+   [
+    "texto",
+    "- **Dezembro de 2025:** 940 pedidos\n\nSUGESTOES:\n- Como vari"
+   ],
+   [
+    "texto",
+    "ou o valor total dos pedidos ao longo dos meses?\n- Qual foi o tempo médio de entrega em cada mês?\n- Qual"
+   ],
+   [
+    "texto",
+    " cidade teve o maior crescimento de pedidos no período?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2162,
+     "saida": 307
+    }
+   ]
+  ]
+ ]
+}

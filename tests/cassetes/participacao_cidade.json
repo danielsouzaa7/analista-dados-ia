@@ -1,0 +1,233 @@
+{
+ "id": "participacao_cidade",
+ "pergunta": "Qual a participação de cada cidade na receita?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Pl"
+   ],
+   [
+    "texto",
+    "ano:\n1. Consultar o banco de dados para calcular a receita total e"
+   ],
+   [
+    "texto",
+    " a receita por cidade, somando o valor dos pedidos.\n2. Calcular a porcentagem de participação de cada cidade"
+   ],
+   [
+    "texto",
+    " em relação à receita total.\n3. Formatar os valores monetários e percentuais no padrão brasileiro.\n4."
+   ],
+   [
+    "texto",
+    " Gerar um gráfico de composição para visualizar a participação das cidades na receita.\n\n```python\nimport duckdb\n\ncon"
+   ],
+   [
+    "texto",
+    " = duckdb.connect()\ndf = con.execute(\"\"\"\n    SELECT \n        cidade, \n        "
+   ],
+   [
+    "texto",
+    "SUM(valor_pedido) AS receita\n    FROM pedidos\n    GROUP BY cidade\n    ORDER BY receita DESC\n\"\"\")."
+   ],
+   [
+    "texto",
+    "df()\n\ntotal_receita = df['receita'].sum()\ndf['participacao_pct'] = (df['rece"
+   ],
+   [
+    "texto",
+    "ita'] / total_receita) * 100\n\nfor idx, row in df.iterrows():\n    print(f"
+   ],
+   [
+    "texto",
+    "\"{row['cidade']}: R$ {row['receita']:,.2f} ({row['participacao_pct']:"
+   ],
+   [
+    "texto",
+    ",.2f}%) - {row['receita']}\")\nprint(f\"Total: R$ {total_receita"
+   ],
+   [
+    "texto",
+    ":,.2f}\")\n```"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 980,
+     "saida": 258
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_18395825689339183173",
+     "nome": "rodar_python",
+     "args": "{\"codigo\":\"import duckdb\\n\\ncon = duckdb.connect()\\ndf = con.execute(\\\"\\\"\\\"\\n    SELECT \\n        cidade, \\n        SUM(valor_pedido) AS receita\\n    FROM pedidos\\n    GROUP BY cidade\\n    ORDER BY receita DESC\\n\\\"\\\"\\\").df()\\n\\ntotal_receita = df['receita'].sum()\\ndf['participacao_pct'] = (df['receita'] / total_receita) * 100\\n\\nfor idx, row in df['receita'].items():\\n    pass\\n\\nprint(f\\\"Total da receita: {total_receita}\\\")\\nprint(df.to_string())\\n\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TosB8XwvqC+Qzi2FaCBtVY2A63XP6pkr7zOkVUE5YLenHYCvVjGHuu4LEr4QNcEttr1UajTbMeXzVlj7cJ+PBg8aEWRMB/Jmunt01AzjM2zuyYVaN1MbuCpNGefpXkDQOdmb+cefp7Wcw1yEAAq/SEHpv6Tg="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1713,
+     "saida": 179
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_7041593274456399638",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0ThkuD2uZbrxGx62jOLkWuoXmFAiyb0d7WVkU9xoHIuok6//lEVlMDond7FUwmykN8R4kkLrQW+cFKxsVlC5bOjyn7TosIttynaZo0Yw/me0rcZLGWw9cYJGFdXgjDLOu5pehCQLa7NY6gXvwC0fUesPPJFyE="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2002,
+     "saida": 37
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_3576935012721683279",
+     "nome": "rodar_python",
+     "args": "{\"codigo\":\"total = df['receita'].sum()\\ndf['pct'] = (df['receita'] / total) * 100\\nprint(f\\\"Total: {total}\\\")\\nfor i, r in df.iterrows():\\n    print(f\\\"{r['cidade']}: R$ {r['receita']:,.2f} ({r['pct']:,.2f}%)\\\")\\n\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0T7BFHaT+BNoSBlyMhglpzmyJFr9cOYkU5Jrz+fyW6xKH72+rlcIkD1OhGBh1zSb1PpCZFx8m5ZVHmUXex6YAveHEEKoIq7HUkO+QHhjFZ6VSIMdJ2GTBWi7nsDxPPaAUT25z0t+FmpRR3cJCiGB9qay3oeKY="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2219,
+     "saida": 126
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_7715228269991240150",
+     "nome": "gerar_grafico",
+     "args": "{\"tipo\":\"composicao\",\"titulo\":\"Participação de Cada Cidade na Receita Total\",\"x\":\"cidade\",\"y\":\"receita\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TZoqHy4RLbK5HGDfNwZNniV/mK3wl1kkrAqvA48J1xEId7JW5apJfu2XlP+2d7Dqac1XDhiu0SauxhOPXym9TI8YBK05foj604KJ1AxRse0SSyhgdsaVp1dzJjBEVWyIC9tehhp17GFMOrPAqsU5Hc8YcUD0="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2544,
+     "saida": 72
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "A"
+   ],
+   [
+    "texto",
+    " receita total gerada pelos pedidos é de R$ 491.919,74"
+   ],
+   [
+    "texto",
+    ". A participação de cada cidade na receita está distribuída da seguinte forma:\n\n- **São Paulo**: R$ 143"
+   ],
+   [
+    "texto",
+    ".746,01 (29,22%)\n- **Rio de Janeiro**: R$ "
+   ],
+   [
+    "texto",
+    "104.870,79 (21,32%)\n- **Salvador**: R"
+   ],
+   [
+    "texto",
+    "$ 76.660,24 (15,58%)\n- **Porto Alegre"
+   ],
+   [
+    "texto",
+    "**: R$ 69.406,96 (14,11%)\n- **Cur"
+   ],
+   [
+    "texto",
+    "itiba**: R$ 45.219,45 (9,19%)\n- **B"
+   ],
+   [
+    "texto",
+    "elo Horizonte**: R$ 34.031,56 (6,92%)\n- **"
+   ],
+   [
+    "texto",
+    "Brasília**: R$ 17.984,73 (3,66%)\n\nSUGEST"
+   ],
+   [
+    "texto",
+    "OES:\n- Qual é o ticket médio dos pedidos em cada cidade?\n- Como se comporta o tempo de entrega entre"
+   ],
+   [
+    "texto",
+    " as diferentes cidades?\n- Quais são os tipos de culinária mais populares em cada região?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2847,
+     "saida": 263
+    }
+   ]
+  ]
+ ]
+}

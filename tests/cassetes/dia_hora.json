@@ -1,0 +1,213 @@
+{
+ "id": "dia_hora",
+ "pergunta": "Em que dias da semana e horários acontecem mais pedidos?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Plano"
+   ],
+   [
+    "texto",
+    ":\n1. Extrair o dia da semana e a hora de cada pedido a"
+   ],
+   [
+    "texto",
+    " partir da coluna `data_hora`.\n2. Agrupar os pedidos contando a quantidade total por dia da semana"
+   ],
+   [
+    "texto",
+    " e por faixa de horário.\n3. Identificar os momentos de maior volume de pedidos.\n4. Gerar um mapa"
+   ],
+   [
+    "texto",
+    " de calor para visualizar a distribuição dos pedidos por dia da semana e horário."
+   ],
+   [
+    "usage",
+    {
+     "entrada": 984,
+     "saida": 84
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_9289113031805514516",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT \\n  CASE strftime('%w', data_hora)\\n    WHEN '0' THEN 'Domingo'\\n    WHEN '1' THEN 'Segunda-feira'\\n    WHEN '2' THEN 'Terça-feira'\\n    WHEN '3' THEN 'Quarta-feira'\\n    WHEN '4' THEN 'Quinta-feira'\\n    WHEN '5' THEN 'Sexta-feira'\\n    WHEN '6' THEN 'Sábado'\\n  END AS dia_semana,\\n  strftime('%H', data_hora) AS hora,\\n  COUNT(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY 1, 2\\nORDER BY total_pedidos DESC\\nLIMIT 10;\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TRUM1z+yl8Nh/s4ujxzXCOAn0X6PUPiI2V7kZRium6d8Oi6TSEZsI6UfPsXu6uEx18AKo0DQByTScqIWXFg8ZWQUcGLzWfKeqneIIbjJitftO33LIVRIXN1Z4cUkGaqYti+oTEohBlMWGb717ansiNnkSb9M="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1543,
+     "saida": 179
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_8794520885182402385",
+     "nome": "gerar_grafico",
+     "args": "{\"valor\":\"valor\",\"tipo\":\"mapa_calor\",\"x\":\"x\",\"y\":\"y\",\"sql\":\"SELECT \\n  CASE strftime('%w', data_hora)\\n    WHEN '0' THEN 'Dom'\\n    WHEN '1' THEN 'Seg'\\n    WHEN '2' THEN 'Ter'\\n    WHEN '3' THEN 'Qua'\\n    WHEN '4' THEN 'Qui'\\n    WHEN '5' THEN 'Sex'\\n    WHEN '6' THEN 'Sáb'\\n  END AS x,\\n  CAST(strftime('%H', data_hora) AS INTEGER) AS y,\\n  COUNT(pedido_id) AS valor\\nFROM pedidos\\nGROUP BY 1, 2\\nORDER BY y, x;\",\"titulo\":\"Distribuição de Pedidos por Dia da Semana e Hora\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TQZLdG0Z2eRdz0rxbjWYj7lGnJLesgSGA9wBMVu4fHqaZhqfiu+vIYFoUDK5BRKNArW0YdmFFRh+wL2HdWBv2fEkVI7KPixUJZRtWEWwg+yqb9k8Z6wYaF35JGAhpuBgUAzyroevQvu0Dv3KMBuGyrjUdGGY="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1865,
+     "saida": 198
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_2118556488795166801",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT \\n  CASE strftime('%w', data_hora)\\n    WHEN '0' THEN 'Domingo'\\n    WHEN '1' THEN 'Segunda-feira'\\n    WHEN '2' THEN 'Terça-feira'\\n    WHEN '3' THEN 'Quarta-feira'\\n    WHEN '4' THEN 'Quinta-feira'\\n    WHEN '5' THEN 'Sexta-feira'\\n    WHEN '6' THEN 'Sábado'\\n  END AS dia_semana,\\n  COUNT(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY 1\\nORDER BY total_pedidos DESC;\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TWtAHjd0E1PhQqHQ4y3lC0/6zxVS+Jb2VqeWItmxf7qORLvPXuBvkATd/IHE4wFYd9hpRJSRn7KALAKF+q5H9crrvXKBYI87qRXwxWOfS/B/VNRwNeoiuVTXj0ZXTrDZhosEnRHPX4TvrMDeMVGc3RvdHH54="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2433,
+     "saida": 158
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_9769445904909316666",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT \\n  CASE \\n    WHEN CAST(strftime('%H', data_hora) AS INTEGER) BETWEEN 6 AND 11 THEN 'Manhã (06h-11h)'\\n    WHEN CAST(strftime('%H', data_hora) AS INTEGER) BETWEEN 12 AND 17 THEN 'Tarde (12h-17h)'\\n    WHEN CAST(strftime('%H', data_hora) AS INTEGER) BETWEEN 18 AND 23 THEN 'Noite (18h-23h)'\\n    ELSE 'Madrugada (00h-05h)'\\n  END AS periodo,\\n  COUNT(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY 1\\nORDER BY total_pedidos DESC;\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0T0hMHf9jf9QSJFAuM42JSpoJ8eKJ/9F1JgpGbz2CS0LUVsGPCKHbAWp1B2BfeKSpD140UtyoN5gRChaF8pAK1CbO5Jk214lvaF6GIe3CyrbdfuJzhKGXLrMp7tEIcSfUojL2kSEDeDCmqFlNNDDUbwBeRkgY="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2686,
+     "saida": 185
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Os pedidos"
+   ],
+   [
+    "texto",
+    " concentram-se fortemente nos fins de semana e no período noturno. \n\nAn"
+   ],
+   [
+    "texto",
+    "alisando por **dia da semana**, o **Sábado** lidera com folga, registrando **1.6"
+   ],
+   [
+    "texto",
+    "11** pedidos, seguido pelo **Domingo** com **1.335** pedidos e pela **Sexta-feira"
+   ],
+   [
+    "texto",
+    "** com **1.321** pedidos. Os dias úteis do início da semana apresentam menor volume, sendo a"
+   ],
+   [
+    "texto",
+    " **Segunda-feira** o dia com menos pedidos (**855**).\n\nEm relação aos **horários**,"
+   ],
+   [
+    "texto",
+    " o período da **noite** (das 18h às 23h) é o de maior movimento"
+   ],
+   [
+    "texto",
+    ", concentrando **4.077** pedidos. O período da **tarde** (das 12h às"
+   ],
+   [
+    "texto",
+    " 17h) vem em seguida com **3.016** pedidos, impulsionado pelos horários de"
+   ],
+   [
+    "texto",
+    " almoço. Os horários de pico individuais ocorrem aos sábados às 20h (**226**"
+   ],
+   [
+    "texto",
+    " pedidos), 19h (**221** pedidos) e 12h (**213** pedidos).\n\n"
+   ],
+   [
+    "texto",
+    "SUGESTOES:\n- Como o ticket médio varia entre os dias da semana e os fins de semana?\n- Quais"
+   ],
+   [
+    "texto",
+    " são as culinárias mais pedidas nos horários de pico do sábado à noite?\n- Qual é o tempo médio de entrega nos"
+   ],
+   [
+    "texto",
+    " horários de maior movimento em comparação aos demais horários?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2962,
+     "saida": 314
+    }
+   ]
+  ]
+ ]
+}

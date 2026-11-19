@@ -1,0 +1,119 @@
+{
+ "id": "acompanhamento",
+ "pergunta": "E só em São Paulo?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "1."
+   ],
+   [
+    "texto",
+    " Filtrar os pedidos onde a cidade é igual a São Paulo.\n2. Agrupar os"
+   ],
+   [
+    "texto",
+    " dados por tipo de culinária.\n3. Calcular a soma da receita (valor_pedido) para cada culinária."
+   ],
+   [
+    "texto",
+    "\n4. Ordenar o resultado em ordem decrescente de receita."
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1274,
+     "saida": 64
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_10656432074567808865",
+     "nome": "gerar_grafico",
+     "args": "{\"titulo\":\"Receita Total por Culinária em São Paulo\",\"sql\":\"SELECT culinaria, sum(valor_pedido) AS receita_total\\nFROM pedidos\\nWHERE cidade = 'São Paulo'\\nGROUP BY culinaria\\nORDER BY receita_total DESC;\",\"y\":\"receita_total\",\"tipo\":\"ranking\",\"x\":\"culinaria\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TDhfWH0B9xLi6nGOmXccbPbLJVZMfrif2ruyfA/VRtGWUmaLPj8Z2sD359DaKpRHsQsRqJP7HJ3Qabss97Dh1rWo1AL7iHYFggnX+gLl3jp+cOo36idFLduOLZnEp8b6BF5vg6j86+0VFBGrux737eG6X7ds="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1813,
+     "saida": 92
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Em"
+   ],
+   [
+    "texto",
+    " São Paulo, a receita total por tipo de culinária é liderada pela culinária Jap"
+   ],
+   [
+    "texto",
+    "onesa, seguida por Pizza e Italiana. Abaixo está a distribuição detalhada:\n\n- Japonesa: R$ 46."
+   ],
+   [
+    "texto",
+    "633,26\n- Pizza: R$ 27.126,18\n-"
+   ],
+   [
+    "texto",
+    " Italiana: R$ 24.136,14\n- Hambúrguer: R$ 1"
+   ],
+   [
+    "texto",
+    "8.480,09\n- Brasileira: R$ 11.853,76"
+   ],
+   [
+    "texto",
+    "\n- Saudável: R$ 8.766,75\n- Árabe: R$"
+   ],
+   [
+    "texto",
+    " 4.443,80\n- Doces e Sobremesas: R$ 2.3"
+   ],
+   [
+    "texto",
+    "06,03\n\nSUGESTOES:\n- Quais são os restaurantes com maior faturamento em São Paulo?\n"
+   ],
+   [
+    "texto",
+    "- Qual é o tempo médio de entrega por culinária em São Paulo?\n- Como a receita em São Paulo se compara"
+   ],
+   [
+    "texto",
+    " com as outras cidades?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2150,
+     "saida": 227
+    }
+   ]
+  ]
+ ]
+}

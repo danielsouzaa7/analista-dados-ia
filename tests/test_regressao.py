@@ -1,6 +1,7 @@
 """Regressão sem LLM: reproduz os cassetes (respostas do LLM gravadas por `avaliar.py --gravar-cassetes`)
 pelo agente real, com as ferramentas reais e o CSV de exemplo, e confere os numeros_chave."""
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -18,7 +19,10 @@ def _llm(id_: str) -> avaliar.LlmCassete:
     arquivo = CASSETES / f"{id_}.json"
     if not arquivo.exists():
         pytest.skip(f"sem cassete em tests/cassetes/{id_}.json (gere com: python scripts/avaliar.py --gravar-cassetes)")
-    return avaliar.LlmCassete(json.loads(arquivo.read_text(encoding="utf-8"))["respostas"])
+    texto = arquivo.read_text(encoding="utf-8")
+    if "rodar_python" in texto and shutil.which("deno") is None:  # mesma regra de test_python_tool
+        pytest.skip("o cassete usa a ferramenta Python e o deno não está no PATH")
+    return avaliar.LlmCassete(json.loads(texto)["respostas"])
 
 
 @pytest.mark.parametrize("caso", CASOS, ids=[c["id"] for c in CASOS])

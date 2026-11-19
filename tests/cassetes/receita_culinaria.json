@@ -1,0 +1,157 @@
+{
+ "id": "receita_culinaria",
+ "pergunta": "Quais culinárias geram mais receita?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "1."
+   ],
+   [
+    "texto",
+    " Consultar a base de dados para somar a receita (valor do pedido) agrup"
+   ],
+   [
+    "texto",
+    "ada por tipo de culinária.\n2. Ordenar os resultados da maior para a menor receita.\n3. Formatar"
+   ],
+   [
+    "texto",
+    " os valores numéricos obtidos de acordo com o padrão brasileiro.\n4. Gerar um gráfico de barras para visualizar o ranking das"
+   ],
+   [
+    "texto",
+    " culinárias.\n\n```sql\nSELECT culinaria, sum(valor_pedido) AS receita_total\nFROM pedidos"
+   ],
+   [
+    "texto",
+    "\nGROUP BY culinaria\nORDER BY receita_total DESC;\n```"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 981,
+     "saida": 113
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_983476842347143847",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT culinaria, sum(valor_pedido) AS receita_total\\nFROM pedidos\\nGROUP BY culinaria\\nORDER BY receita_total DESC;\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TLYMK5+JjbLIaTMjegYlsb0VYVu9XwP6hy2rdbj4ksxW5xUZtXLPtXolOAwu4SO3YY/Or0SAOU8N8G6hNtBtQ2qLKtOG5GC+imecxkqbbqrkB4d0GTZipcDHlEChjY0lg5znv+3ymjpYVP987Ln6RJT4dfv0="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1569,
+     "saida": 47
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_14421883430941696000",
+     "nome": "gerar_grafico",
+     "args": "{\"titulo\":\"Receita Total por Tipo de Culinária\",\"sql\":\"SELECT culinaria, sum(valor_pedido) AS receita_total\\nFROM pedidos\\nGROUP BY culinaria\\nORDER BY receita_total DESC;\",\"x\":\"culinaria\",\"y\":\"receita_total\",\"tipo\":\"ranking\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0TnMUd+gk5JUC3awdZYMmksHparE96onKt9oQj2paHACSciz1Io17o0ku4Lvvnfi/3+xkVolt1qxPgC0omUPRrvhHnDA/b+gRtZ/ueH4i197HuAfvbV5uNwKD7VXGpA8+yhHwYLETkyMUDjqjR3a25Hslwh+M="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1824,
+     "saida": 83
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "As"
+   ],
+   [
+    "texto",
+    " culinárias que geram maior receita total são lideradas pela culinária Jap"
+   ],
+   [
+    "texto",
+    "onesa, seguida por Pizza e Hambúrguer. \n\nAbaixo está a distribuição da receita total por tipo de cul"
+   ],
+   [
+    "texto",
+    "inária:\n\n- Japonesa: R$ 126.533,33\n-"
+   ],
+   [
+    "texto",
+    " Pizza: R$ 86.115,04\n- Hambúrguer: R$ 6"
+   ],
+   [
+    "texto",
+    "9.648,16\n- Brasileira: R$ 62.182,07"
+   ],
+   [
+    "texto",
+    "\n- Italiana: R$ 54.697,06\n- Árabe: R$"
+   ],
+   [
+    "texto",
+    " 34.163,88\n- Saudável: R$ 34.036"
+   ],
+   [
+    "texto",
+    ",38\n- Doces e Sobremesas: R$ 24.543,82"
+   ],
+   [
+    "texto",
+    "\n\nSUGESTOES:\n- Qual é o ticket médio dos pedidos para cada tipo de culinária?\n- Como a receita"
+   ],
+   [
+    "texto",
+    " da culinária japonesa se distribui ao longo das regiões?\n- Quais restaurantes da culinária japonesa possuem maior volume"
+   ],
+   [
+    "texto",
+    " de vendas?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2172,
+     "saida": 243
+    }
+   ]
+  ]
+ ]
+}

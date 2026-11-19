@@ -1,0 +1,20 @@
+{"evento": "recebido", "modelo": "gemini-3.5-flash-lite", "turno": 2, "t_ms": 0}
+{"evento": "llm", "n": 1, "fase": "plano", "modelo": "gemini-3.5-flash-lite", "ms": 2158, "tokens_entrada": 1274, "tokens_saida": 64, "t_ms": 2156}
+{"evento": "plano", "texto": "1. Filtrar os pedidos onde a cidade é igual a São Paulo.\n2. Agrupar os dados por tipo de culinária.\n3. Calcular a soma da receita (valor_pedido) para cada culinária.\n4. Ordenar o resultado em ordem decrescente de receita.", "t_ms": 2156}
+{"evento": "llm", "n": 2, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1390, "tokens_entrada": 1813, "tokens_saida": 92, "t_ms": 3546}
+{"evento": "ferramenta_inicio", "id": "call_10656432074567808865", "tipo": "grafico", "sql": "SELECT culinaria, sum(valor_pedido) AS receita_total\nFROM pedidos\nWHERE cidade = 'São Paulo'\nGROUP BY culinaria\nORDER BY receita_total DESC;", "t_ms": 3546}
+{"evento": "ferramenta_fim", "id": "call_10656432074567808865", "ms": 42, "grafico": {"tipo": "ranking", "titulo": "Receita Total por Culinária em São Paulo", "subtitulo": "", "resumo": "Maior: Japonesa (46.633,26). Menor: Doces e Sobremesas (2.306,03). Total: 143.746,01.", "x_nome": "culinaria", "y_nome": "receita_total", "dados": [{"rotulo": "Japonesa", "valor": 46633.260000000046}, {"rotulo": "Pizza", "valor": 27126.179999999993}, {"rotulo": "Italiana", "valor": 24136.13999999998}, {"rotulo": "Hambúrguer", "valor": 18480.090000000004}, {"rotulo": "Brasileira", "valor": 11853.759999999998}, {"rotulo": "Saudável", "valor": 8766.750000000002}, {"rotulo": "Árabe", "valor": 4443.8}, {"rotulo": "Doces e Sobremesas", "valor": 2306.03}]}, "t_ms": 3578}
+{"evento": "rascunho", "delta": "Em", "tentativa": 1, "t_ms": 4796}
+{"evento": "rascunho", "delta": " São Paulo, a receita total por tipo de culinária é liderada pela culinária Jap", "tentativa": 1, "t_ms": 4843}
+{"evento": "rascunho", "delta": "onesa, seguida por Pizza e Italiana. Abaixo está a distribuição detalhada:\n\n- Japonesa: R$ 46.", "tentativa": 1, "t_ms": 4906}
+{"evento": "rascunho", "delta": "633,26\n- Pizza: R$ 27.126,18\n-", "tentativa": 1, "t_ms": 5046}
+{"evento": "rascunho", "delta": " Italiana: R$ 24.136,14\n- Hambúrguer: R$ 1", "tentativa": 1, "t_ms": 5046}
+{"evento": "rascunho", "delta": "8.480,09\n- Brasileira: R$ 11.853,76", "tentativa": 1, "t_ms": 5046}
+{"evento": "rascunho", "delta": "\n- Saudável: R$ 8.766,75\n- Árabe: R$", "tentativa": 1, "t_ms": 5063}
+{"evento": "rascunho", "delta": " 4.443,80\n- Doces e Sobremesas: R$ 2.3", "tentativa": 1, "t_ms": 5110}
+{"evento": "rascunho", "delta": "06,03\n\n", "tentativa": 1, "t_ms": 5188}
+{"evento": "llm", "n": 3, "fase": "resposta", "modelo": "gemini-3.5-flash-lite", "ms": 1678, "tokens_entrada": 2150, "tokens_saida": 227, "t_ms": 5265}
+{"evento": "conferencia", "ok": true, "falhas": [], "tentativa": 1, "t_ms": 5265}
+{"evento": "resposta", "texto": "Em São Paulo, a receita total por tipo de culinária é liderada pela culinária Japonesa, seguida por Pizza e Italiana. Abaixo está a distribuição detalhada:\n\n- Japonesa: R$ 46.633,26\n- Pizza: R$ 27.126,18\n- Italiana: R$ 24.136,14\n- Hambúrguer: R$ 18.480,09\n- Brasileira: R$ 11.853,76\n- Saudável: R$ 8.766,75\n- Árabe: R$ 4.443,80\n- Doces e Sobremesas: R$ 2.306,03", "aviso": null, "reanalises": 0, "sugestoes": ["Quais são os restaurantes com maior faturamento em São Paulo?", "Qual é o tempo médio de entrega por culinária em São Paulo?", "Como a receita em São Paulo se compara com as outras cidades?"], "conferido": true, "turno": 2, "t_ms": 5265}
+{"evento": "metricas", "ms_total": 5270, "chamadas_llm": 3, "chamadas_ferramenta": 1, "tokens_entrada": 5237, "tokens_saida": 383, "reanalises": 0, "modelo": "gemini-3.5-flash-lite", "custo": "R$ 0 (plano gratuito)", "trace_id": "977cb5e3d711", "versao_prompt": "2026-11-19.2", "t_ms": 5265}
+{"evento": "fim", "t_ms": 5265}
