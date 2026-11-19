@@ -2,12 +2,22 @@
 
 Um agente que responde perguntas em português sobre um CSV ou um Postgres: planeja, consulta com SQL, roda Python em um sandbox, desenha o gráfico e confere os próprios números antes de responder, tudo em streaming e com cada passo visível na tela.
 
+**Por que não é mais um "chat com seu CSV":**
+
+- **Não confia no próprio texto.** Antes de responder, código (não prompt) confere se cada número da resposta saiu de uma ferramenta. Se não saiu, a resposta é descartada e a análise é refeita.
+- **É medido contra o LLM real.** 8 casos com resposta esperada calculada fora do agente, em pandas: **7/8 acertos**, mediana de 8,3 s ([docs/avaliacao.md](docs/avaliacao.md), com a falha explicada e sem ajustar o prompt para passar). A avaliação pegou um bug que a suíte de testes não pegava: o Python calculava a correlação só sobre as 1.000 primeiras linhas (r = -0,497 em vez de -0,506), e a conferência aprovava porque comparava com a saída já cortada.
+- **Continua de pé sem cota.** Cada avaliação grava o stream de eventos: quando a cota gratuita acaba, a demo toca a gravação (marcada na tela), e os mesmos cassetes viram teste de regressão sem chamar o LLM.
+- **Isola de verdade.** SQL validado pela árvore sintática, Python em WebAssembly dentro de um Deno sem nenhuma permissão, e 4 rodadas de red team com cada achado reproduzido e fechado com teste ([docs/seguranca.md](docs/seguranca.md)).
+
 ## Experimente
 
 App publicado: `<link do Space>`
 
 ![Conversa com plano, SQL, gráfico e selo de números conferidos](docs/img/conversa.png)
-<!-- capturas da etapa 7: docs/img/conversa.png, docs/img/trace.png, docs/img/mapa-calor.png -->
+
+| Celular (tema escuro) | Trace do agente | Mapa de calor |
+|---|---|---|
+| ![Tendência no celular, tema escuro](docs/img/m-escuro.png) | ![Trace com cascata de tempos](docs/img/trace.png) | ![Mapa de calor de pedidos por dia e hora](docs/img/mapa-calor.png) |
 
 O app roda em hospedagem gratuita (a primeira visita pode demorar a acordar) e tem teto diário de perguntas. Quando o teto ou a cota do modelo acaba, as perguntas de exemplo reproduzem uma gravação, marcada como tal na tela.
 
