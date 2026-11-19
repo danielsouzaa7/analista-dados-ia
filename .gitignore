@@ -1,0 +1,28 @@
+# referencia visual do Daniel, nao vai para o repo
+referência.png
+referencia.png
+
+# segredos
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# deno / pyodide
+node_modules/
+sandbox/pyodide_cache/
+
+# dados de sessao e ferramentas locais
+data/sessions/
+.remember/
+
+# saidas locais do playwright
+.playwright-mcp/
+.claude/ecc/

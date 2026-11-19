@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Analista de dados com IA (desenvolvimento)</title>
+  <meta name="robots" content="noindex">
+  <meta name="description" content="Agente de IA que analisa dados de pedidos de delivery: planeja, consulta, calcula, confere os próprios números e desenha o gráfico, tudo ao vivo.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='5' width='22' height='22' rx='6' fill='%236250d6'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&display=swap">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js" integrity="sha384-o5uz97et3bErHvpKfD4Jz4n0JfhJDWABFuF4NP+iEEDxE1VwMWJ19QGR0lqFZnr6" crossorigin="anonymous"></script>
+  <script type="module" src="./fake-api.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="pular" href="#conversa-titulo">Pular para a conversa</a>
+
+  <header class="topo">
+    <p class="marca">Analista de dados</p>
+    <nav aria-label="Seções">
+      <a href="#dados-titulo">Dados</a>
+      <a href="#conversa-titulo">Conversa</a>
+      <a href="#como-funciona">Como funciona</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="titulo-pagina">
+      <h1 id="titulo-pagina">Pergunte em português. Veja cada passo do agente.</h1>
+      <p class="hero-sub">Um agente de IA analisa pedidos de delivery com SQL e Python, confere os próprios números antes de responder e desenha o gráfico. Tudo ao vivo, com tempo e custo de cada passo.</p>
+      <p class="nota">O app está em hospedagem gratuita: na primeira visita ele pode demorar a acordar.</p>
+    </section>
+
+    <section class="bloco" aria-labelledby="dados-titulo" id="dados">
+      <h2 id="dados-titulo">Dados</h2>
+      <p class="aviso" id="aviso-dados">Não envie dados sensíveis ou pessoais. Os dados e as perguntas são processados por um serviço de IA externo (Google Gemini, plano gratuito).</p>
+
+      <div class="fontes">
+        <button id="usar-exemplo" type="button" class="btn-primario">Usar CSV de exemplo</button>
+        <label class="btn-secundario arquivo-rotulo" for="arquivo">
+          <input id="arquivo" type="file" accept=".csv,text/csv" class="sr-only">
+          <span>Enviar um CSV (até 20 MB)</span>
+        </label>
+        <button id="abrir-pg" type="button" class="btn-secundario" aria-expanded="false" aria-controls="form-pg">Conectar Postgres</button>
+      </div>
+      <form id="form-pg" hidden>
+        <label for="pg-url">URL do Postgres</label>
+        <div class="linha-campo">
+          <input id="pg-url" type="password" autocomplete="off" spellcheck="false" placeholder="postgresql://usuario:senha@host:5432/banco">
+          <button type="submit" class="btn-primario">Conectar</button>
+        </div>
+        <p class="nota">A URL não é enviada à IA, não aparece na tela nem fica salva.</p>
+      </form>
+      <p id="carregando-fonte" class="estado" role="status" hidden></p>
+      <p id="erro-fonte" class="erro-caixa" role="alert" hidden></p>
+
+      <div id="esquema" hidden>
+        <h3 id="esquema-titulo">Seus dados</h3>
+        <div id="lista-tabelas"></div>
+        <div id="perguntas-sugeridas" hidden>
+          <p class="rotulo-mini">Perguntas sugeridas para estes dados</p>
+          <div id="sugeridas-lista" class="chips"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bloco bloco-conversa" aria-labelledby="conversa-titulo" id="conversa">
+      <div class="conversa-cab">
+        <h2 id="conversa-titulo">Conversa</h2>
+        <p id="contador" class="contador" role="status"></p>
+      </div>
+
+      <div id="exemplos-area">
+        <p class="rotulo-mini">Perguntas de exemplo</p>
+        <div id="exemplos" class="exemplos"></div>
+        <div class="seguranca">
+          <button id="testar-seguranca" type="button" class="btn-perigo" hidden>Testar segurança</button>
+          <span id="seguranca-dica" class="nota" hidden>Envia um pedido de injeção de prompt. Veja o agente recusar.</span>
+        </div>
+      </div>
+
+      <div id="conversa-lista" class="conversa-lista">
+        <div id="vazio" class="vazio">
+          <p class="vazio-titulo">Nenhuma pergunta ainda.</p>
+          <p>Toque numa pergunta de exemplo ou escreva a sua abaixo. O CSV de exemplo é carregado sozinho.</p>
+        </div>
+      </div>
+
+      <form id="form-pergunta" class="compositor">
+        <label for="pergunta">Sua pergunta</label>
+        <textarea id="pergunta" rows="2" maxlength="500" placeholder="Ex.: Quais culinárias geram mais receita?"></textarea>
+        <p id="erro-pergunta" class="erro-caixa" role="alert" hidden></p>
+        <div class="compositor-acoes">
+          <button id="enviar" type="submit" class="btn-primario">Perguntar</button>
+          <button id="cancelar" type="button" class="btn-secundario" hidden>Parar</button>
+          <button id="insights" type="button" class="btn-secundario">Insights automáticos</button>
+          <button id="nova-conversa" type="button" class="btn-texto">Nova conversa</button>
+        </div>
+        <p class="nota">Enter envia. Shift+Enter quebra a linha.</p>
+      </form>
+    </section>
+
+    <details class="bloco metricas" id="metricas">
+      <summary><span class="metricas-titulo">Métricas da demo</span><span class="metricas-dica">tempo, conferência e retorno de quem usou</span></summary>
+      <div id="metricas-corpo" class="metricas-corpo" aria-live="polite">
+        <p class="estado">Abra para carregar.</p>
+      </div>
+    </details>
+
+    <section class="bloco como" id="como-funciona" aria-labelledby="como-titulo">
+      <h2 id="como-titulo">Como funciona</h2>
+      <p class="como-intro">Para cada pergunta, um orquestrador planeja os passos, usa as ferramentas e só responde depois de conferir que cada número aparece nos resultados.</p>
+      <div class="como-grade">
+        <figure class="diagrama">
+          <svg viewBox="0 0 404 428" role="img" aria-labelledby="dg-titulo dg-desc" focusable="false">
+            <title id="dg-titulo">Fluxo do agente</title>
+            <desc id="dg-desc">A pergunta vai ao orquestrador, que planeja e usa três ferramentas: consulta SQL, código Python e gráfico. Os resultados passam pela conferência dos números. Se algum número não bater, o fluxo volta ao orquestrador, até duas vezes. Se tudo bater, sai a resposta com o gráfico.</desc>
+            <defs>
+              <marker id="seta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" class="d-ponta"/></marker>
+              <marker id="seta-loop" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" class="d-ponta-loop"/></marker>
+            </defs>
+            <rect class="d-caixa" x="80" y="6" width="240" height="44" rx="14"/>
+            <text class="d-t" x="200" y="33" text-anchor="middle">Pergunta em português</text>
+            <path class="d-seta" d="M200 50V74" marker-end="url(#seta)"/>
+
+            <rect class="d-caixa d-forte" x="14" y="76" width="372" height="62" rx="14"/>
+            <text class="d-t d-t-forte" x="200" y="102" text-anchor="middle">Orquestrador</text>
+            <text class="d-s d-s-forte" x="200" y="122" text-anchor="middle">planeja e decide o próximo passo</text>
+
+            <path class="d-seta" d="M200 138V152M200 152H70V168M200 152V168M200 152H330V168" marker-end="url(#seta)"/>
+
+            <rect class="d-caixa" x="14" y="168" width="112" height="70" rx="12"/>
+            <text class="d-t" x="70" y="192" text-anchor="middle">SQL</text>
+            <text class="d-s" x="70" y="212" text-anchor="middle">só leitura,</text>
+            <text class="d-s" x="70" y="227" text-anchor="middle">um comando</text>
+
+            <rect class="d-caixa" x="144" y="168" width="112" height="70" rx="12"/>
+            <text class="d-t" x="200" y="192" text-anchor="middle">Python</text>
+            <text class="d-s" x="200" y="212" text-anchor="middle">sandbox, sem rede</text>
+            <text class="d-s" x="200" y="227" text-anchor="middle">nem arquivos</text>
+
+            <rect class="d-caixa" x="274" y="168" width="112" height="70" rx="12"/>
+            <text class="d-t" x="330" y="192" text-anchor="middle">Gráfico</text>
+            <text class="d-s" x="330" y="212" text-anchor="middle">5 tipos, dados</text>
+            <text class="d-s" x="330" y="227" text-anchor="middle">do servidor</text>
+
+            <path class="d-seta" d="M70 238V256H200M330 238V256H200M200 238V256M200 256V274" marker-end="url(#seta)"/>
+
+            <rect class="d-caixa d-conf" x="14" y="274" width="372" height="58" rx="14"/>
+            <text class="d-t" x="200" y="300" text-anchor="middle">Conferência dos números</text>
+            <text class="d-s" x="200" y="320" text-anchor="middle">cada número está nos resultados?</text>
+
+            <path class="d-loop" d="M386 303H400V107H388" marker-end="url(#seta-loop)"/>
+
+            <path class="d-seta" d="M200 332V362" marker-end="url(#seta)"/>
+            <text class="d-s" x="212" y="352">tudo bate</text>
+            <text class="d-loop-t" x="14" y="352">↺ não bate: refaz (até 2×)</text>
+            <rect class="d-caixa d-forte" x="14" y="364" width="372" height="56" rx="14"/>
+            <text class="d-t d-t-forte" x="200" y="389" text-anchor="middle">Resposta + gráfico</text>
+            <text class="d-s d-s-forte" x="200" y="408" text-anchor="middle">transmitidos ao vivo</text>
+          </svg>
+        </figure>
+
+        <div class="guardrails">
+          <h3>O que protege os dados e o serviço</h3>
+          <dl class="lista-def">
+            <div><dt>SQL só leitura</dt><dd>Um único SELECT por chamada. Escrita, vários comandos e leitura de arquivos são recusados antes de rodar. Limite de 30 s.</dd></div>
+            <div><dt>Python isolado</dt><dd>Roda em WebAssembly, sem rede, sem arquivos fora dos seus dados e sem variáveis de ambiente. Limite de 30 s.</dd></div>
+            <div><dt>Números conferidos</dt><dd>Cada número da resposta precisa bater com os resultados das ferramentas, com margem de 1%. Se não bater, o agente refaz a análise até 2 vezes.</dd></div>
+            <div><dt>Limites</dt><dd>No máximo 8 ferramentas, 12 chamadas ao modelo e 120 s por pergunta. Uma pergunta por vez, com teto diário.</dd></div>
+            <div><dt>Memória curta</dt><dd>Lembra as 3 últimas perguntas da sessão, para entender "e só em São Paulo?". Nova conversa apaga tudo.</dd></div>
+            <div><dt>Dado pessoal fica de fora</dt><dd>Colunas que parecem CPF, e-mail ou telefone são marcadas e seus valores não vão à IA.</dd></div>
+          </dl>
+          <h3>Decisões técnicas</h3>
+          <ul class="lista-simples">
+            <li>A resposta chega por streaming (SSE), com plano, ferramentas e conferência visíveis.</li>
+            <li>Os gráficos são desenhados no navegador a partir de dados moldados pelo servidor.</li>
+            <li>O modelo troca por variável de ambiente, e há um modelo reserva.</li>
+            <li>Com a cota esgotada, os exemplos reproduzem uma gravação marcada como tal.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <p>Projeto de portfólio. Os dados de exemplo são fictícios e não vêm de nenhuma empresa.</p>
+  </footer>
+</body>
+</html>

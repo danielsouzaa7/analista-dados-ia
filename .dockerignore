@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.venv
+.git
+referência.png
+sandbox/node_modules
+sandbox/pyodide_cache
+data/sessions
+tests
+.claude
+.remember
+**/__pycache__
+*.pyc
+.pytest_cache

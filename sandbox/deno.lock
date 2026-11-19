@@ -1,0 +1,17 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:pyodide@0.28.3": "0.28.3"
+  },
+  "npm": {
+    "pyodide@0.28.3": {
+      "integrity": "sha512-rtCsyTU55oNGpLzSVuAd55ZvruJDEX8o6keSdWKN9jPeBVSNlynaKFG7eRqkiIgU7i2M6HEgYtm0atCEQX3u4A==",
+      "dependencies": [
+        "ws"
+      ]
+    },
+    "ws@8.23.0": {
+      "integrity": "sha512-wCkmX8QMOrKjgO8HW2WyDbTSGeqkocxgDzS9iR79rEAexty6/2qzilx3Ag8Tqf9ykop3irLKle0MtVn5qjVnoQ=="
+    }
+  }
+}

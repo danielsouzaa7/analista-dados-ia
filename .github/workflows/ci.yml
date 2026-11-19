@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DENO_VERSION: "2.9.8" # a mesma do Dockerfile
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - run: pip install -r requirements-dev.txt
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      # Pyodide e pandas ficam em cache: o sandbox roda sem rede.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            sandbox/node_modules
+            sandbox/pyodide_cache
+          key: pyodide-${{ runner.os }}-${{ env.DENO_VERSION }}-${{ hashFiles('sandbox/deno.lock') }}
+
+      - name: Prepara o sandbox (baixa o Pyodide quando não há cache)
+        working-directory: sandbox
+        run: |
+          deno install --entrypoint runner.ts
+          deno run --allow-read --allow-write=./pyodide_cache,./node_modules --allow-net runner.ts --preparar
+
+      - name: Extensão Postgres do DuckDB
+        run: python -c "import duckdb; duckdb.sql('INSTALL postgres')"
+
+      - run: ruff check .
+
+      # Sem PG_TEST_URL: o teste de Postgres real é pulado (roda no job abaixo). Não chama o LLM.
+      - run: pytest -q --cov=app --cov-report=term-missing
+
+  postgres-real:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PG_TEST_URL: postgresql://postgres:teste@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - run: pip install -r requirements-dev.txt
+
+      - name: Extensão Postgres do DuckDB
+        run: python -c "import duckdb; duckdb.sql('INSTALL postgres')"
+
+      - name: Cria a tabela do teste
+        run: >-
+          PGPASSWORD=teste psql -h 127.0.0.1 -U postgres -c
+          "create table vendas_pg(v int); insert into vendas_pg values (1),(2),(3);"
+
+      - run: pytest -q tests/test_sql_tool.py

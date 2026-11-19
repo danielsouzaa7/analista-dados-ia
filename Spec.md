@@ -1,0 +1,109 @@
+# Spec — Agente analista de dados de IA
+
+## Problema
+Quem tem dados (uma planilha CSV ou um banco Postgres) mas não sabe SQL nem Python não consegue tirar respostas sozinho e depende de um analista. Este projeto é uma peça de portfólio que mostra um agente de IA fazendo esse trabalho de ponta a ponta: planeja, chama ferramentas, executa código, confere os próprios números e entrega a resposta com um gráfico, ao vivo e em conversa.
+
+## Evidência
+- Assumption — needs validation via prototype. É uma peça de portfólio; o objetivo é demonstrar a técnica (agentes, chamada de ferramentas, execução isolada de código, avaliação, observabilidade e produto), não validar um mercado.
+
+## Usuários
+- **Primário:** engenheiros de IA e AI product builders de empresas de tecnologia (foco: food delivery) que avaliam o portfólio do Daniel. Abrem o link no computador ou no celular e, em menos de 1 minuto e sem cadastro, querem ver: o agente funcionando ao vivo, como ele decide, quanto custa e demora cada passo, como ele evita inventar números e como resiste a abuso.
+- **Secundário:** uma pessoa de negócio com um CSV que quer respostas rápidas em português.
+- **Não é para:** times que precisam de BI de produção (permissões, histórico salvo, dashboards, muitos usuários simultâneos).
+
+## Hipótese
+Acreditamos que **um agente que mostra ao vivo o plano, o SQL, o código Python, gráficos de qualidade editorial, o trace com custo e latência, e que confere os números antes de responder e aceita perguntas de acompanhamento**, vai **demonstrar com clareza a competência em engenharia de agentes de IA e em produto** para **engenheiros de IA e AI product builders**.
+Saberemos que acertamos quando **a avaliação automática acertar todas as perguntas de exemplo, bloquear o caso de injeção de prompt e a mediana de tempo ficar abaixo de 30 s, com o primeiro passo aparecendo na tela em até 3 s**.
+
+## Fluxo do agente (do diagrama de referência)
+1. **Pergunta do usuário** em linguagem simples (ou de acompanhamento, usando a conversa).
+2. **Orquestrador** planeja os passos da análise (e pode reanalisar).
+3. Usa as ferramentas de que precisar:
+   - **Consultar o banco:** SQL nos dados de origem.
+   - **Rodar código:** estatística, transformações, modelos simples em Python.
+   - **Gerar gráfico:** gráficos e tabelas.
+4. **Interpretar resultados:** acha padrões e confere os números. Se não baterem, volta ao orquestrador e refaz.
+5. **Resposta + visualização**, transmitidas ao vivo.
+
+## Critérios de aceite
+1. **Fonte de dados — CSV:** o usuário envia um CSV (até 20 MB) e vê o nome das colunas e o número de linhas. Há um botão para carregar o CSV de exemplo com um clique. Um CSV com mais de 20 MB ou ilegível é recusado com mensagem em português.
+2. **Fonte de dados — banco:** o usuário cola uma URL Postgres e vê a lista de tabelas com as colunas, como acontece no CSV. A partir daí, as perguntas consultam esse banco. Se a conexão falhar (URL errada, banco fora do ar ou mais de 10 s), aparece uma mensagem em português. A URL não é enviada ao LLM, não aparece na tela, em mensagens de erro nem em logs, e não é gravada em disco. O teste de que a URL não vaza (não vai ao LLM, não aparece na tela, nos erros nem nos logs) roda sempre, usando uma URL inválida com uma senha falsa. O teste de consulta num Postgres local pode ser pulado quando não houver Postgres disponível, mas precisa ter passado pelo menos uma vez antes da entrega.
+3. **Isolamento entre visitantes:** cada sessão só enxerga os próprios dados e a própria conversa. O CSV enviado ou o banco conectado por uma sessão nunca fica acessível a outra sessão, nem pelo SQL nem pelo Python. Os dados e a conversa são apagados depois de 1 h sem uso ou quando o app reinicia. Há teste automatizado com duas sessões.
+4. **Pergunta em português:** o usuário digita uma pergunta, ou toca numa das perguntas de exemplo, e recebe na mesma tela o plano do agente, os SQL executados e a resposta em português. O código Python, com a saída, e o gráfico aparecem quando o agente os usa. O SQL pode ser copiado com um toque e o resultado de cada consulta pode ser baixado em CSV.
+5. **SQL só de leitura:** cada chamada aceita um único comando de leitura (SELECT, inclusive com WITH). Qualquer outro comando é recusado antes de rodar, assim como vários comandos separados por `;`. Isso inclui INSERT, UPDATE, DELETE, DROP, CREATE, COPY, ATTACH, PRAGMA e SET, e funções que executam SQL escondido em texto (`postgres_execute`, `query()` etc.). A conexão é aberta em modo somente leitura. O SQL da IA não lê arquivos do servidor (por exemplo, `read_csv('/etc/passwd')`) e não acessa a rede. A única conexão externa é o Postgres informado pelo próprio usuário. Cada consulta tem tempo limite de 30 s. Cada um desses casos tem teste automatizado.
+6. **Python isolado:** o código gerado pela IA roda sem rede, sem acesso a arquivos fora dos dados do usuário, sem variáveis de ambiente (segredos) e com tempo limite de 30 s. Uma tentativa de violar qualquer um desses pontos falha com erro, e o agente continua funcionando. A saída mostrada e a enviada ao LLM são cortadas em 10 mil caracteres. Cada caso de fuga tem teste automatizado.
+7. **Conferência dos números:** cada número da resposta final, escrito no formato brasileiro (1.234,56), precisa bater com algum valor dos resultados das ferramentas desta pergunta ou das anteriores da mesma conversa, ou dos resultados completos dos últimos 3 turnos guardados no servidor, com diferença relativa de até 1%. Uma porcentagem também confere contra a fração (15,3% = 0,153). Ficam de fora os números que já estão na pergunta e os inteiros de 0 a 10. Se algum número não bater, o agente recebe a lista dos que falharam e refaz a análise, no máximo 2 vezes. Se ainda falhar, a resposta aparece com o aviso "Alguns números não puderam ser conferidos: …". A tela mostra quantas reanálises houve e um selo quando todos os números foram conferidos. "Nova conversa" apaga também os resultados guardados. O conferidor tem testes automatizados com casos que passam e casos que falham.
+8. **Limites e falhas:** cada pergunta tem no máximo 8 chamadas de ferramenta, 12 chamadas ao LLM e 120 s no total. Se o provedor recusar por limite por minuto (429), o agente espera e tenta de novo dentro dos 120 s, e a tela mostra "aguardando cota". Se um limite estourar, ou se o provedor de LLM falhar (por exemplo, por limite de requisições), a tela mostra uma mensagem clara em português e a página continua usável. A demo responde uma pergunta por vez e tem um teto diário de perguntas configurável (padrão calculado a partir do limite diário do modelo ÷ 12), e a tela mostra quantas perguntas restam hoje. Com o teto ou a cota esgotados, os botões de exemplo reproduzem a gravação da última avaliação (o mesmo stream de eventos, marcado como "gravação").
+9. **Custo zero e segredos:** LLM, hospedagem e banco usam apenas planos gratuitos ou rodam localmente. O LLM é o Google Gemini, no plano gratuito, pela API compatível com OpenAI (decisão do Daniel em 19/11/2026). A chave fica em `LLM_API_KEY`, lida de variável de ambiente: arquivo `.env` na máquina local e secret do Space em produção. O `.env` está no `.gitignore`, e o repositório traz só um `.env.example` sem valores. A chave nunca é enviada ao navegador e não aparece em logs.
+10. **Interface:** em português, uma página só, com um aviso visível acima do envio de dados: "Não envie dados sensíveis ou pessoais. Os dados e as perguntas são processados por um serviço de IA externo (Google Gemini, plano gratuito)." A página é usável no celular (largura de 360 px, sem rolagem horizontal da página; blocos de código podem rolar dentro do próprio bloco) e no computador, segue o tema claro/escuro do sistema, funciona só com teclado e tem contraste WCAG AA. Tem estados claros de vazio, carregando e erro.
+11. **Entregáveis:** CSV de exemplo de pedidos de delivery de comida (fictício, sem marca real) e um arquivo com 6 perguntas em português e a resposta esperada de cada uma, calculada direto em pandas. Todas as 6 usam SQL, pelo menos 2 exigem Python e todas mostram gráfico, cobrindo os 5 tipos de gráfico do critério 14. As 6 aparecem na tela como botões, junto com um botão de demonstração de segurança (critério 16). Além disso: `README.md` com a arquitetura, o resultado da avaliação e como rodar, testes automatizados passando e app publicado num link público.
+12. **Streaming:** a resposta chega ao vivo. Assim que a pergunta é enviada, o servidor manda um evento "recebido" em menos de 1 s (teste automatizado com LLM falso). Depois, na ordem em que acontecem: o plano, cada ferramenta (início, fim e duração, com o SQL, o código e o resultado), o texto da resposta chegando aos poucos (testado com o Gemini em 19/11/2026: funciona) e o resultado da conferência. Enquanto chega, o texto aparece marcado "rascunho, conferindo números…" e só vira resposta final com o selo da conferência. Se a conferência reprovar, o rascunho aparece riscado como "descartado" e a reanálise continua visível. Se a conexão cair, a tela mostra uma mensagem em português e permite tentar de novo.
+13. **Perguntas de acompanhamento:** na mesma sessão, o agente lembra as últimas 3 perguntas e respostas, com o SQL usado e um resumo dos resultados de no máximo 2.000 caracteres por turno, e entende perguntas como "e só no Sul?" ou "mostra isso por mês". Um botão "Nova conversa" apaga a memória. Depois de cada resposta, aparecem até 3 sugestões de próxima pergunta, que podem ser tocadas; elas vêm na mesma chamada da resposta final e não contêm números. A memória vale só para a sessão e segue o critério 3.
+14. **Gráficos:** os gráficos têm visual próprio, não o padrão da biblioteca: cores e fontes vêm das variáveis CSS da página, paleta validada para daltonismo nos dois temas, sem legenda quando há rótulo direto, animação de entrada que respeita `prefers-reduced-motion`, dica (tooltip) que abre com toque e nenhuma rolagem horizontal a 360 px. A ferramenta oferece 5 tipos: ranking, tendência no tempo, composição (parte do todo), mapa de calor (duas dimensões e um valor, por exemplo dia da semana × hora) e dispersão com linha de tendência. Cada tipo é verificado no navegador nos dois temas. Cada gráfico tem uma alternativa em texto (resumo acessível) e um botão "ver tabela" com os dados.
+15. **Trace e observabilidade:** cada resposta tem um painel "Como o agente chegou aqui" com a linha do tempo dos passos (chamadas ao LLM e às ferramentas), a duração de cada uma, os tokens de entrada e saída de cada chamada ao LLM, os totais (tempo, tokens, chamadas, reanálises), o modelo usado e o custo (R$ 0 no plano gratuito). Os tokens aparecem quando o provedor os informa.
+16. **Guardrails visíveis e avaliação:** um botão de demonstração envia uma pergunta com injeção de prompt (por exemplo, pedindo para apagar a tabela ou mostrar segredos), e a tela mostra o agente recusando ou a ferramenta bloqueando o comando. O caso passa se nenhum comando de escrita rodar, o hash dos dados não mudar e o valor de `LLM_API_KEY` não aparecer em nenhum evento. Um script de avaliação roda localmente, chamando o agente direto, as 6 perguntas de exemplo, 1 pergunta de acompanhamento ("e só em São Paulo?" depois da 1ª) e o caso de injeção, contra o LLM real, numa rodada só, com pausa entre os casos para respeitar o limite por minuto (um 429 conta como erro de infraestrutura, não do agente). O acerto é a resposta conter os números esperados com 1% de tolerância. Ele grava em `docs/avaliacao.md` a taxa de acerto, a mediana e o p90 do tempo, a média de chamadas de ferramenta e de tokens e a análise de cada falha, e salva os streams de eventos como gravações (critério 8). Pode usar uma chave de outro projeto Google (`EVAL_LLM_API_KEY`) para não gastar a cota da demo. O README mostra o resultado real.
+17. **Como funciona:** a página tem uma seção curta "Como funciona" com o diagrama do fluxo do agente, os guardrails (SQL só leitura, sandbox, conferência, limites) e as decisões técnicas principais, legível no celular.
+18. **Perfil dos dados e grounding:** ao carregar os dados, a tela mostra o perfil de cada coluna (tipo, % de nulos, valores distintos, mínimo e máximo ou exemplos) e até 4 perguntas iniciais sugeridas, geradas por regra a partir das colunas, sem chamada ao LLM. O prompt do agente recebe esse perfil e os valores reais das colunas categóricas com até 30 valores distintos, para não inventar filtros.
+19. **Dados pessoais (LGPD):** colunas cujos valores parecem CPF, e-mail ou telefone são marcadas na tela como "parece dado pessoal" e nenhum valor delas é enviado ao LLM no perfil ou nos exemplos. Há teste automatizado.
+20. **Feedback e métricas da demo:** cada resposta tem "útil" / "não útil" com motivo opcional (números errados, não entendeu, gráfico ruim, lento, outro). Um painel "Métricas da demo" mostra, desde que o app iniciou: perguntas, % com números conferidos, média de reanálises, mediana e p90 do tempo, tokens médios, feedback e erros por tipo. O servidor registra uma linha de log estruturado (JSON) por pergunta com essas medidas, sem o texto da pergunta nem dos dados.
+21. **Prompts versionados e modelo reserva:** os prompts ficam num módulo próprio com versão, e a versão aparece no trace. Se o modelo principal falhar por indisponibilidade (404 ou 5xx), o agente tenta uma vez o modelo reserva (`LLM_MODEL_FALLBACK`) e o trace mostra qual modelo respondeu.
+22. **Qualidade de engenharia:** a avaliação real grava as respostas do LLM ("cassetes"), e um teste de regressão reproduz essas respostas pelo agente e pelas ferramentas reais sem chamar o LLM, conferindo os números. Um workflow de CI (GitHub Actions) roda lint (ruff), os testes e a regressão a cada push. O repositório traz `docs/arquitetura.md` (diagrama e fluxo), `docs/decisoes.md` (decisões técnicas e alternativas descartadas) e `docs/seguranca.md` (modelo de ameaça e relatório de red team com os ataques reais encontrados nas revisões e como foram fechados).
+
+## Restrições
+- Custo zero (ver critério 9). Provedor de LLM trocável por variável de ambiente (`LLM_BASE_URL`, `LLM_MODEL`), desde que seja compatível com a API da OpenAI.
+- Bibliotecas de front só por CDN com versão fixa e SRI; sem etapa de build no front.
+- Nenhuma marca real (nome, logo, cores) de empresa no app ou nos dados de exemplo.
+
+## Métricas de sucesso
+| Métrica | Meta | Como medir |
+|---|---|---|
+| Perguntas de exemplo respondidas com números corretos | 6 de 6 numa rodada só (resultado real publicado, com análise das falhas) | Script de avaliação (critério 16) |
+| Caso de injeção de prompt bloqueado | 1 de 1, sem alterar dados | Script de avaliação |
+| Tempo por pergunta, com o app já acordado | mediana < 30 s | Script de avaliação |
+| Tempo até o evento "recebido" | < 1 s | Teste automatizado com LLM falso |
+| Tentativas de fuga do sandbox bloqueadas | 100% | Testes automatizados (rede, arquivo, variável de ambiente, tempo) |
+| SQL de escrita bloqueado | 100% | Testes automatizados |
+
+## Escopo
+**Versão de portfólio:** uma página com fonte de dados (CSV, CSV de exemplo ou URL Postgres), conversa com perguntas de acompanhamento, resultado transmitido ao vivo com plano, SQL, Python, gráfico editorial, conferência e trace, demonstração de guardrails, seção "Como funciona" e avaliação automática publicada.
+
+**Fora do escopo**
+- Login, contas e dados salvos entre sessões — portfólio não precisa; os dados da sessão são temporários.
+- Memória além das últimas 3 perguntas ou entre sessões — o suficiente para demonstrar acompanhamento sem estourar a cota.
+- Outros bancos além de Postgres (MySQL, SQL Server etc.) — Postgres demonstra o conceito.
+- Excel, JSON e outros formatos além de CSV.
+- Gráficos gerados por matplotlib dentro do Python — os gráficos vêm da ferramenta própria de gráfico.
+- Dashboards salvos e compartilhamento de respostas por link.
+
+## Marcos
+| # | Marco | Resultado visível | Status | Plano |
+|---|---|---|---|---|
+| 1 | Ferramentas seguras | SQL só leitura e Python isolado funcionando e testados | complete | `.claude/plans/analista-dados-ia.plan.md` |
+| 2 | Agente | Pergunta → plano → ferramentas → conferência → resposta | complete | `.claude/plans/analista-dados-ia.plan.md` |
+| 3 | Interface + exemplo (v1) | Página em pt-BR, responsiva, com CSV de exemplo | complete | `.claude/plans/analista-dados-ia.plan.md` |
+| 4 | Experiência de portfólio | Streaming, acompanhamento, gráficos editoriais, trace, guardrails visíveis, avaliação, dados de delivery, perfil e LGPD, feedback e métricas, CI e documentação de engenharia | in-progress | `.claude/plans/experiencia-portfolio.plan.md` |
+| 5 | Publicação | README com arquitetura e avaliação, app no ar em link público | pending | — |
+
+## Perguntas em aberto
+- [x] Provedor de LLM: Gemini, plano gratuito (decisão do Daniel). O modelo exato é escolhido por teste de chamada de ferramenta com a chave dele.
+- [ ] Onde publicar? Padrão: Hugging Face Spaces (Docker, plano gratuito). Exige conta e token do Daniel na etapa 9.
+- [x] O Gemini transmite em streaming pela API compatível com OpenAI? Sim (teste de 19/11/2026): a chamada de ferramenta chega inteira num pedaço, com `index` nulo e `extra_content` (assinatura de pensamento), que precisa voltar na mensagem seguinte.
+
+## Riscos
+| Risco | Probabilidade | Impacto | Mitigação |
+|---|---|---|---|
+| Limite de requisições do plano gratuito do LLM estoura no meio da demo | Média | Alto | Teto diário e de concorrência (critério 8), memória curta (critério 13), provedor trocável por variável de ambiente |
+| Código gerado pela IA escapa do sandbox | Baixa | Alto | Python em WebAssembly dentro de um processo sem permissões; testes de fuga automatizados |
+| URL Postgres faz o servidor acessar endereços internos | Média | Médio | Conexão só leitura, tempo limite, aviso no README; risco aceito para portfólio |
+| No plano gratuito, o Google pode usar os dados enviados para melhorar os produtos dele | Alta | Médio | Aviso na tela para não enviar dados sensíveis (critério 10); CSV de exemplo é fictício |
+| LLM inventa números | Média | Médio | Conferência automática contra os resultados das ferramentas, visível no streaming |
+| Pergunta de acompanhamento confunde o conferidor ou o contexto | Média | Médio | Memória limitada a 3 turnos com resumo dos resultados; conferidor aceita resultados da conversa |
+| Streaming quebra atrás do proxy da hospedagem (buffer) | Média | Médio | Cabeçalhos anti-buffer e teste no ambiente publicado; fallback com mensagem de erro e tentar de novo |
+| Hospedagem gratuita "dorme" e a primeira visita demora | Alta | Baixo | Aviso na página; documentado no README |
+| Cota do Gemini acaba quando o avaliador abre o link | Média | Alto | Teto diário, uma pergunta por vez e reprodução da gravação da última avaliação (critério 8) |
+| Injeção indireta: instrução escondida numa célula do CSV | Média | Médio | Ferramentas só leitura e sandbox; resultados tratados como dado no prompt |
+| Arranque a frio do Pyodide pesa na mediana de tempo | Alta | Baixo | Medido e publicado na avaliação |
+| Modelo preview renomeado ou desativado | Média | Alto | `LLM_MODEL` trocável sem mudar código |
+
+---
+*Status: DRAFT — requisitos v2 (experiência de portfólio). Plano de implementação na etapa 4.*
