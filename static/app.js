@@ -225,11 +225,12 @@ $("form-pg").addEventListener("submit", async (ev) => {
 // ---------- conversa ----------
 function definirOcupado(ocupado) {
   // o botão acionado pelo teclado vai ficar disabled: sem isso o foco cai no body
-  if (ocupado && document.activeElement?.tagName === "BUTTON") $("pergunta").focus();
+  if (ocupado && document.activeElement?.matches("button:focus-visible")) $("pergunta").focus({ preventScroll: true });
   estado.ocupado = ocupado;
   $("enviar").disabled = ocupado;
   $("insights").disabled = ocupado;
   $("testar-seguranca").disabled = ocupado;
+  if (!ocupado && document.activeElement === $("cancelar")) $("pergunta").focus({ preventScroll: true });
   $("cancelar").hidden = !ocupado;
   $("form-pergunta").setAttribute("aria-busy", String(ocupado));
   document.querySelectorAll(".chip-exemplo, .chip-sugestao").forEach((b) => { b.disabled = ocupado; });
@@ -239,11 +240,7 @@ function definirOcupado(ocupado) {
 async function enviarFeedback({ turno, nota, motivo }) {
   const corpo = { sessao: estado.sessao, turno, nota };
   if (motivo) corpo.motivo = motivo;
-  try {
-    await postJson("/api/feedback", corpo);
-  } catch {
-    throw new Error("Não consegui enviar o retorno. Tente de novo.");
-  }
+  await postJson("/api/feedback", corpo);
   if ($("metricas").open) carregarMetricas();
 }
 
@@ -268,8 +265,10 @@ async function enviar(pergunta, { exemplo_id = null, substituir = null } = {}) {
   estado.turnos.forEach((t) => t.tirarSugestoes());
   const lista = $("conversa-lista");
   $("vazio").hidden = true;
-  if (substituir && substituir.el.parentNode === lista) lista.replaceChild(turno.el, substituir.el);
-  else lista.append(turno.el);
+  if (substituir && substituir.el.parentNode === lista) {
+    if (substituir.el.contains(document.activeElement)) $("pergunta").focus({ preventScroll: true });
+    lista.replaceChild(turno.el, substituir.el);
+  } else lista.append(turno.el);
   estado.turnos.push(turno);
   turno.el.scrollIntoView({ block: "start", behavior: reduzMovimento() ? "auto" : "smooth" });
 
@@ -311,10 +310,11 @@ async function enviarEspecial(pergunta, exemplo_id = null) {
 
 $("form-pergunta").addEventListener("submit", (ev) => {
   ev.preventDefault();
-  if (estado.ocupado) return; // não limpar o campo: a pergunta digitada durante a análise não pode sumir
+  if (estado.ocupado || estado.carregando) return; // não limpar o campo: a pergunta digitada durante a análise não pode sumir
   const campo = $("pergunta");
   const texto = campo.value;
   if (!texto.trim()) { mostrar("erro-pergunta", "Escreva uma pergunta."); campo.focus(); return; }
+  if (!estado.sessao) { enviar(texto); return; } // mostra o aviso e mantém o texto
   campo.value = "";
   enviar(texto);
 });

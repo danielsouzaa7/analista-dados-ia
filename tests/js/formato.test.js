@@ -26,7 +26,18 @@ Deno.test("M6: valor inválido vira traço", () => {
 
 Deno.test("H4: marcas usam coord [índice, valor] (eixo de categoria)", () => {
   const t = { ink: "#000" };
-  const xs = [1, 2, 3, 4]; // mês numérico: x não pode ir em coord
-  const m = marcas(xs, [5, 9, 2, 4], t);
+  const m = marcas([5, 9, 2, 4], t);
   assertEquals(m.map((p) => p.coord), [[3, 4], [1, 9], [2, 2]]);
+});
+
+Deno.test("N1: percentuais, contagens e taxas de desconto não são moeda", () => {
+  for (const c of ["pct_receita", "receita_pct", "participacao_receita", "percentual_receita", "share_receita", "pct_desconto", "taxa_desconto", "proporcao_desconto", "pedidos_com_desconto", "qtd_desconto", "n_desconto", "count_desconto", "p_valor", "valor_p", "Participação na receita (%)"]) {
+    assertEquals(ehMoeda(c), false, c);
+  }
+});
+
+Deno.test("N1: nomes de dinheiro continuam sendo moeda", () => {
+  for (const c of ["valor_pedido", "taxa_entrega", "desconto", "receita_total", "ticket_medio", "receita (R$)", "preco_unitario"]) {
+    assertEquals(ehMoeda(c), true, c);
+  }
 });

@@ -58,7 +58,9 @@ export function fmtCompacto(v) {
 const MOEDA = /(^|[^a-zà-ú])(valor|receita|faturamento|pre[cç]o|ticket|custo|gasto|taxa_entrega|desconto|frete)|r\$/i;
 const nfMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const nfMoedaCompacta = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
-export const ehMoeda = (coluna) => MOEDA.test(String(coluna ?? ""));
+// percentuais, contagens e taxas de desconto têm nome de dinheiro mas não são dinheiro
+const NAO_MOEDA = /pct|percent|perc_|%|particip|share|propor|qtd|quantidade|contagem|count|_com_|(^|_)n_|p_?valor|valor_p($|[^a-z])|taxa_(?!entrega)|correl/i;
+export const ehMoeda = (coluna) => { const c = String(coluna ?? ""); return !NAO_MOEDA.test(c) && MOEDA.test(c); };
 export function fmtValor(v, coluna, compacto = false) {
   if (typeof v !== "number" || !Number.isFinite(v)) return "–";
   if (!ehMoeda(coluna)) return compacto ? fmtCompacto(v) : fmtNum(v);

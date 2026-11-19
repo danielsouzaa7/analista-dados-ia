@@ -110,7 +110,7 @@ function tendencia(spec, t, larg) {
       name: s.nome || spec.y_nome || "valor", type: "line", data: s.valores, smooth: 0.15, showSymbol: false, symbolSize: 8,
       lineStyle: { width: 2.5, color: cor }, itemStyle: { color: cor, borderColor: t.surface, borderWidth: 2 }, areaStyle: area,
       emphasis: { focus: "none" },
-      markPoint: unica ? { symbol: "circle", symbolSize: 10, itemStyle: { color: cor, borderColor: t.surface, borderWidth: 2 }, data: marcas(xs, s.valores, t, spec.y_nome), animation: false } : undefined,
+      markPoint: unica ? { symbol: "circle", symbolSize: 10, itemStyle: { color: cor, borderColor: t.surface, borderWidth: 2 }, data: marcas(s.valores, t, spec.y_nome), animation: false } : undefined,
     };
   });
   return {

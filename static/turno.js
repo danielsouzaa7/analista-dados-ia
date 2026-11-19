@@ -233,7 +233,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
     bUtil.setAttribute("aria-pressed", "false");
     bNao.setAttribute("aria-pressed", "false");
     linha.append(bUtil, bNao);
-    const msg = el("p", null, "feedback-msg", { role: "status" });
+    const msg = el("p", null, "feedback-msg");
     const motivos = el("div", null, "feedback-motivos");
     motivos.hidden = true;
 
@@ -283,7 +283,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
     if (d.aviso) sec.append(el("p", d.aviso, "aviso-conferencia", { role: "note" }));
     final.append(sec);
     turnoIdx = Number.isInteger(d.turno) ? d.turno : null;
-    if (turnoIdx !== null && aoFeedback) final.append(pedirFeedback(turnoIdx));
+    if (turnoIdx !== null && aoFeedback && !gravacao) final.append(pedirFeedback(turnoIdx));
     const sug = (d.sugestoes || []).filter((s) => typeof s === "string" && s.trim());
     if ((sug.length || extras.length) && aoSugestao) {
       const caixa = el("div", null, "sugestoes");
@@ -301,7 +301,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
     const caixa = el("div", null, "erro-caixa", { role: "alert" });
     caixa.append(el("p", d.mensagem || "Algo deu errado. Tente de novo."));
     if (aoTentar) caixa.append(botao("Tentar de novo", "btn-secundario", aoTentar, "recarregar"));
-    final.append(caixa);
+    agente.insertBefore(caixa, traceBox);
     setStatus("Não deu certo.", true);
     status.classList.add("erro");
   }

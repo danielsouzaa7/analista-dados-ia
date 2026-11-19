@@ -86,7 +86,7 @@ export async function perguntarStream(corpo, aoEvento, { signal } = {}) {
   let recebeuFim = false;
   const parser = new ParserSSE((tipo, dados) => {
     if (tipo === "fim") recebeuFim = true;
-    try { aoEvento(tipo, dados); } catch (e) { reportError(e); } // bug de render não derruba o stream
+    try { aoEvento(tipo, dados); } catch (e) { (globalThis.reportError ?? console.error)(e); } // bug de render não derruba o stream
   });
   const leitor = resp.body.getReader();
   const decoder = new TextDecoder("utf-8");

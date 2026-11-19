@@ -1,7 +1,7 @@
 // Marcas de último/máx./mín. da tendência. Fora de graficos.js para poder ser testada sem DOM.
 import { fmtValor } from "./dom.js";
 
-export function marcas(xs, valores, t, coluna) {
+export function marcas(valores, t, coluna) {
   const ok = valores.map((v, i) => [v, i]).filter(([v]) => v !== null);
   if (!ok.length) return [];
   const ultimo = ok[ok.length - 1][1];
