@@ -66,7 +66,8 @@ function ranking(spec, t, larg) {
   }));
   return {
     ...base(t, spec),
-    grid: { left: 4, right: 64, top: 4, bottom: 4, containLabel: true },
+    // o rótulo fica à direita da barra, fora do grid: reserva a largura do maior (~8 px por caractere em 12 px negrito)
+    grid: { left: 4, right: Math.max(64, fmtV(max, max, spec.y_nome).length * 8 + 8), top: 4, bottom: 4, containLabel: true },
     xAxis: { type: "value", show: false, max: "dataMax" },
     yAxis: {
       type: "category", inverse: true, data: d.map((x) => String(x.rotulo)), axisLine: { show: false }, axisTick: { show: false },

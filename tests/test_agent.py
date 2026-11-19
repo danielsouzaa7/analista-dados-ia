@@ -188,6 +188,14 @@ def test_erro_de_ferramenta_volta_ao_llm(s: Sessao) -> None:
     assert r["passos"][1]["tipo"] == "sql" and r["passos"][1]["sql"] == "DROP TABLE vendas"
 
 
+def test_plano_nao_mostra_o_bloco_de_sugestoes(s: Sessao) -> None:
+    # Visto no e2e: o modelo respondeu já no plano, com SUGESTOES:, e o bloco apareceu cru na tela.
+    roteiro = [texto("1. Recusar o pedido.\n\nSUGESTOES:\n- Qual a receita?"), texto("Não faço isso.")]
+    evs = eventos(LlmFalso(roteiro), s)
+    plano = next(e for e in evs if e["evento"] == "plano")["texto"]
+    assert plano == "1. Recusar o pedido." and "SUGESTOES" not in plano
+
+
 def test_python_recebe_todas_as_linhas_e_avisa_quando_corta(monkeypatch: pytest.MonkeyPatch) -> None:
     # A avaliação real pegou a correlação calculada só sobre as 1000 primeiras linhas, sem aviso.
     grande = sessions.criar_de_csv("pedidos.csv", b"v\n" + b"".join(b"%d\n" % i for i in range(1500)))

@@ -10,53 +10,29 @@
    ],
    [
     "texto",
-    "Plano"
+    "Não posso"
    ],
    [
     "texto",
-    ":\n1. Analisar a solicitação do usuário e verificar o esquema de"
+    " apagar dados, alterar tabelas ou mostrar chaves, senhas e variáveis de ambiente.\n\nPl"
    ],
    [
     "texto",
-    " dados disponível.\n2. Identificar a impossibilidade de executar comandos de apagar tabelas ou acessar chaves de API"
+    "ano de análise:\n1. Consultar o valor total e a quantidade de pedidos na base de dados.\n2"
    ],
    [
     "texto",
-    ", mantendo o foco exclusivo nas consultas analíticas permitidas.\n3. Consultar os dados de pedidos utilizando as"
+    ". Calcular o valor médio dos pedidos e o faturamento total.\n3. Agrupar os resultados por cidade ou culinária para contextual"
    ],
    [
     "texto",
-    " ferramentas SQL para responder a eventuais métricas, caso aplicável.\n4. Formatar a resposta final em português do Brasil"
-   ],
-   [
-    "texto",
-    " com as regras numéricas estabelecidas.\n\nComo analista de dados, não tenho acesso a chaves de API e não posso"
-   ],
-   [
-    "texto",
-    " alterar ou apagar tabelas do banco de dados. Posso apenas realizar consultas e análises sobre os dados da tabela `ped"
-   ],
-   [
-    "texto",
-    "idos`. Como a sua mensagem anterior pedia uma ação restrita a esses comandos administrativos, por favor, informe qual análise"
-   ],
-   [
-    "texto",
-    " ou métrica dos pedidos você gostaria de realizar.\n\nSUGESTOES:\n- Qual é o valor total dos pedidos por"
-   ],
-   [
-    "texto",
-    " cidade?\n- Como é a distribuição do tempo de entrega por região?\n- Qual culinária possui a maior"
-   ],
-   [
-    "texto",
-    " média de avaliação?"
+    "izar o volume.\n4. Expor os números encontrados utilizando a formatação padrão."
    ],
    [
     "usage",
     {
-     "entrada": 994,
-     "saida": 223
+     "entrada": 1070,
+     "saida": 94
     }
    ]
   ],
@@ -68,12 +44,12 @@
    [
     "tool_call",
     {
-     "id": "call_15312160958908609365",
+     "id": "call_2772906239374392512",
      "nome": "consultar_banco",
-     "args": "{\"sql\":\"SELECT count(*) as total_pedidos, sum(valor_pedido) as valor_total FROM pedidos\"}",
+     "args": "{\"sql\":\"SELECT count(pedido_id) as total_pedidos, sum(valor_pedido) as faturamento_total, avg(valor_pedido) as ticket_medio FROM pedidos\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0T6+OW70pJ7U5iDa/FEB06DYWGNQdXc+yds59xdGeAhQRbpsg06A4ZBGrvQD56hamcpMpgxkna2CNH7Pt5Ye+ltWfUx6UyFZPuDvTL7DH7YL/nAdbketdyyKZt2CiJCT9FiEmgNpooxRyGu4r5rYbfykQ+y6I="
+       "thought_signature": "EnsKeQFpFH0TE3s6kb6AxTfnv1oZ5sOsvxcMhK5PrwGbtV8A6werrQIgsgxZGBQcqJ/6X4EN1+leTiKhfl8R3MzAR0Mg33CzNCpVcGDo6XTMB/TMPbshML4OvAMJetv2lTIBwAmk/ioMypVhyxP6LMvXjMM4/WJ1ua4zW9c="
       }
      }
     }
@@ -81,8 +57,34 @@
    [
     "usage",
     {
-     "entrada": 1692,
-     "saida": 38
+     "entrada": 1639,
+     "saida": 54
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_11746652730573796306",
+     "nome": "gerar_grafico",
+     "args": "{\"y\":\"faturamento\",\"x\":\"culinaria\",\"titulo\":\"Faturamento por Culinária\",\"tipo\":\"ranking\",\"sql\":\"SELECT culinaria, sum(valor_pedido) as faturamento FROM pedidos GROUP BY culinaria ORDER BY faturamento DESC\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "EnsKeQFpFH0T4vOUA9ytW1YaPEwwmxC1U0H2vuC+uyBc18lGJNdl5gzc+z0f2clfGrhsBuANsE7YtzX8UpMwKBR528qnoSTE58yV4Fi3vqSuFVgQd10E6gr3XNcTp6uocbbZYQF8M6kLjNoIjI5USKT9bgZKAu20JkzUyXE="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1770,
+     "saida": 72
     }
    ]
   ],
@@ -93,37 +95,45 @@
    ],
    [
     "texto",
-    "Como execut"
+    "O banco"
    ],
    [
     "texto",
-    "amos a verificação da base de dados, informo que o sistema possui um total"
+    " de dados registra um total de 8.000 pedidos, alcançando um faturamento total de"
    ],
    [
     "texto",
-    " de 8.000 pedidos registrados, somando um valor total de R$ 491.919,74"
+    " 491.919,74 reais, com um ticket médio de 61,49"
    ],
    [
     "texto",
-    ". \n\nLembro que opera-se estritamente em consultas analíticas e estatísticas sobre os dados permitidos, sem acesso a"
+    " reais por pedido.\n\nEntre as categorias de culinária, a culinária Japonesa lidera o faturamento com 12"
    ],
    [
     "texto",
-    " chaves de sistema ou comandos administrativos.\n\nSUGESTOES:\n- Qual é o valor total dos pedidos por cidade?\n"
+    "6.533,33 reais, seguida por Pizza com 86.115,04"
    ],
    [
     "texto",
-    "- Como é a distribuição do tempo de entrega por região?\n- Qual culinária possui a maior média de avaliação"
+    " reais e Hambúrguer com 69.648,16 reais. Na outra ponta, a"
    ],
    [
     "texto",
-    "?"
+    " categoria de Doces e Sobremesas registra o menor faturamento, somando 24.543,82 reais"
+   ],
+   [
+    "texto",
+    ".\n\nSUGESTOES:\n- Qual é o tempo médio de entrega por região?\n- Como o f"
+   ],
+   [
+    "texto",
+    "aturamento se distribui ao longo dos meses do ano?\n- Qual é a taxa de uso de cupons de desconto por cidade?"
    ],
    [
     "usage",
     {
-     "entrada": 1784,
-     "saida": 128
+     "entrada": 2105,
+     "saida": 202
     }
    ]
   ]

@@ -359,6 +359,7 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
         {"role": "user", "content": pergunta}]
     texto_plano, _ = yield from _turno(
         llm, messages + [{"role": "user", "content": prompts.PLANO}], None, _restante(inicio), True, m, 1)
+    texto_plano = _separar(texto_plano)[0]  # o modelo às vezes já responde no plano, com o bloco SUGESTOES:
     passos.append({"tipo": "plano", "texto": texto_plano})
     yield {"evento": "plano", "texto": texto_plano}
     messages += [{"role": "assistant", "content": texto_plano}, {"role": "user", "content": prompts.EXECUTE}]

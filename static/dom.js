@@ -144,7 +144,22 @@ export function renderTexto(alvo, texto) {
   const frag = document.createDocumentFragment();
   let par = null;
   let lista = null;
+  let codigo = null; // linhas dentro de uma cerca ``` (o modelo às vezes põe o SQL no plano)
+  const fecharCodigo = () => {
+    const pre = el("pre");
+    pre.append(el("code", codigo.join("\n")));
+    const caixa = el("div", null, "codigo");
+    caixa.append(pre);
+    frag.append(caixa);
+    codigo = null;
+  };
   for (const bruta of String(texto ?? "").split("\n")) {
+    if (/^\s*```/.test(bruta)) {
+      par = null; lista = null;
+      if (codigo) fecharCodigo(); else codigo = [];
+      continue;
+    }
+    if (codigo) { codigo.push(bruta); continue; }
     const linha = bruta.trim();
     const item = /^[-*•]\s+(.*)$/.exec(linha) || /^\d+[.)]\s+(.*)$/.exec(linha);
     const ordenada = /^\d+[.)]\s/.test(linha);
@@ -164,6 +179,7 @@ export function renderTexto(alvo, texto) {
     if (t !== linha) { par.append(el("strong", t)); par = null; continue; }
     inline(par, t);
   }
+  if (codigo) fecharCodigo(); // cerca sem fechamento (stream cortado) ainda vira bloco
   alvo.replaceChildren(frag);
 }
 
