@@ -29,10 +29,8 @@ export class ParserSSE {
   }
 
   fim() {
-    if (this.resto) this.buffer += "\n";
-    this.resto = "";
-    if (this.buffer.trim()) this.#bloco(this.buffer);
-    this.buffer = "";
+    if (this.resto) this.push("\n"); // o "\r" pendente fecha a linha em branco
+    this.buffer = ""; // bloco sem a linha em branco final é descartado (especificação SSE)
   }
 
   #bloco(bloco) {
@@ -47,12 +45,14 @@ export class ParserSSE {
       else if (campo === "data") dados.push(valor);
     }
     if (!dados.length) return;
+    let obj;
     try {
-      const obj = JSON.parse(dados.join("\n"));
-      if (obj && typeof obj === "object") this.aoEvento(tipo, obj);
+      obj = JSON.parse(dados.join("\n"));
     } catch {
-      // bloco com JSON inválido é ignorado: um evento ruim não derruba a conversa
+      return; // bloco com JSON inválido é ignorado: um evento ruim não derruba a conversa
     }
+    // fora do try: exceção do handler não pode ser confundida com JSON ruim
+    if (obj && typeof obj === "object") this.aoEvento(tipo, obj);
   }
 }
 
@@ -86,7 +86,7 @@ export async function perguntarStream(corpo, aoEvento, { signal } = {}) {
   let recebeuFim = false;
   const parser = new ParserSSE((tipo, dados) => {
     if (tipo === "fim") recebeuFim = true;
-    aoEvento(tipo, dados);
+    try { aoEvento(tipo, dados); } catch (e) { reportError(e); } // bug de render não derruba o stream
   });
   const leitor = resp.body.getReader();
   const decoder = new TextDecoder("utf-8");

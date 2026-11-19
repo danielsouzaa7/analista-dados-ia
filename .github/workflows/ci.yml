@@ -47,6 +47,9 @@ jobs:
 
       - run: ruff check .
 
+      - name: Testes do front (JS)
+        run: deno test tests/js/
+
       # Sem PG_TEST_URL: o teste de Postgres real é pulado (roda no job abaixo). Não chama o LLM.
       - run: pytest -q --cov=app --cov-report=term-missing
 

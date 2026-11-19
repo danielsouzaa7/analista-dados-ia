@@ -18,7 +18,7 @@ const EXEMPLOS_FALLBACK = [
   "Pedidos com cupom têm ticket médio diferente? A diferença é significativa?",
 ].map((pergunta) => ({ id: null, botao: pergunta, pergunta, depende_de: null, seguranca: false }));
 
-const estado = { gravacoes: [], sessao: null, fonte: null, exemplos: [], ocupado: false, abort: null, turnos: [] };
+const estado = { gravacoes: [], sessao: null, fonte: null, exemplos: [], ocupado: false, abort: null, turnos: [], carregando: false };
 
 // ---------- utilidades ----------
 function mostrar(id, mensagem) {
@@ -173,6 +173,7 @@ function definirSessao(dados, fonte) {
 }
 
 async function carregarFonte(fonte, fn) {
+  estado.carregando = true;
   mostrar("erro-fonte", "");
   const c = $("carregando-fonte");
   c.textContent = "Carregando os dados…";
@@ -186,6 +187,7 @@ async function carregarFonte(fonte, fn) {
     mostrar("erro-fonte", e.message);
     return false;
   } finally {
+    estado.carregando = false;
     c.hidden = true;
     document.querySelectorAll(".fontes button, #form-pg button").forEach((b) => { b.disabled = false; });
   }
@@ -222,6 +224,8 @@ $("form-pg").addEventListener("submit", async (ev) => {
 
 // ---------- conversa ----------
 function definirOcupado(ocupado) {
+  // o botão acionado pelo teclado vai ficar disabled: sem isso o foco cai no body
+  if (ocupado && document.activeElement?.tagName === "BUTTON") $("pergunta").focus();
   estado.ocupado = ocupado;
   $("enviar").disabled = ocupado;
   $("insights").disabled = ocupado;
@@ -288,7 +292,7 @@ async function enviar(pergunta, { exemplo_id = null, substituir = null } = {}) {
 }
 
 async function enviarExemplo(x) {
-  if (estado.ocupado) return;
+  if (estado.ocupado || estado.carregando) return;
   if (estado.fonte !== "exemplo") {
     const ok = await carregarExemploDados();
     if (!ok) return;
@@ -297,7 +301,7 @@ async function enviarExemplo(x) {
 }
 
 async function enviarEspecial(pergunta, exemplo_id = null) {
-  if (estado.ocupado) return;
+  if (estado.ocupado || estado.carregando) return;
   if (!estado.sessao) {
     const ok = await carregarExemploDados();
     if (!ok) return;
@@ -307,6 +311,7 @@ async function enviarEspecial(pergunta, exemplo_id = null) {
 
 $("form-pergunta").addEventListener("submit", (ev) => {
   ev.preventDefault();
+  if (estado.ocupado) return; // não limpar o campo: a pergunta digitada durante a análise não pode sumir
   const campo = $("pergunta");
   const texto = campo.value;
   if (!texto.trim()) { mostrar("erro-pergunta", "Escreva uma pergunta."); campo.focus(); return; }
@@ -329,6 +334,7 @@ $("testar-seguranca").addEventListener("click", () => {
 });
 
 $("nova-conversa").addEventListener("click", async () => {
+  estado.abort?.abort(); // antes do POST: um stream em curso não pode escrever na conversa nova
   if (estado.sessao) {
     try { await postJson("/api/conversa/nova", { sessao: estado.sessao }); } catch (e) { mostrar("erro-pergunta", e.message); return; }
   }

@@ -54,6 +54,16 @@ export function fmtCompacto(v) {
   if (typeof v !== "number" || !Number.isFinite(v)) return "–";
   return Math.abs(v) < 1000 ? fmtNum(v) : nfCompacto.format(v);
 }
+// shortcut: moeda deduzida pelo nome da coluna; trocar por um campo "unidade" no contrato do gráfico.
+const MOEDA = /(^|[^a-zà-ú])(valor|receita|faturamento|pre[cç]o|ticket|custo|gasto|taxa_entrega|desconto|frete)|r\$/i;
+const nfMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const nfMoedaCompacta = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
+export const ehMoeda = (coluna) => MOEDA.test(String(coluna ?? ""));
+export function fmtValor(v, coluna, compacto = false) {
+  if (typeof v !== "number" || !Number.isFinite(v)) return "–";
+  if (!ehMoeda(coluna)) return compacto ? fmtCompacto(v) : fmtNum(v);
+  return compacto && Math.abs(v) >= 1000 ? nfMoedaCompacta.format(v) : nfMoeda.format(v);
+}
 export function fmtMs(ms) {
   if (typeof ms !== "number" || !Number.isFinite(ms)) return "–";
   return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1).replace(".", ",")} s`;
@@ -65,7 +75,7 @@ export function fmtPct(v, digitos = 2) {
 /** Valor de célula de tabela. Colunas de identificador não ganham separador de milhar. */
 export function fmtCelula(v, coluna) {
   if (v === null || v === undefined) return "";
-  if (typeof v === "number") return /(^|_)id$/i.test(coluna || "") ? String(v) : fmtNum(v);
+  if (typeof v === "number") return /(^|_)id$/i.test(coluna || "") ? String(v) : fmtValor(v, coluna);
   return String(v);
 }
 

@@ -73,7 +73,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
   cab.append(status, selos);
   const trilha = el("ol", null, "trilha");
   const rascunhos = el("div", null, "rascunhos");
-  const final = el("div", null, "final-area");
+  const final = el("div", null, "final-area", { "aria-live": "polite" });
   const traceBox = el("div", null, "trace-area");
   agente.append(cab, trilha, rascunhos, final, traceBox);
   raiz.append(quem, agente);
@@ -91,6 +91,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
 
   const setStatus = (texto, parado = false) => {
     if (temporizador) { clearInterval(temporizador); temporizador = null; }
+    status.querySelector(".contagem")?.remove();
     status.lastChild.textContent = texto;
     status.classList.toggle("parado", parado);
   };
@@ -236,14 +237,18 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
     const motivos = el("div", null, "feedback-motivos");
     motivos.hidden = true;
 
+    msg.tabIndex = -1;
     const enviar = async (nota, motivo) => {
       [bUtil, bNao].forEach((b) => { b.disabled = true; });
+      bUtil.setAttribute("aria-pressed", String(nota === "util"));
+      bNao.setAttribute("aria-pressed", String(nota === "nao_util"));
       motivos.hidden = true;
+      msg.focus(); // o foco estava num motivo que acabou de sumir
       try {
         await aoFeedback({ turno: idx, nota, motivo });
         msg.textContent = "Obrigado, anotado.";
       } catch (e) {
-        [bUtil, bNao].forEach((b) => { b.disabled = false; });
+        [bUtil, bNao].forEach((b) => { b.disabled = false; b.setAttribute("aria-pressed", "false"); });
         msg.textContent = e && e.message ? e.message : "Não consegui enviar. Tente de novo.";
       }
     };
@@ -378,10 +383,13 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
         break;
       case "aguardando_cota": {
         let s = Math.max(0, Math.round(d.segundos || 0));
-        setStatus(`Aguardando cota (${s} s)…`);
+        // só o início é anunciado; a contagem muda a cada segundo e fica fora do leitor de tela
+        setStatus("Aguardando cota");
+        const contagem = el("span", ` (${s} s)…`, "contagem", { "aria-hidden": "true" });
+        status.append(contagem);
         temporizador = setInterval(() => {
           s = Math.max(0, s - 1);
-          status.lastChild.textContent = `Aguardando cota (${s} s)…`;
+          contagem.textContent = ` (${s} s)…`;
         }, 1000);
         break;
       }

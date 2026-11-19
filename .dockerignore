@@ -13,3 +13,7 @@ tests
 **/__pycache__
 *.pyc
 .pytest_cache
+
+# contrato executável de desenvolvimento: não vai para produção
+static/fake-stream.html
+static/fake-api.js

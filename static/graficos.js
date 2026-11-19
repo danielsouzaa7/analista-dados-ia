@@ -1,6 +1,7 @@
 // Gráficos (Apache ECharts) com tema próprio tirado das variáveis CSS --viz-*.
 // Opções montadas só com valores primitivos; todo texto que o ECharts renderiza como HTML passa por esc().
-import { el, esc, fmtNum, fmtCompacto, fmtPct, botao, fmtCelula, reduzMovimento } from "./dom.js";
+import { el, esc, fmtNum, fmtCompacto, fmtValor, fmtPct, botao, fmtCelula, reduzMovimento } from "./dom.js";
+import { marcas } from "./marcas.js";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const MESES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -28,7 +29,7 @@ function hexA(hex, a) {
 
 const semHover = () => matchMedia("(hover: none)").matches;
 const cortar = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + "…" : String(s));
-const fmtV = (v, max) => (Math.abs(max) >= 1e6 ? fmtCompacto(v) : fmtNum(v));
+const fmtV = (v, max, coluna) => (Math.abs(max) >= 1e6 ? fmtValor(v, coluna, true) : fmtValor(v, coluna));
 
 function rotuloData(x, longo) {
   const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(String(x));
@@ -73,11 +74,11 @@ function ranking(spec, t, larg) {
     },
     tooltip: {
       ...base(t, spec).tooltip, trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: hexA(t.ink, 0.06) } },
-      formatter: (ps) => `${esc(ps[0].name)}<br><b>${esc(fmtNum(ps[0].value))}</b> ${esc(spec.y_nome || "")}`,
+      formatter: (ps) => `${esc(ps[0].name)}<br><b>${esc(fmtValor(ps[0].value, spec.y_nome))}</b> ${esc(spec.y_nome || "")}`,
     },
     series: [{
       type: "bar", data: dados, barWidth: 12,
-      label: { show: true, position: "right", color: t.ink, fontSize: 12, fontWeight: 600, formatter: (p) => fmtV(p.value, max) },
+      label: { show: true, position: "right", color: t.ink, fontSize: 12, fontWeight: 600, formatter: (p) => fmtV(p.value, max, spec.y_nome) },
     }],
   };
 }
@@ -95,22 +96,6 @@ function agruparSeries(pontos) {
   return { xs, series: [...porSerie.entries()].slice(0, 4).map(([nome, m]) => ({ nome, valores: xs.map((x) => (Number.isFinite(m.get(x)) ? m.get(x) : null)) })) };
 }
 
-function marcas(xs, valores, t) {
-  const ok = valores.map((v, i) => [v, i]).filter(([v]) => v !== null);
-  if (!ok.length) return [];
-  const ultimo = ok[ok.length - 1][1];
-  const maior = ok.reduce((a, b) => (b[0] > a[0] ? b : a))[1];
-  const menor = ok.reduce((a, b) => (b[0] < a[0] ? b : a))[1];
-  const ponto = (i, rotulo, pos) => ({
-    coord: [xs[i], valores[i]], value: valores[i],
-    label: { show: true, position: pos, formatter: () => `${rotulo}${fmtNum(valores[i])}`, color: t.ink, fontWeight: 700, fontSize: 12, distance: 6 },
-  });
-  const out = [ponto(ultimo, "", "right")];
-  if (maior !== ultimo) out.push(ponto(maior, "máx. ", "top"));
-  if (menor !== ultimo && menor !== maior) out.push(ponto(menor, "mín. ", "bottom"));
-  return out;
-}
-
 function tendencia(spec, t, larg) {
   const { xs, series } = agruparSeries(spec.dados || []);
   const unica = series.length <= 1;
@@ -125,7 +110,7 @@ function tendencia(spec, t, larg) {
       name: s.nome || spec.y_nome || "valor", type: "line", data: s.valores, smooth: 0.15, showSymbol: false, symbolSize: 8,
       lineStyle: { width: 2.5, color: cor }, itemStyle: { color: cor, borderColor: t.surface, borderWidth: 2 }, areaStyle: area,
       emphasis: { focus: "none" },
-      markPoint: unica ? { symbol: "circle", symbolSize: 10, itemStyle: { color: cor, borderColor: t.surface, borderWidth: 2 }, data: marcas(xs, s.valores, t), animation: false } : undefined,
+      markPoint: unica ? { symbol: "circle", symbolSize: 10, itemStyle: { color: cor, borderColor: t.surface, borderWidth: 2 }, data: marcas(xs, s.valores, t, spec.y_nome), animation: false } : undefined,
     };
   });
   return {
@@ -138,12 +123,12 @@ function tendencia(spec, t, larg) {
       axisPointer: { lineStyle: { color: t.axis } },
     },
     yAxis: {
-      type: "value", min: 0, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: t.grid } },
-      axisLabel: { color: t.muted, fontSize: 11, formatter: (v) => fmtCompacto(v) },
+      type: "value", min: (e) => Math.min(0, e.min), axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: t.grid } },
+      axisLabel: { color: t.muted, fontSize: 11, formatter: (v) => fmtValor(v, spec.y_nome, true) },
     },
     tooltip: {
       ...base(t, spec).tooltip, trigger: "axis", axisPointer: { type: "line", lineStyle: { color: t.axis } },
-      formatter: (ps) => `${esc(rotuloData(ps[0].axisValue, true))}` + ps.map((p) => `<br>${p.marker} ${esc(p.seriesName)}: <b>${esc(fmtV(p.value, max))}</b>`).join(""),
+      formatter: (ps) => `${esc(rotuloData(ps[0].axisValue, true))}` + ps.map((p) => `<br>${p.marker} ${esc(p.seriesName)}: <b>${esc(fmtV(p.value, max, spec.y_nome))}</b>`).join(""),
     },
     series: serieEc,
   };
@@ -162,11 +147,11 @@ function composicao(spec, t, larg) {
     ...base(t, spec),
     tooltip: {
       ...base(t, spec).tooltip, trigger: "item",
-      formatter: (p) => `${esc(p.name)}<br><b>${esc(fmtNum(p.value))}</b> · ${esc(fmtPct(pct(p.value), 1))}`,
+      formatter: (p) => `${esc(p.name)}<br><b>${esc(fmtValor(p.value, spec.y_nome))}</b> · ${esc(fmtPct(pct(p.value), 1))}`,
     },
     graphic: [{
       type: "text", left: "center", top: "center", silent: true,
-      style: { text: `{a|${fmtCompacto(total)}}\n{b|total}`, textAlign: "center", rich: { a: { fontSize: estreito ? 22 : 26, fontWeight: 800, fill: t.ink, fontFamily: t.font, lineHeight: 30 }, b: { fontSize: 12, fill: t.muted, fontFamily: t.font } } },
+      style: { text: `{a|${fmtValor(total, spec.y_nome, true)}}\n{b|total}`, textAlign: "center", rich: { a: { fontSize: estreito ? 22 : 26, fontWeight: 800, fill: t.ink, fontFamily: t.font, lineHeight: 30 }, b: { fontSize: 12, fill: t.muted, fontFamily: t.font } } },
     }],
     series: [{
       type: "pie", radius: estreito ? ["56%", "86%"] : ["48%", "70%"], center: ["50%", "50%"], startAngle: 90, minAngle: 3,
@@ -232,7 +217,7 @@ function dispersao(spec, t) {
   const eixo = (nome, gap, rot) => ({
     type: "value", scale: true, name: cortar(nome || "", 28), nameLocation: "middle", nameGap: gap, nameRotate: rot,
     nameTextStyle: { color: t.ink2, fontSize: 12 }, axisLine: { show: false }, axisTick: { show: false },
-    splitLine: { lineStyle: { color: t.grid } }, axisLabel: { color: t.muted, fontSize: 11, formatter: (v) => fmtCompacto(v) },
+    splitLine: { lineStyle: { color: t.grid } }, axisLabel: { color: t.muted, fontSize: 11, formatter: (v) => fmtValor(v, nome, true) },
   });
   return {
     ...base(t, spec),
@@ -241,7 +226,7 @@ function dispersao(spec, t) {
     yAxis: eixo(spec.y_nome, 44, 90),
     tooltip: {
       ...base(t, spec).tooltip, trigger: "item",
-      formatter: (p) => `${esc(spec.x_nome || "x")}: <b>${esc(fmtNum(p.value[0]))}</b><br>${esc(spec.y_nome || "y")}: <b>${esc(fmtNum(p.value[1]))}</b>`,
+      formatter: (p) => `${esc(spec.x_nome || "x")}: <b>${esc(fmtValor(p.value[0], spec.x_nome))}</b><br>${esc(spec.y_nome || "y")}: <b>${esc(fmtValor(p.value[1], spec.y_nome))}</b>`,
     },
     series,
   };

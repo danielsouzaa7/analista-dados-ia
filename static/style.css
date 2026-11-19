@@ -27,7 +27,7 @@
   --warn-line: #b7791f;
   --danger: #a82219;
   --danger-bg: #fdeceb;
-  --ring: #f2a900;
+  --ring: #4c3bb8; /* contraste >= 3:1 no fundo claro (WCAG 1.4.11) */
 
   /* gráficos (--viz-*) */
   --viz-ink: #14121c; --viz-ink2: #4a4858; --viz-muted: #62607a; --viz-grid: #e1e0d9; --viz-axis: #c3c2b7;
