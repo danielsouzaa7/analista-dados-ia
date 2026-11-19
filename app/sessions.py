@@ -82,7 +82,9 @@ def criar_de_csv(nome_arquivo: str, conteudo: bytes) -> Sessao:
         csv.write_bytes(conteudo)
         con = duckdb.connect(str(pasta / "dados.duckdb"))
         try:
-            con.execute(f'CREATE TABLE "{tabela}" AS SELECT * FROM read_csv(?, skip=0, header=true)', [str(csv)])
+            # mesmo dialeto que _checar_largura assume; o delimitador segue automático
+            con.execute(f'CREATE TABLE "{tabela}" AS SELECT * FROM read_csv(?, skip=0, header=true, '
+                        "quote='\"', escape='\"')", [str(csv)])
             colunas = con.execute(
                 "SELECT column_name, data_type FROM information_schema.columns "
                 "WHERE table_name = ? ORDER BY ordinal_position", [tabela]).fetchall()

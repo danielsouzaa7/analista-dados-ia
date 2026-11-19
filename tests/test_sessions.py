@@ -245,3 +245,18 @@ def test_keepalive_nao_impede_o_ttl_de_10_min_da_sessao_sem_pergunta(monkeypatch
 
 def test_nome_de_tabela_com_prefixo_t_continua_em_64_caracteres() -> None:
     assert len(sessions.criar_de_csv("2024_" + "vendas" * 20 + ".csv", CSV_A).tabelas[0]["nome"]) <= 64
+
+
+@pytest.mark.parametrize("conteudo", [
+    ("'" + ",".join(f"c{i}" for i in range(300)) + "'\n" + ",".join("1" for _ in range(300)) + "\n"),
+    ("'" + ",".join(f"c{i}" for i in range(300)) + "'\n'" + ",".join("1" for _ in range(300)) + "'\n"),
+    ('"' + ",".join(f"c{i}" for i in range(300)).replace("c5", '\\"c5') + '"\n1\n'),
+    ("a,b\n" + '"' + "\\\",".join("x" for _ in range(300)) + '",1\n'),
+    ("\\\"" + ",".join(f"c{i}" for i in range(300)) + "\n" + ",".join("1" for _ in range(300)) + "\n"),
+], ids=["aspa_simples", "aspa_simples_dados", "escape_barra_no_cab", "escape_barra_nos_dados", "barra_aspa_inicio"])
+def test_dialeto_divergente_nao_abre_mais_de_200_colunas(conteudo: str) -> None:
+    try:
+        colunas = sessions.criar_de_csv("a.csv", conteudo.encode()).tabelas[0]["colunas"]
+        assert len(colunas) <= 200
+    except ErroUsuario:
+        pass
