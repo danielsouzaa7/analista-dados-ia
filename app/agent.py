@@ -10,7 +10,7 @@ import os
 import re
 import time
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from decimal import Decimal
 from typing import Any
 
@@ -46,6 +46,8 @@ TIPOS = {"consultar_banco": "sql", "rodar_python": "python", "gerar_grafico": "g
 # Pedaços normalizados: ("texto", str) | ("tool_call", {id, nome, args, extra_content}) | ("usage", {entrada, saida})
 # | ("modelo", str) | ("espera", segundos)
 LlmFn = Callable[[list[dict], list[dict] | None, float], Iterator[tuple]]
+# (id da tool_call, código, csv, segundos restantes da pergunta) -> eventos ao vivo; devolve {"saida", "erro"}
+ExecutorPython = Callable[[str, str, str, float], Generator[dict, None, dict]]
 
 TOOLS = [
     {"type": "function", "function": {
@@ -172,8 +174,16 @@ def _csv(r: sql_tool.Resultado) -> tuple[str, int]:
     return buf.getvalue(), len(r.linhas)
 
 
-def _rodar(nome: str, args: dict, sessao: Sessao, timeout: float) -> tuple[str, dict]:
+def python_deno(id_: str, codigo: str, csv: str, restante: float) -> Generator[dict, None, dict]:
+    """Executor padrão (avaliação, testes, regressão): sandbox Deno no servidor, sem eventos próprios."""
+    yield from ()
+    return python_tool.rodar(codigo, csv, timeout=min(30, restante))  # lookup no módulo: monkeypatch vale
+
+
+def _rodar(tc_id: str, nome: str, args: dict, sessao: Sessao, restante: float,
+           python: ExecutorPython) -> Generator[dict, None, tuple[str, dict]]:
     """Roda uma ferramenta: devolve o texto para o LLM e os campos extras de ferramenta_fim (levanta ErroUsuario)."""
+    timeout = min(30, restante)
     if nome == "consultar_banco":
         r = sql_tool.executar(sessao, args["sql"], timeout=timeout)
         extra = {"colunas": r.colunas, "linhas": _linhas_do_evento(r.linhas),
@@ -182,7 +192,7 @@ def _rodar(nome: str, args: dict, sessao: Sessao, timeout: float) -> tuple[str, 
     if nome == "rodar_python":
         r = sql_tool.executar(sessao, args["sql"], limite=MAX_LINHAS_PYTHON, timeout=timeout)
         dados, cabem = _csv(r)
-        res = python_tool.rodar(args["codigo"], dados, timeout=timeout)
+        res = yield from python(tc_id, args["codigo"], dados, restante)
         if res["erro"]:
             raise ErroUsuario(f"Erro no Python: {res['erro']}")
         aviso = (f"Atenção: o df recebeu só as {cabem} primeiras linhas do SELECT (resultado cortado). "
@@ -223,7 +233,7 @@ def _ms(desde: float) -> int:
 
 
 def _ferramenta(tc: dict, sessao: Sessao, passos: list[dict], resultados: list[str],
-                restante: float) -> Iterator[dict]:
+                restante: float, python: ExecutorPython) -> Iterator[dict]:
     """Roda uma tool_call; erros viram texto de volta para o LLM. Devolve o texto da ferramenta."""
     nome, bruto, desde = tc["nome"], tc["args"], time.perf_counter()
     args: dict = {}
@@ -236,7 +246,7 @@ def _ferramenta(tc: dict, sessao: Sessao, passos: list[dict], resultados: list[s
         if nome in TIPOS:
             yield {"evento": "ferramenta_inicio", "id": tc["id"], "tipo": TIPOS[nome], "sql": args.get("sql", ""),
                    **({"codigo": args.get("codigo", "")} if nome == "rodar_python" else {})}
-        texto, extra = _rodar(nome, args, sessao, min(30, restante))
+        texto, extra = yield from _rodar(tc["id"], nome, args, sessao, restante, python)
         resultados.append(texto + chr(10) + bruto)  # o SQL/código também é fonte dos números
     except (ErroUsuario, KeyError, TypeError, json.JSONDecodeError) as e:
         texto = erro = f"Erro: {e}" if isinstance(e, ErroUsuario) else "Erro: argumentos inválidos."
@@ -247,7 +257,7 @@ def _ferramenta(tc: dict, sessao: Sessao, passos: list[dict], resultados: list[s
 
 
 def _lote(tool_calls: list[dict], sessao: Sessao, passos: list[dict], resultados: list[str],
-          messages: list[dict], inicio: float, m: dict) -> Iterator[dict]:
+          messages: list[dict], inicio: float, m: dict, python: ExecutorPython) -> Iterator[dict]:
     """Executa as tool_calls; levanta ErroUsuario se estourar chamadas ou tempo."""
     for tc in tool_calls:
         if m["ferramentas"] >= MAX_CHAMADAS:
@@ -256,7 +266,7 @@ def _lote(tool_calls: list[dict], sessao: Sessao, passos: list[dict], resultados
         if restante <= 0:
             raise ErroUsuario(MSG_LIMITE)
         m["ferramentas"] += 1
-        texto = yield from _ferramenta(tc, sessao, passos, resultados, restante)
+        texto = yield from _ferramenta(tc, sessao, passos, resultados, restante, python)
         messages.append({"role": "tool", "tool_call_id": tc["id"], "content": _como_dado(texto)})
 
 
@@ -366,7 +376,8 @@ def _guardar_turno(sessao: Sessao, pergunta: str, resposta: str, passos: list[di
     sessao.turnos += 1
 
 
-def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inicio: float) -> Iterator[dict]:
+def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inicio: float,
+          python: ExecutorPython) -> Iterator[dict]:
     passos, resultados = saida["passos"], []
     anteriores = [t["resultados"] for t in sessao.historico]
     saidas_anteriores = [o for t in sessao.historico for o in t.get("saidas_python", [])]
@@ -389,7 +400,7 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
         texto, chamadas = yield from _turno(llm, messages, TOOLS, restante, False, m, saida["reanalises"] + 1)
         messages.append(_msg_assistente(texto, chamadas))
         if chamadas:
-            yield from _lote(chamadas, sessao, passos, resultados, messages, inicio, m)
+            yield from _lote(chamadas, sessao, passos, resultados, messages, inicio, m, python)
             continue
         corpo, sugestoes = _separar(texto)
         if not corpo:
@@ -413,7 +424,8 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
         return
 
 
-def executar(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict | None = None) -> Iterator[dict]:
+def executar(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict | None = None,
+             python: ExecutorPython = python_deno) -> Iterator[dict]:
     """Gera os eventos do contrato SSE (dicts {"evento": nome, **dados}). `saida`, se dada, recebe o dict final."""
     saida = saida if saida is not None else {}
     saida.update(passos=[], resposta="", reanalises=0, aviso=None, sugestoes=[], erro_tipo=None,
@@ -423,7 +435,7 @@ def executar(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict | None = Non
     yield {"evento": "recebido", "modelo": config.LLM_MODEL, "turno": sessao.turnos + 1}
     erro = tipo = None
     try:
-        yield from _loop(pergunta, sessao, llm, saida, m, inicio)
+        yield from _loop(pergunta, sessao, llm, saida, m, inicio, python)
     except ErroUsuario as e:
         erro, tipo = str(e), _TIPO_ERRO.get(str(e), "validacao")
     except openai.RateLimitError:
@@ -442,9 +454,9 @@ def executar(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict | None = Non
     yield {"evento": "fim"}
 
 
-def responder(pergunta: str, sessao: Sessao, llm: LlmFn) -> dict:
+def responder(pergunta: str, sessao: Sessao, llm: LlmFn, python: ExecutorPython = python_deno) -> dict:
     saida: dict = {}
-    for _ in executar(pergunta, sessao, llm, saida=saida):
+    for _ in executar(pergunta, sessao, llm, saida=saida, python=python):
         pass
     return saida
 

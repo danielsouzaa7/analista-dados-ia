@@ -250,6 +250,54 @@ def test_python_usa_resultado_do_sql(s: Sessao, monkeypatch: pytest.MonkeyPatch)
     assert r["aviso"] is None
 
 
+def _roteiro_python() -> list:
+    return [texto("plano"),
+            chamada("rodar_python", id="py1", sql="SELECT valor FROM vendas", codigo="print(df.valor.mean())"),
+            texto("A média é 175,0.")]
+
+
+def test_executor_injetado_recebe_id_codigo_csv_e_restante(s: Sessao) -> None:
+    recebido: list[tuple] = []
+
+    def executor(id_: str, codigo: str, csv: str, restante: float):
+        recebido.append((id_, codigo, csv, restante))
+        yield from ()
+        return {"saida": "175.0\n", "erro": None}
+
+    r = agent.responder("Qual a média?", s, LlmFalso(_roteiro_python()), python=executor)
+    assert len(recebido) == 1
+    id_, codigo, csv, restante = recebido[0]
+    assert (id_, codigo, csv) == ("py1", "print(df.valor.mean())", "valor\r\n100\r\n250\r\n")
+    assert 0 < restante <= 120
+    assert r["passos"][1]["saida"] == "175.0\n"
+
+
+def test_eventos_do_executor_saem_entre_inicio_e_fim_da_ferramenta(s: Sessao) -> None:
+    def executor(id_: str, codigo: str, csv: str, restante: float):
+        yield {"evento": "python_pedido", "id": id_}
+        return {"saida": "175.0\n", "erro": None}
+
+    evs = list(agent.executar("Qual a média?", s, LlmFalso(_roteiro_python()), python=executor))
+    ordem = nomes(evs)
+    assert ordem.index("ferramenta_inicio") + 1 == ordem.index("python_pedido") == ordem.index("ferramenta_fim") - 1
+
+
+def test_padrao_continua_sendo_o_deno(monkeypatch: pytest.MonkeyPatch) -> None:
+    chamadas: list[tuple] = []
+
+    def falso(codigo: str, csv: str, timeout: float = 30) -> dict:
+        chamadas.append((codigo, csv, timeout))
+        return {"saida": "ok", "erro": None}
+
+    monkeypatch.setattr(python_tool, "rodar", falso)
+    gerador = agent.python_deno("i", "print(1)", "a\r\n1\r\n", 12.5)
+    with pytest.raises(StopIteration) as fim:
+        next(gerador)
+    assert fim.value.value == {"saida": "ok", "erro": None}
+    assert chamadas == [("print(1)", "a\r\n1\r\n", 12.5)]
+    assert agent.executar.__defaults__[-1] is agent.python_deno
+
+
 def test_prompt_nunca_contem_url_postgres() -> None:
     url = "postgresql://usuario:senhaSecreta123@host:5432/banco"
     sessao = Sessao(id="x", tipo="postgres", pg_url=url, tabelas=[
