@@ -274,7 +274,8 @@ def test_upload_simultaneo_nao_passa_do_teto_de_sessoes(client: TestClient, monk
 def test_cabecalhos_de_seguranca(client: TestClient) -> None:
     h = client.get("/").headers
     assert h["x-content-type-options"] == "nosniff" and h["referrer-policy"] == "no-referrer"
-    assert "frame-ancestors 'self' https://huggingface.co https://*.hf.space" in h["content-security-policy"]
+    assert h["content-security-policy"].endswith("frame-ancestors 'none'")
+    assert "huggingface" not in h["content-security-policy"]
     csp = h["content-security-policy"]
     assert "script-src 'self' https://cdnjs.cloudflare.com" in csp
     assert "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" in csp

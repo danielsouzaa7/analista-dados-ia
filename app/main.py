@@ -63,7 +63,7 @@ CABECALHOS = {
         "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
         "img-src 'self' data:; connect-src 'self'; worker-src 'self' https://cdn.jsdelivr.net/pyodide/v0.28.3/full/; object-src 'none'; base-uri 'none'; form-action 'self'; "
-        "frame-ancestors 'self' https://huggingface.co https://*.hf.space"),  # sem X-Frame-Options: o HF usa iframe
+        "frame-ancestors 'none'"),  # ninguém embute a página em iframe
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
 }

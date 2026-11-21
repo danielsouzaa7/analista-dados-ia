@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  DENO_VERSION: "2.9.8" # a mesma do Dockerfile
+  DENO_VERSION: "2.9.8" # só para os testes do sandbox e da avaliação; a imagem do Dockerfile não tem Deno
 
 jobs:
   testes:
@@ -108,4 +108,4 @@ jobs:
 
       - run: playwright install --with-deps chromium firefox webkit
 
-      - run: E2E_PYODIDE=1 pytest tests/e2e/test_python_worker.py tests/e2e/test_python_navegador.py -q
+      - run: E2E_PYODIDE=1 pytest tests/e2e/test_python_worker.py tests/e2e/test_python_worker_fuga_extra.py tests/e2e/test_python_navegador.py -q
