@@ -115,3 +115,46 @@ def test_pasta_vazia_nao_quebra(tmp_path):
     r = tc.medir(tmp_path)
     assert r["ativo"] == timedelta(0) and r["paralelismo"] == 0
     assert "Como foi medido" in tc.markdown(r)
+
+
+def texto(m, conteudo):
+    return {"type": "user", "timestamp": ts(m), "message": {"content": conteudo}}
+
+
+def test_comandos_do_dono_e_lembretes_nao_encerram_a_espera(tmp_path):
+    neutras = ["<bash-input>ls</bash-input>", "<bash-stdout>x</bash-stdout>", "<system-reminder>x</system-reminder>"]
+    for i, c in enumerate(neutras):
+        pasta = tmp_path / str(i)
+        escrever(pasta / "s1.jsonl", [humano(0), fim_turno(1), texto(3, c), humano(4)])
+        assert tc.medir(pasta)["ativo"] == timedelta(minutes=1), c
+
+
+def test_notificacao_automatica_dispara_trabalho_e_encerra_a_espera(tmp_path):
+    for i, c in enumerate(["<task-notification>x</task-notification>", "[SYSTEM NOTIFICATION - NOT USER INPUT] x"]):
+        pasta = tmp_path / str(i)
+        escrever(pasta / "s1.jsonl", [humano(0), fim_turno(1), texto(30, c), assistente(32), fim_turno(32)])
+        assert tc.medir(pasta)["ativo"] == timedelta(minutes=3), c  # 0-1 e 30-32; a espera 1-30 e ociosa
+
+
+def test_trabalho_apos_notificacao_conta_mesmo_com_espera_curta(tmp_path):
+    escrever(tmp_path / "s1.jsonl", [humano(0), fim_turno(1), texto(3, "<task-notification>x"), assistente(5)])
+    assert tc.medir(tmp_path)["ativo"] == timedelta(minutes=3)  # 0-1 e 3-5
+
+
+def test_espera_aberta_de_uma_sessao_nao_apaga_o_trabalho_de_outra(tmp_path):
+    escrever(tmp_path / "s1.jsonl", [humano(0), fim_turno(1)])  # sessao termina esperando o dono
+    escrever(tmp_path / "s2.jsonl", [humano(100), assistente(102)])
+    assert tc.medir(tmp_path)["ativo"] == timedelta(minutes=3)
+
+
+def test_sessoes_sobrepostas_nao_contam_o_mesmo_tempo_duas_vezes(tmp_path):
+    escrever(tmp_path / "s1.jsonl", [humano(0), assistente(4)])
+    escrever(tmp_path / "s2.jsonl", [humano(2), assistente(6)])
+    assert tc.medir(tmp_path)["ativo"] == timedelta(minutes=6)
+
+
+def test_agente_trabalhando_cobre_a_espera_da_conversa_principal(tmp_path):
+    escrever(tmp_path / "s1.jsonl", [humano(0), fim_turno(1, pendentes=1), texto(7, "<task-notification>x"), humano(9)])
+    subagente(tmp_path, "s1", "a1", "ecc:planner", [assistente(2), assistente(4), assistente(6)])
+    # pendentes=1: nao ha espera; a notificacao nao muda nada e todo o intervalo (0-9) e continuo
+    assert tc.medir(tmp_path)["ativo"] == timedelta(minutes=9)

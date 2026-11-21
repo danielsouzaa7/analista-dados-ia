@@ -5,7 +5,7 @@ Lê só timestamps, tipos e metadados; nunca copia texto de mensagens.
 """
 import argparse
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -51,14 +51,22 @@ def _ler(caminho: Path) -> list[dict]:
     return eventos
 
 
-def _humano(e: dict) -> bool:
+# role=user que NÃO encerram a espera: comandos `!` do dono (o tempo do comando não é construção),
+# lembretes e hooks. Já as notificações automáticas (tarefa, agente, outra sessão) iniciam trabalho: encerram.
+NEUTRAS = ("<bash-input", "<bash-stdout", "<bash-stderr", "<local-command", "<system-reminder",
+           "<user-prompt-submit-hook")
+
+
+def _retoma(e: dict) -> bool:
+    """Evento de usuário que volta a pôr a conversa para trabalhar (dono digitando ou notificação)."""
     if e.get("type") != "user" or e.get("isMeta"):
         return False
     c = (e.get("message") or {}).get("content")
-    if isinstance(c, str):
-        return True
-    blocos = [b.get("type") for b in c if isinstance(b, dict)] if isinstance(c, list) else []
-    return "text" in blocos and "tool_result" not in blocos
+    if isinstance(c, list):
+        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c):
+            return False
+        c = next((b.get("text") for b in c if isinstance(b, dict) and b.get("type") == "text"), None)
+    return isinstance(c, str) and not c.lstrip().startswith(NEUTRAS)
 
 
 def _esperas(eventos: list[dict]) -> list[tuple[datetime, datetime]]:
@@ -69,22 +77,42 @@ def _esperas(eventos: list[dict]) -> list[tuple[datetime, datetime]]:
             if e.get("type") == "system" and e.get("subtype") == "turn_duration" \
                     and not e.get("pendingBackgroundAgentCount"):
                 inicio = e["_ts"]
-        elif _humano(e):
+        elif _retoma(e):
             esperas.append((inicio, e["_ts"]))
             inicio = None
-    if inicio is not None:
-        esperas.append((inicio, datetime.max.replace(tzinfo=UTC)))
+    if inicio is not None:  # a espera aberta vai até o último evento desta sessão, não além
+        esperas.append((inicio, max(e["_ts"] for e in eventos)))
     return esperas
 
 
-def _ativo(instantes: list[datetime], esperas=()) -> timedelta:
-    total = timedelta(0)
+def _segmentos(instantes: list[datetime], esperas=()) -> list[tuple[datetime, datetime]]:
+    """Trechos entre eventos consecutivos (até OCIOSO_MAX) menos as esperas do dono."""
+    segs = []
     instantes = sorted(instantes)
     for a, b in zip(instantes, instantes[1:], strict=False):
         if b - a > OCIOSO_MAX:
             continue
-        total += (b - a) - sum((max(timedelta(0), min(b, f) - max(a, i)) for i, f in esperas), timedelta(0))
+        partes = [(a, b)]
+        for i, f in esperas:
+            partes = [p for x, y in partes for p in ((x, min(y, i)), (max(x, f), y)) if p[0] < p[1]]
+        segs += partes
+    return segs
+
+
+def _soma(segs: list[tuple[datetime, datetime]]) -> timedelta:
+    """Duração da união dos trechos (sessões sobrepostas não contam duas vezes)."""
+    total, fim = timedelta(0), None
+    for a, b in sorted(segs):
+        if fim is None or a > fim:
+            total += b - a
+        elif b > fim:
+            total += b - fim
+        fim = b if fim is None else max(fim, b)
     return total
+
+
+def _ativo(instantes: list[datetime], esperas=()) -> timedelta:
+    return _soma(_segmentos(instantes, esperas))
 
 
 def _meta(caminho: Path) -> str | None:
@@ -95,28 +123,32 @@ def _meta(caminho: Path) -> str | None:
 
 
 def medir(pasta: Path) -> dict:
-    todos, esperas, sessoes = [], [], sorted(pasta.glob("*.jsonl"))
+    todos, segmentos, sessoes = [], [], sorted(pasta.glob("*.jsonl"))
     por_categoria = {c: [0, timedelta(0)] for c in ORDEM_CATEGORIAS}
     agentes = timedelta(0)
     n_agentes = 0
+    por_sessao = []
     for s in sessoes:
         eventos = _ler(s)
-        todos += [e["_ts"] for e in eventos]
-        esperas += _esperas(eventos)
+        da_sessao = [e["_ts"] for e in eventos]
         for a in sorted((s.parent / s.stem / "subagents").glob("agent-*.jsonl")):
             instantes = [e["_ts"] for e in _ler(a)]
             tempo = _ativo(instantes)
-            todos += instantes
+            da_sessao += instantes
             agentes += tempo
             n_agentes += 1
             por_categoria[categoria(_meta(a))][0] += 1
             por_categoria[categoria(_meta(a))][1] += tempo
-    ativo = _ativo(todos, esperas)
+        todos += da_sessao
+        segs = _segmentos(da_sessao, _esperas(eventos))
+        segmentos += segs
+        por_sessao.append((s.stem[:8], _soma(segs)))
+    ativo = _soma(segmentos)
     corrido = max(todos) - min(todos) if todos else timedelta(0)
     return {
         "ativo": ativo, "corrido": corrido, "parado": corrido - ativo, "agentes": agentes,
         "paralelismo": agentes / ativo if ativo else 0, "n_sessoes": len(sessoes), "n_agentes": n_agentes,
-        "categorias": por_categoria,
+        "categorias": por_categoria, "por_sessao": por_sessao,
         "inicio": min(todos) if todos else None, "fim": max(todos) if todos else None,
     }
 
@@ -145,12 +177,21 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
         f"| Agentes | {r['n_agentes']} |", "",
         "| Categoria de agente | Agentes | Tempo somado |", "|---|---|---|",
         *[f"| {c} | {n} | {hm(t)} |" for c, (n, t) in r["categorias"].items()], "",
+        "| Sessão | Ativo |", "|---|---|", *[f"| {i} | {hm(t)} |" for i, t in r["por_sessao"]], "",
         "## Como foi medido", "",
         "1. Todos os eventos (conversa principal e subagentes) entram numa linha do tempo única.",
         f"2. Tempo ativo = soma dos intervalos entre eventos consecutivos de até {int(OCIOSO_MAX.total_seconds() // 60)}"
         " minutos; intervalos maiores são parada e não contam.",
-        "3. A espera pela resposta do Daniel (do fim de um turno até a próxima mensagem dele) não conta, "
-        "salvo se havia agentes em segundo plano trabalhando.",
+        "3. A espera pelo Daniel (do fim de um turno, sem agentes em segundo plano pendentes, até a próxima "
+        "mensagem que ponha a conversa para trabalhar) não conta. A espera é por sessão: o fim de uma sessão "
+        "não desconta o trabalho de outra, e sessões sobrepostas não contam o mesmo minuto duas vezes.",
+        "3a. Notificações automáticas (fim de tarefa ou de agente, mensagem de outra sessão) chegam como "
+        "role=user, mas não são o Daniel; como disparam trabalho do Claude, encerram a espera, e o tempo "
+        "trabalhado depois delas conta. Resultados de ferramenta, lembretes do sistema e mensagens de hook "
+        "nunca encerram a espera.",
+        "3b. Comandos `!` do Daniel (entrada e saída) são ações dele, mas o tempo do comando não é "
+        "construção: não encerram a espera, que só acaba na próxima mensagem digitada ou notificação. Se o "
+        "comando ocorrer com a conversa ou um agente já trabalhando, esse trabalho continua contando.",
         "4. Tempo dos agentes = tempo ativo de cada subagente na sua própria linha do tempo, somado e agrupado "
         "por tipo; paralelismo = tempo somado dos agentes / tempo ativo de relógio.",
         "5. Período = primeiro e último evento, em horário de São Paulo; relógio corrido = último menos primeiro.",
