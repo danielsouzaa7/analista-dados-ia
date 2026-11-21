@@ -18,7 +18,7 @@ import openai
 from openai import OpenAI
 
 from app import config, graficos, prompts, python_tool, sql_tool
-from app.checker import numeros_nao_conferidos
+from app.checker import numeros_nao_conferidos, sem_citacoes_de_p, significancia_sem_p_valor, tem_p_valor
 from app.errors import ErroUsuario
 from app.sessions import Sessao
 
@@ -257,7 +257,7 @@ def _lote(tool_calls: list[dict], sessao: Sessao, passos: list[dict], resultados
             raise ErroUsuario(MSG_LIMITE)
         m["ferramentas"] += 1
         texto = yield from _ferramenta(tc, sessao, passos, resultados, restante)
-        messages.append({"role": "tool", "tool_call_id": tc["id"], "content": texto})
+        messages.append({"role": "tool", "tool_call_id": tc["id"], "content": _como_dado(texto)})
 
 
 class _Retentor:
@@ -341,11 +341,27 @@ def _msg_assistente(texto: str, chamadas: list[dict]) -> dict:
     return msg
 
 
+def _saidas_python(passos: list[dict]) -> list[str]:
+    """Saídas do Python sem erro: só elas provam um p-valor (os resultados incluem o código e o SQL)."""
+    return [p["saida"] for p in passos if p["tipo"] == "python" and not p.get("erro") and p.get("saida")]
+
+
+def _conferir(corpo: str, fontes: list[str], saidas: list[str], pergunta: str) -> tuple[list[str], bool, str, str | None]:
+    """(números que faltam, afirma significância sem p-valor, pedido de reanálise, aviso final)."""
+    texto = sem_citacoes_de_p(corpo) if tem_p_valor(saidas) else corpo  # "p < 0,001" não é número a conferir
+    faltam = numeros_nao_conferidos(texto, fontes, pergunta)
+    sem_teste = significancia_sem_p_valor(corpo, saidas)
+    pedido = " ".join(([prompts.REANALISE.format(numeros=", ".join(faltam))] if faltam else [])
+                      + ([prompts.REANALISE_SIGNIFICANCIA] if sem_teste else []))
+    avisos = ([f"Alguns números não puderam ser conferidos: {', '.join(faltam)}"] if faltam else [])         + (["A afirmação de significância estatística não tem um teste que a sustente."] if sem_teste else [])
+    return faltam, sem_teste, pedido, ". ".join(avisos) or None
+
+
 def _guardar_turno(sessao: Sessao, pergunta: str, resposta: str, passos: list[dict], resultados: list[str]) -> None:
     sqls = [p["sql"] for p in passos if p.get("sql") and not p.get("erro")]
     resumo = f"Pergunta: {pergunta}\nResposta: {resposta}\nConsultas: {' | '.join(sqls)}"[:MAX_RESUMO]
     turno = {"pergunta": pergunta, "resposta": resposta, "sqls": sqls, "resumo": resumo,
-             "resultados": chr(10).join(resultados)[:MAX_RESULTADOS]}
+             "resultados": chr(10).join(resultados)[:MAX_RESULTADOS], "saidas_python": _saidas_python(passos)}
     sessao.historico = (sessao.historico + [turno])[-MAX_TURNOS:]
     sessao.turnos += 1
 
@@ -353,6 +369,7 @@ def _guardar_turno(sessao: Sessao, pergunta: str, resposta: str, passos: list[di
 def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inicio: float) -> Iterator[dict]:
     passos, resultados = saida["passos"], []
     anteriores = [t["resultados"] for t in sessao.historico]
+    saidas_anteriores = [o for t in sessao.historico for o in t.get("saidas_python", [])]
     conversa = sessao.conversa
     historico = _historico(sessao)
     messages: list[dict] = [
@@ -377,22 +394,22 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
         corpo, sugestoes = _separar(texto)
         if not corpo:
             raise ErroUsuario(MSG_VAZIA)
-        faltam = numeros_nao_conferidos(corpo, resultados + anteriores, pergunta)
+        faltam, sem_teste, pedido, aviso = _conferir(
+            corpo, resultados + anteriores, _saidas_python(passos) + saidas_anteriores, pergunta)
         tentativa = saida["reanalises"] + 1
-        yield {"evento": "conferencia", "ok": not faltam, "falhas": faltam, "tentativa": tentativa}
-        if faltam and saida["reanalises"] < MAX_REANALISES:
+        yield {"evento": "conferencia", "ok": not (faltam or sem_teste), "falhas": faltam, "tentativa": tentativa}
+        if (faltam or sem_teste) and saida["reanalises"] < MAX_REANALISES:
             saida["reanalises"] += 1
             passos.append({"tipo": "reanalise", "numeros": faltam})
             yield {"evento": "descartado", "tentativa": tentativa, "falhas": faltam}
-            messages.append({"role": "user", "content": prompts.REANALISE.format(numeros=", ".join(faltam))})
+            messages.append({"role": "user", "content": pedido})
             continue
-        saida.update(resposta=corpo, sugestoes=sugestoes,
-                     aviso=f"Alguns números não puderam ser conferidos: {', '.join(faltam)}" if faltam else None)
+        saida.update(resposta=corpo, sugestoes=sugestoes, aviso=aviso)
         guardou = sessao.conversa == conversa  # "nova conversa" no meio da resposta não recebe o turno antigo
         if guardou:
             _guardar_turno(sessao, pergunta, corpo, passos, resultados)
         yield {"evento": "resposta", "texto": corpo, "aviso": saida["aviso"], "reanalises": saida["reanalises"],
-               "sugestoes": sugestoes, "conferido": not faltam, "turno": sessao.turnos if guardou else None}
+               "sugestoes": sugestoes, "conferido": not (faltam or sem_teste), "turno": sessao.turnos if guardou else None}
         return
 
 

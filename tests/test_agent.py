@@ -183,7 +183,7 @@ def test_erro_de_ferramenta_volta_ao_llm(s: Sessao) -> None:
     fim = next(e for e in evs if e["evento"] == "ferramenta_fim")
     assert "leitura" in fim["erro"]
     ultima = llm.chamadas[-1]
-    assert ultima[-1]["role"] == "tool" and ultima[-1]["content"].startswith("Erro:")
+    assert ultima[-1]["role"] == "tool" and "Erro:" in ultima[-1]["content"]
     r = agent.responder("Apague?", s, LlmFalso(list(roteiro)))
     assert r["passos"][1]["tipo"] == "sql" and r["passos"][1]["sql"] == "DROP TABLE vendas"
 
@@ -314,7 +314,7 @@ def test_grafico_tipo_antigo_recusado(s: Sessao) -> None:
                                             tipo="barra", x="regiao", y="valor", titulo="T"), texto("Falhou.")])
     r = agent.responder("Qual?", s, llm)
     assert "grafico" not in r["passos"][1] and "inválido" in r["passos"][1]["erro"]
-    assert llm.chamadas[-1][-1]["content"].startswith("Erro:")
+    assert "Erro:" in llm.chamadas[-1][-1]["content"]
 
 
 def test_grafico_titulo_truncado_e_mapa_com_valor(s: Sessao) -> None:
@@ -690,3 +690,84 @@ def test_prompt_traz_regras_de_significancia_e_formato_do_p() -> None:
     assert "falhar duas vezes" in s and "stddev_samp" in s
     assert prompts.INCAPACIDADE_SIGNIFICANCIA in s and "<<" not in s
     assert "p-valor" in prompts.REANALISE_SIGNIFICANCIA
+
+
+# ---------- significância sem p-valor ----------
+
+SQL_VALOR = "SELECT valor FROM vendas"
+SAIDA_SEM_P = "t = -2.0\n"
+SAIDA_COM_P = "t = -2.0\np_valor = 0.0805\n"
+FRASE_SIG = "A diferença é estatisticamente significativa."
+
+
+def _python_falso(monkeypatch: pytest.MonkeyPatch, *saidas: str) -> None:
+    fila = list(saidas)
+    monkeypatch.setattr(python_tool, "rodar",
+                        lambda codigo, csv, timeout=30: {"saida": fila.pop(0) if len(fila) > 1 else fila[0],
+                                                         "erro": None})
+
+
+def _roda_python() -> list:
+    return chamada("rodar_python", sql=SQL_VALOR, codigo="print(1)")
+
+
+def test_afirmar_significancia_sem_teste_reanalisa(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    _python_falso(monkeypatch, SAIDA_SEM_P, SAIDA_COM_P)
+    llm = LlmFalso([texto("plano"), _roda_python(), texto(FRASE_SIG), _roda_python(),
+                    texto("A diferença é significativa (p = 0,0805).")])
+    evs = eventos(llm, s, "A diferença é significativa?")
+    conf = [e for e in evs if e["evento"] == "conferencia"]
+    assert [(c["ok"], c["falhas"]) for c in conf] == [(False, []), (True, [])]
+    assert next(e for e in evs if e["evento"] == "descartado")["falhas"] == []
+    assert any(m.get("content") == prompts.REANALISE_SIGNIFICANCIA for m in llm.chamadas[-1])
+    resp = next(e for e in evs if e["evento"] == "resposta")
+    assert resp["conferido"] is True and resp["reanalises"] == 1 and resp["aviso"] is None
+
+
+def test_significancia_sem_teste_tres_vezes_gera_aviso(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    _python_falso(monkeypatch, SAIDA_SEM_P)
+    evs = eventos(LlmFalso([texto("plano"), _roda_python(), texto(FRASE_SIG)]), s, "Significativa?")
+    resp = next(e for e in evs if e["evento"] == "resposta")
+    assert resp["reanalises"] == 2 and resp["conferido"] is False
+    assert resp["aviso"] == "A afirmação de significância estatística não tem um teste que a sustente."
+
+
+def test_falha_de_significancia_fora_do_aviso_de_numeros(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    _python_falso(monkeypatch, SAIDA_SEM_P)
+    r = agent.responder("Significativa?", s, LlmFalso([texto("plano"), _roda_python(), texto(FRASE_SIG)]))
+    assert "números" not in r["aviso"] and "significância" in r["aviso"]
+    assert [p for p in r["passos"] if p["tipo"] == "reanalise"] == [{"tipo": "reanalise", "numeros": []}] * 2
+
+
+def test_numero_e_significancia_juntos_geram_um_aviso_com_as_duas_frases(
+        s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    _python_falso(monkeypatch, SAIDA_SEM_P)
+    r = agent.responder("Qual?", s, LlmFalso([texto("plano"), _roda_python(),
+                                               texto("A diferença é significativa e vale 9.999.")]))
+    assert r["aviso"] == ("Alguns números não puderam ser conferidos: 9.999. "
+                          "A afirmação de significância estatística não tem um teste que a sustente.")
+
+
+def test_p_valor_de_turno_anterior_vale_da_saida_python(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    _python_falso(monkeypatch, SAIDA_COM_P)
+    agent.responder("Teste?", s, LlmFalso([texto("plano"), _roda_python(), texto("Rodei o teste.")]))
+    assert s.historico[-1]["saidas_python"] == [SAIDA_COM_P]
+    r = agent.responder("E então?", s, LlmFalso([texto("plano"), texto(FRASE_SIG)]))
+    assert r["reanalises"] == 0 and r["aviso"] is None
+
+
+def test_p_valor_de_turno_anterior_so_vale_da_saida_python(s: Sessao, monkeypatch: pytest.MonkeyPatch) -> None:
+    _python_falso(monkeypatch, "sim\n")
+    codigo = "p = 0.03\nif p < 0.05: print('sim')"
+    llm1 = LlmFalso([texto("plano"), chamada("rodar_python", sql=SQL_VALOR, codigo=codigo), texto("Deu sim.")])
+    agent.responder("Teste?", s, llm1)
+    assert "p < 0.05" in s.historico[-1]["resultados"]  # o código está em resultados, mas não em saidas_python
+    r = agent.responder("E então?", s, LlmFalso([texto("plano"), texto(FRASE_SIG)]))
+    assert r["reanalises"] == 2 and r["aviso"] is not None
+
+
+def test_conteudo_das_ferramentas_vai_ao_llm_dentro_de_dados(s: Sessao) -> None:
+    llm = LlmFalso([texto("plano"), chamada("consultar_banco", sql=SQL_TOTAL), texto("O total é 350.")])
+    eventos(llm, s, "Qual o total?")
+    conteudo = next(m["content"] for m in llm.chamadas[-1] if m["role"] == "tool")
+    assert conteudo.startswith("<dados>\n") and conteudo.endswith("\n</dados>") and "350" in conteudo

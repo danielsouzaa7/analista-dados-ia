@@ -54,3 +54,37 @@ def numeros_nao_conferidos(resposta: str, resultados: list[str], pergunta: str) 
         if not any(_bate(a, t) for a in candidatos for t in alvos):
             falhas.append(original)
     return falhas
+
+
+# ---------- significância estatística sem p-valor ----------
+_SUJEITO = r"diferen[çc]as?|efeitos?|associa[çc](?:ão|ões)|correla[çc](?:ão|ões)|rela[çc](?:ão|ões)|impactos?"
+_AFIRMA = re.compile(
+    r"\bestatisticamente\b"
+    rf"|\b(?:{_SUJEITO})\b(?:\s+\S+){{0,2}}?\s+significativ\w*"
+    r"|\b(?:é|são|foi|foram)\s+significativ\w*", re.I)
+_INCAPACIDADE = re.compile(
+    r"\bn[ãa]o\s+(?:foi|é|era)\s+poss[íi]vel\b|\bn[ãa]o\s+(?:consegui|pude)\b"
+    r"|\bn[ãa]o\s+(?:posso|podemos|d[áa]\s+para|h[áa]\s+como|test(?:ei|amos)|calcul(?:ei|amos))\b"
+    r"|\bseria\s+(?:preciso|necess[áa]rio)\b|\bsem\s+(?:um\s+)?teste\b", re.I)
+_FRASES = re.compile(r"[.!?;\n]+|\b(?:mas|porém|contudo|entretanto|no entanto)\b", re.I)
+_ROTULO_P = r"\b(?:p[-_ ]?(?:valor|value)|valor[-_ ]?p|p)\b"
+_P_VALOR = re.compile(_ROTULO_P + r"[^\d\n]{0,20}?[=:<≤≈]\s*-?\.?\d", re.I)  # nas saídas: tolerante
+# na resposta: estrito (só espaço ou uma palavra curta entre o rótulo e o comparador)
+_CITA_P = re.compile(_ROTULO_P + r"(?:\s+\(?\w{1,12}\)?)?\s*[<≤=≈]\s*[\d.,]+(?:\s*[×x]\s*10\S*|e-?\d+)?", re.I)
+
+
+def afirma_significancia(resposta: str) -> bool:
+    """Afirma ou nega significância (forma assertiva), frase a frase; frases de incapacidade não contam."""
+    return any(_AFIRMA.search(f) and not _INCAPACIDADE.search(f) for f in _FRASES.split(resposta))
+
+
+def significancia_sem_p_valor(resposta: str, saidas: list[str]) -> bool:
+    return afirma_significancia(resposta) and not tem_p_valor(saidas)
+
+
+def tem_p_valor(saidas: list[str]) -> bool:
+    return any(_P_VALOR.search(s) for s in saidas)
+
+
+def sem_citacoes_de_p(resposta: str) -> str:
+    return _CITA_P.sub(" ", resposta)

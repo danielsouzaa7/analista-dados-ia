@@ -216,7 +216,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
       if (falhas.length) {
         const ul = el("ul", null, "falhas");
         falhas.forEach((f) => ul.append(el("li", String(f))));
-        r.caixa.append(el("p", "Números que não bateram com os dados:", "rotulo-mini"), ul);
+        r.caixa.append(el("p", "O que não bateu com os dados:", "rotulo-mini"), ul);
       }
     }
     const p = novoPasso("reanalise", "Reanálise");
