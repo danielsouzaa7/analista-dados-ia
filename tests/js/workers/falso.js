@@ -33,7 +33,10 @@ export function fabrica(opcoes = {}) {
 
 export const responde = (data) => (w) => w.emitir({ tipo: "resultado", ...data });
 
-export function ambiente({ deviceMemory, grosso = false, saveData = false } = {}) {
+// Padrão sem reserva (2 GB) para não vazar workers entre testes; passe deviceMemory: undefined para "ausente".
+export function ambiente(opcoes = {}) {
+  const { grosso = false, saveData = false } = opcoes;
+  const deviceMemory = "deviceMemory" in opcoes ? opcoes.deviceMemory : 2;
   Object.defineProperty(globalThis, "navigator", {
     value: { deviceMemory, connection: { saveData } },
     configurable: true,

@@ -13,8 +13,8 @@ let reserva = null;
 
 const criarWorker = () => new Worker(new URL("./python-worker.js", import.meta.url), { type: "module" });
 
-// deviceMemory não existe no Firefox nem no Safari; pointer coarse cobre o iPhone.
-const semReserva = () => (navigator.deviceMemory ?? 0) < 4 || matchMedia("(pointer: coarse)").matches;
+// deviceMemory não existe no Firefox nem no Safari: ausente não é pouca memória. pointer coarse cobre o celular.
+const semReserva = () => (navigator.deviceMemory ?? Infinity) < 4 || matchMedia("(pointer: coarse)").matches;
 
 // Array.from conta pontos de código: não parte um par UTF-16 ao meio.
 const cortar = (s, max) => {

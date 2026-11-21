@@ -116,6 +116,8 @@ Deno.test("com reserva quando deviceMemory é ausente (Firefox e Safari de deskt
   const f = fabrica({ aoPedido: responde({ saida: "", erro: null }) });
   await executarPython(pedido, { criar: f.criar, ...rapido });
   assertEquals(f.workers.length, 2);
+  ambiente(); // drena a reserva para não vazar para outros testes
+  await executarPython(pedido, { criar: f.criar, ...rapido });
 });
 
 Deno.test("sem reserva quando deviceMemory < 4 ou pointer coarse", async () => {
