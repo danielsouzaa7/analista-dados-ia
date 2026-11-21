@@ -14,33 +14,33 @@
    ],
    [
     "texto",
-    " Calcular o ticket médio (valor_pedido) para pedidos com cupom e sem"
+    " Calcular o ticket médio dos pedidos com e sem cupom utilizando SQL.\n2. Es"
    ],
    [
     "texto",
-    " cupom usando SQL.\n2. Extrair os valores individuais de `valor_pedido` para cada grupo (com e"
+    "crever um script em Python para rodar o teste estatístico (teste t de Welch) entre os dois"
    ],
    [
     "texto",
-    " sem cupom) em Python.\n3. Executar o teste t de Welch para comparar as médias dos dois grupos e obter"
+    " grupos."
    ],
    [
     "texto",
-    " o p-valor.\n4. Gerar um gráfico de barras comparando o ticket médio entre as duas categorias.\n\n<"
+    "\n3. Analisar o p-valor obtido para verificar se a diferença"
    ],
    [
     "texto",
-    "plano>\nExecutando o plano para responder à pergunta sobre o ticket médio e a significância da diferença entre"
+    " é estatisticamente significativa.\n4. Gerar um gráfico de barras comparando os valores médios de cada grupo"
    ],
    [
     "texto",
-    " pedidos com e sem cupom.\n</plano>\n\n"
+    ".\n\n"
    ],
    [
     "usage",
     {
      "entrada": 1311,
-     "saida": 304
+     "saida": 332
     }
    ]
   ],
@@ -52,12 +52,12 @@
    [
     "tool_call",
     {
-     "id": "call_15843999809295707515",
+     "id": "call_16600536513246297931",
      "nome": "consultar_banco",
      "args": "{\"sql\":\"SELECT cupom, COUNT(*) as qtd, AVG(valor_pedido) as ticket_medio, STDDEV_SAMP(valor_pedido) as desvio_padrao FROM pedidos GROUP BY cupom\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "Eo4BCosBAWkUfRPdDUkULh2r5DvaTrNLcU47oJYX090hsyeqYNyycxJB0+lgtR5bdKL5esFvjTGYP4IHI/kdP54aQgTVnV125ClAmWNw6PUB1tinU0Kf84ZivdDJZO3mIzP8VTPCQ4vm7kWOkxBMuj+8pV3WeXA/p4qpt2p73WVWsdAKeOyRG2Hb+DV4x9FkFA=="
+       "thought_signature": "Eo4BCosBAWkUfRM6551Me2sDr0u35TlR7ZlBnxAT9rIX4fI+QGt6f2+WSqYNghFCD0Xq35Lg/qODgsqCD3eApsd8KfniDdVwZZqdagpvQlxLerPs2Wd3O0aED4WkMfkYrj22RvjaAC0QL7b8M/ErkmtVsWYCe5Ws5vgl1Z9YWiHzDdVNc1hGOLyzpyFhiFgmcw=="
       }
      }
     }
@@ -65,7 +65,7 @@
    [
     "usage",
     {
-     "entrada": 1980,
+     "entrada": 1933,
      "saida": 59
     }
    ]
@@ -78,12 +78,12 @@
    [
     "tool_call",
     {
-     "id": "call_15962529102149649235",
+     "id": "call_9653206908834574244",
      "nome": "rodar_python",
-     "args": "{\"sql\":\"SELECT cupom, valor_pedido FROM pedidos\",\"codigo\":\"com_cupom = df[df['cupom'] == True]['valor_pedido']\\nsem_cupom = df[df['cupom'] == False]['valor_pedido']\\nt, gl, p = teste_t_welch(com_cupom, sem_cupom)\\nprint(f'Média com cupom: {com_cupom.mean():.2f}')\\nprint(f'Média sem cupom: {sem_cupom.mean():.2f}')\\nprint(f'p_valor = {p:.3g}')\\n\"}",
+     "args": "{\"sql\":\"SELECT valor_pedido, cupom FROM pedidos\",\"codigo\":\"a = df[df['cupom'] == True]['valor_pedido']\\nb = df[df['cupom'] == False]['valor_pedido']\\nt, gl, p = teste_t_welch(a, b)\\nprint(f't = {t:.4f}')\\nprint(f'gl = {gl:.4f}')\\nprint(f'p_valor = {p:.3g}')\\nprint(f'Media com cupom = {a.mean():.2f}')\\nprint(f'Media sem cupom = {b.mean():.2f}')\\n\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "Eo4BCosBAWkUfRPbKKgRh5fkJsYW/6kgH7VqH/85nAIGUBWGjveih3kcOWBS/RIqTz6Pz7rk0NsBcoI7xTo1ndSzmyn4eD7e5L9ltpGN5bZ2oK2T0FncCOI3Ah6IMpUNvZ1tUCOXNiJDnLW1eGzDqNBCHRmheM6DDLfo2qFOUbYQsD7qPJrZ58CSoVXL9TduOA=="
+       "thought_signature": "Eo4BCosBAWkUfRNBrsz+mF0yz1zMRvVs3SaA9mv7Iza0Zb+Czro27FPOqQnjiT8KvD6urX3uHM4pSjXXa/K+tjA1iYsekKr4hPtdm47AIPaxXDLi3MoFmX+C/uorUFsYkppZdCJqqUYtIXHMFpRc9AQKhjMf5SyN9sRIsFW5AaW2s2WWP+94lqoI6ssdeS1MVQ=="
       }
      }
     }
@@ -91,8 +91,8 @@
    [
     "usage",
     {
-     "entrada": 2171,
-     "saida": 156
+     "entrada": 2124,
+     "saida": 162
     }
    ]
   ],
@@ -104,12 +104,12 @@
    [
     "tool_call",
     {
-     "id": "call_8879963661230522255",
+     "id": "call_171775792472258653",
      "nome": "gerar_grafico",
-     "args": "{\"sql\":\"SELECT CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS status_cupom, AVG(valor_pedido) AS ticket_medio FROM pedidos GROUP BY cupom\",\"titulo\":\"Comparação do Ticket Médio entre Pedidos com e sem Cupom\",\"tipo\":\"ranking\",\"x\":\"status_cupom\",\"y\":\"ticket_medio\"}",
+     "args": "{\"titulo\":\"Comparação do Ticket Médio entre Pedidos com e sem Cupom\",\"sql\":\"SELECT CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS grupo, AVG(valor_pedido) AS ticket_medio FROM pedidos GROUP BY cupom\",\"tipo\":\"ranking\",\"y\":\"ticket_medio\",\"x\":\"grupo\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "Eo4BCosBAWkUfROAHRcselKh51TVS38vhk4hy0a6R0CYUx5T0N+i/XBJal6FxjgYWRVqZTOkdQIbRVtuoyNTn21+x7Zxw8hgzxE649+cUfqk9lQ4CGGozq3nj3XgTN9AeCjg+cyyNH3dFf9Znv4DiJm/uehHgjXs4Vc9wu7/DCAF3YhjZkm8vLG5/Xs+zHf80A=="
+       "thought_signature": "Eo4BCosBAWkUfRMZy708YBlbyckZ7lBSkZF7JsCSF8lDPr8W/DId7nOl9p+7FJTQXOIqO366QBQc4wG9nEVuf5DsOXpdd5QeUWoTGHYV6DjJoIhCrUKwfzlhwIJ5SY9pyMnxfMLV4dIfLoITIPGZyTakbl9VfpOM3YQwsBiLsPqcPZr4BqxyMVgfTrUR5uCprg=="
       }
      }
     }
@@ -117,8 +117,8 @@
    [
     "usage",
     {
-     "entrada": 2387,
-     "saida": 99
+     "entrada": 2368,
+     "saida": 93
     }
    ]
   ],
@@ -129,53 +129,53 @@
    ],
    [
     "texto",
-    "Para responder"
+    "Sim"
    ],
    [
     "texto",
-    " à sua pergunta, analisamos o valor do pedido (ticket médio) entre os"
+    ", pedidos com cupom têm um ticket médio diferente dos pedidos sem cupom. "
    ],
    [
     "texto",
-    " pedidos que utilizaram cupom de desconto e aqueles que não utilizaram.\n\n- **Pedidos com cupom**: O"
+    "\n\nO ticket médio dos pedidos **com cupom** é de R$ 52,01 (com base em 1.6"
    ],
    [
     "texto",
-    " ticket médio foi de R$ 52,01 (com base em 1.620 pedidos).\n-"
+    "20 pedidos e desvio padrão de R$ 26,18), enquanto o ticket médio dos pedidos **sem cup"
    ],
    [
     "texto",
-    " **Pedidos sem cupom**: O ticket médio foi de R$ 63,90 (com base em "
+    "om** é de R$ 63,90 (com base em 6.380 pedidos e"
    ],
    [
     "texto",
-    "6.380 pedidos).\n\nRealizamos o teste t de Welch para verificar se a diferença entre as médias dos"
+    " desvio padrão de R$ 32,05).\n\nRealizando o teste t de Welch, obtivemos uma"
    ],
    [
     "texto",
-    " dois grupos é estatisticamente expressiva. O resultado do teste indicou um p-valor menor que 0,00"
+    " estatística $t = -15,5570$ e um $p\\text{-valor} <"
    ],
    [
     "texto",
-    "1 ($p < 0,001$). Portanto, a diferença de R$ 11,89 no"
+    " 0,001$ ($p = 1,58 \\times 10^{-52}$). Portanto, a"
    ],
    [
     "texto",
-    " ticket médio entre os pedidos com e sem cupom é estatisticamente expressiva.\n\nSUGESTOES:\n- Como o"
+    " diferença observada é estatisticamente significativa.\n\nSUGESTOES:\n- Qual é o impacto do uso de cu"
    ],
    [
     "texto",
-    " uso de cupons impacta o volume de pedidos ao longo dos meses?\n- Qual é a distribuição dos descontos aplic"
+    "pons no volume total de vendas ao longo dos meses?\n- Os clientes que usam cupom fazem pedidos com maior frequência?"
    ],
    [
     "texto",
-    "ados nos pedidos com cupom?\n- O tempo de entrega varia entre pedidos feitos com e sem cupom?"
+    "\n- Qual culinária apresenta a maior taxa de utilização de cupons?"
    ],
    [
     "usage",
     {
-     "entrada": 2609,
-     "saida": 242
+     "entrada": 2581,
+     "saida": 241
     }
    ]
   ],
@@ -187,12 +187,12 @@
    [
     "tool_call",
     {
-     "id": "call_14788231361309486504",
-     "nome": "rodar_python",
-     "args": "{\"sql\":\"SELECT cupom, valor_pedido FROM pedidos\",\"codigo\":\"com_cupom = df[df['cupom'] == True]['valor_pedido']\\nsem_cupom = df[df['cupom'] == False]['valor_pedido']\\nmedia_com = com_cupom.mean()\\nmedia_sem = sem_cupom.mean()\\ndif = media_sem - media_com\\nt, gl, p = teste_t_welch(com_cupom, sem_cupom)\\nprint(f'media_com = {media_com}')\\nprint(f'media_sem = {media_sem}')\\nprint(f'diferenca = {dif}')\\nprint(f'p_valor = {p}')\\n\"}",
+     "id": "call_15654338532069920331",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT cupom, COUNT(*) as qtd, AVG(valor_pedido) as ticket_medio, STDDEV_SAMP(valor_pedido) as desvio_padrao FROM pedidos GROUP BY cupom\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "Eo4BCosBAWkUfRMCmlsUidLmgq1dX+tYj0fZeBJqP5PXyZiOaiKbCEAhkVlyn4UMSd8Itnc0WGDZE3P2b+ZyPTtoVGohrxUhMCJwe+ZDVwFrUeRlb6zL23WONcb7oGkp9ELrgXCTUGAfgfSNJ8lAceyak2lUIPnIo1arUs/cbt6XF9LgxpD561URXqle5zMZiA=="
+       "thought_signature": "Eo4BCosBAWkUfRMG9+w2GFMnqAhcJ1fvqC9RlVu9brAWyd0I5VZXZ16PoCz8xFzx7Sjf3laBp7KZ8rS0ASyRt0kG9VhQvWsNUsNB6P9/1Edxo/S+KEcAiHoKwZH4u/EJFj3pc/DB5ToxQS/xtLTyMiMwInCjqGMK46tKAuoK+wZ8CzzOc+s18Ma07jEVXO2j1Q=="
       }
      }
     }
@@ -200,8 +200,147 @@
    [
     "usage",
     {
-     "entrada": 2901,
-     "saida": 180
+     "entrada": 2865,
+     "saida": 59
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_12869340480988348267",
+     "nome": "rodar_python",
+     "args": "{\"sql\":\"SELECT valor_pedido, cupom FROM pedidos\",\"codigo\":\"a = df[df['cupom'] == True]['valor_pedido']\\nb = df[df['cupom'] == False]['valor_pedido']\\nt, gl, p = teste_t_welch(a, b)\\nprint(f't = {t}')\\nprint(f'gl = {gl}')\\nprint(f'p_valor = {p}')\\nprint(f'Media com cupom = {a.mean()}')\\nprint(f'Media sem cupom = {b.mean()}')\\n\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfRMMm0hnZpaDxKLu1E68N6d47lDmZt/4XSc5TRvt7gmabyY6DnAkzY9WDHFuOKsSr2TXbeq2vU6Q5ywJa2Vi8tN3PZmOprV2fWMfbQ3tA6lMw+45RiYzbgq+mRqo0yvc1qkf3afHojLMUdaDUCx8Spv7YIhdW+AsmCbUt+QTXUb7kf8jM5mdzA=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3056,
+     "saida": 144
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-flash-lite-latest"
+   ],
+   [
+    "texto",
+    "Sim,"
+   ],
+   [
+    "texto",
+    " pedidos com cupom têm ticket médio diferente. \n\nO ticket médio dos pedidos"
+   ],
+   [
+    "texto",
+    " com cupom é de R$ 52,01 (com base em 1.620 pedidos"
+   ],
+   [
+    "texto",
+    " e desvio padrão de R$ 26,18), e o ticket médio dos pedidos sem cupom é de R$ 6"
+   ],
+   [
+    "texto",
+    "3,90 (com base em 6.380 pedidos e desvio padrão de R$ 3"
+   ],
+   [
+    "texto",
+    "2,05).\n\nAplicando o teste t de Welch, obtivemos uma estatística $t$ de -"
+   ],
+   [
+    "texto",
+    "15,5570, graus de liberdade de 2.976,6802 e"
+   ],
+   [
+    "texto",
+    " $p\\text{-valor} = 1,5791232640682538"
+   ],
+   [
+    "texto",
+    "e-52$ (menor que 0,001). Portanto, a diferença é estatisticamente significativa.\n\nSUGEST"
+   ],
+   [
+    "texto",
+    "OES:\n- Qual é o impacto do uso de cupons no volume total de vendas ao longo dos meses?\n- Os clientes"
+   ],
+   [
+    "texto",
+    " que usam cupom fazem pedidos com maior frequência?\n- Qual culinária apresenta a maior taxa de utilização de"
+   ],
+   [
+    "texto",
+    " cupons?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3339,
+     "saida": 255
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_2256183613301124002",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT cupom, COUNT(*) as qtd, AVG(valor_pedido) as ticket_medio, STDDEV_SAMP(valor_pedido) as desvio_padrao FROM pedidos GROUP BY cupom\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfROMP1GqV0fIBkleGaMDsdclhxg24D1se53zSUlr51EM/5daTfQ+grUp24gmK48WBGWuvgDfbprstg3FHCv2dOf1P78wW9TtSUQZDGxzBs7XajrkqjAm8ICjZoz5LAxCOF7yJssCBi/tdLNtXlFjDBfW3jqHmMVEcz6irlSNSTFZIiDw1ATg0g=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3637,
+     "saida": 59
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_1147548267410861691",
+     "nome": "rodar_python",
+     "args": "{\"sql\":\"SELECT valor_pedido, cupom FROM pedidos\",\"codigo\":\"a = df[df['cupom'] == True]['valor_pedido']\\nb = df[df['cupom'] == False]['valor_pedido']\\nt, gl, p = teste_t_welch(a, b)\\nprint(f't = {t}')\\nprint(f'gl = {gl}')\\nprint(f'p_valor = {p}')\\nprint(f'Media com cupom = {a.mean()}')\\nprint(f'Media sem cupom = {b.mean()}')\\n\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfRNLwR+b3bPP1jAulGiedb+JAs0stDO6VOsd7Rrg2xhQbQ0bAKQ8+oz5E3D9OpYOU53fqShEEcHLAS08FFAGBJI2YmNryNExg/pxGG4mRxc3CI6QUmzVZKit9wNz+a7XFQNqtbKZzwWx6Lq9a/3g51Q7L+cvU1+kE+sXWzqLtILjUPetvl+gmA=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3828,
+     "saida": 145
     }
    ]
   ],
@@ -212,53 +351,57 @@
    ],
    [
     "texto",
-    "Para"
+    "Sim,"
    ],
    [
     "texto",
-    " responder à sua pergunta, analisamos o valor do pedido (ticket médio) entre os pedidos"
+    " pedidos com cupom têm ticket médio diferente. \n\nO ticket médio dos pedidos com cupom"
    ],
    [
     "texto",
-    " que utilizaram cupom de desconto e aqueles que não utilizaram.\n\n- **Pedidos com cupom**: O ticket"
+    " é de 52,01 (com base em 1.620 pedidos e desvio padrão de"
    ],
    [
     "texto",
-    " médio foi de R$ 52,01 (com base em 1.620 pedidos).\n- **Pedidos sem cup"
+    " 26,18), e o ticket médio dos pedidos sem cupom é de 63,90"
    ],
    [
     "texto",
-    "om**: O ticket médio foi de R$ 63,90 (com base em 6.38"
+    " (com base em 6.380 pedidos e desvio padrão de 32,05).\n\n"
    ],
    [
     "texto",
-    "0 pedidos).\n\nRealizamos o teste t de Welch para verificar se a diferença entre as médias dos dois grupos é estat"
+    "Aplicando o teste t de Welch, obtivemos uma estatística t de -15,5570"
    ],
    [
     "texto",
-    "isticamente expressiva. O resultado do teste indicou um p-valor de $1,58 \\times 10^{-"
+    "03602610843, graus de liberdade de 2.976,6"
    ],
    [
     "texto",
-    "52}$ ($p < 0,001$). Portanto, a diferença de R$ 11,89 no ticket"
+    "80244143782 e p_valor igual a 1.579123"
    ],
    [
     "texto",
-    " médio entre os pedidos com e sem cupom é estatisticamente expressiva.\n\nSUGESTOES:\n- Como o uso"
+    "2640682538e-52. O p-valor é menor que 0,001"
    ],
    [
     "texto",
-    " de cupons impacta o volume de pedidos ao longo dos meses?\n- Qual é a distribuição dos descontos aplic"
+    ", portanto a diferença é estatisticamente significativa.\n\nSUGESTOES:\n- Qual é o impacto do uso de cupons"
    ],
    [
     "texto",
-    "ados nos pedidos com cupom?\n- O tempo de entrega varia entre pedidos feitos com e sem cupom?"
+    " no volume total de vendas ao longo dos meses?\n- Os clientes que usam cupom fazem pedidos com maior frequência"
+   ],
+   [
+    "texto",
+    "?\n- Qual culinária apresenta a maior taxa de utilização de cupons?"
    ],
    [
     "usage",
     {
-     "entrada": 3199,
-     "saida": 249
+     "entrada": 4111,
+     "saida": 263
     }
    ]
   ]

@@ -1,49 +1,63 @@
 {"evento": "recebido", "modelo": "gemini-3.5-flash-lite", "turno": 1, "t_ms": 0}
-{"evento": "llm", "n": 1, "fase": "plano", "modelo": "gemini-3.5-flash-lite", "ms": 1547, "tokens_entrada": 1311, "tokens_saida": 78, "t_ms": 1546}
-{"evento": "plano", "texto": "Plano:\n1. Calcular o ticket médio dos pedidos com cupom e sem cupom utilizando SQL.\n2. Extrair os valores individuais dos pedidos para uma análise estatística em Python.\n3. Executar o teste t de Welch em Python para comparar as médias dos dois grupos e obter o p-valor.\n4. Gerar um gráfico de barras comparando o", "t_ms": 1546}
-{"evento": "llm", "n": 2, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 790, "tokens_entrada": 1927, "tokens_saida": 74, "t_ms": 2343}
-{"evento": "ferramenta_inicio", "id": "call_7957892365513589287", "tipo": "sql", "sql": "SELECT \n    CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS tipo_cupom,\n    count(*) AS qtd_pedidos,\n    avg(valor_pedido) AS ticket_medio\nFROM pedidos\nGROUP BY cupom", "t_ms": 2343}
-{"evento": "ferramenta_fim", "id": "call_7957892365513589287", "ms": 46, "colunas": ["tipo_cupom", "qtd_pedidos", "ticket_medio"], "linhas": [["Com Cupom", 1620, 52.00867283950603], ["Sem Cupom", 6380, 63.89744357366765]], "total_linhas": 2, "t_ms": 2390}
-{"evento": "llm", "n": 3, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1148, "tokens_entrada": 2098, "tokens_saida": 156, "t_ms": 3530}
-{"evento": "ferramenta_inicio", "id": "call_17539214781843445764", "tipo": "python", "sql": "SELECT valor_pedido, cupom FROM pedidos", "codigo": "com_cupom = df[df['cupom'] == True]['valor_pedido']\nsem_cupom = df[df['cupom'] == False]['valor_pedido']\nt, gl, p_valor = teste_t_welch(com_cupom, sem_cupom)\nprint(f'Média com cupom: {com_cupom.mean():.2f}')\nprint(f'Média sem cupom: {sem_cupom.mean():.2f}')\nprint(f'p_valor: {p_valor}')\n", "t_ms": 3530}
-{"evento": "ferramenta_fim", "id": "call_17539214781843445764", "ms": 4385, "saida": "Média com cupom: 52.01\nMédia sem cupom: 63.90\np_valor: 1.5791232640682538e-52\n", "t_ms": 7921}
-{"evento": "llm", "n": 4, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1100, "tokens_entrada": 2329, "tokens_saida": 101, "t_ms": 9015}
-{"evento": "ferramenta_inicio", "id": "call_544888251077228257", "tipo": "grafico", "sql": "SELECT \n    CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS tipo_cupom,\n    avg(valor_pedido) AS ticket_medio\nFROM pedidos\nGROUP BY cupom", "t_ms": 9015}
-{"evento": "ferramenta_fim", "id": "call_544888251077228257", "ms": 40, "grafico": {"tipo": "ranking", "titulo": "Ticket Médio por Utilização de Cupom", "subtitulo": "", "resumo": "Maior: Sem Cupom (63,90). Menor: Com Cupom (52,01). Total: 115,91.", "x_nome": "tipo_cupom", "y_nome": "ticket_medio", "dados": [{"rotulo": "Sem Cupom", "valor": 63.89744357366765}, {"rotulo": "Com Cupom", "valor": 52.00867283950603}]}, "t_ms": 9062}
-{"evento": "rascunho", "delta": "Os pedidos", "tentativa": 1, "t_ms": 9780}
-{"evento": "rascunho", "delta": " com cupom apresentam um ticket médio diferente daqueles sem cupom. \n\nDe", "tentativa": 1, "t_ms": 9812}
-{"evento": "rascunho", "delta": " acordo com os dados:\n- **Com Cupom**: o ticket médio é de R$ 52,0", "tentativa": 1, "t_ms": 9905}
-{"evento": "rascunho", "delta": "1 (referente a 1.620 pedidos).\n- **Sem Cupom**: o ticket médio é de R$ ", "tentativa": 1, "t_ms": 9983}
-{"evento": "rascunho", "delta": "63,90 (referente a 6.380 pedidos).\n\nRealizando o teste t de Welch para comparar", "tentativa": 1, "t_ms": 10000}
-{"evento": "rascunho", "delta": " os dois grupos, obtivemos um $p\\text{-valor} < 0,001$ ($", "tentativa": 1, "t_ms": 10093}
-{"evento": "rascunho", "delta": "1,58 \\times 10^{-52}$). Portanto, a diferença entre os tickets médios é estatisticamente", "tentativa": 1, "t_ms": 10140}
-{"evento": "rascunho", "delta": " expressiva.\n\n", "tentativa": 1, "t_ms": 10202}
-{"evento": "llm", "n": 5, "fase": "resposta", "modelo": "gemini-3.5-flash-lite", "ms": 1311, "tokens_entrada": 2553, "tokens_saida": 208, "t_ms": 10375}
-{"evento": "conferencia", "ok": false, "falhas": ["0,001", "1,58"], "tentativa": 1, "t_ms": 10375}
-{"evento": "descartado", "tentativa": 1, "falhas": ["0,001", "1,58"], "t_ms": 10375}
-{"evento": "llm", "n": 6, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1503, "tokens_entrada": 2810, "tokens_saida": 153, "t_ms": 11875}
-{"evento": "ferramenta_inicio", "id": "call_8370094824364787167", "tipo": "python", "sql": "SELECT valor_pedido, cupom FROM pedidos", "codigo": "com_cupom = df[df['cupom'] == True]['valor_pedido']\nsem_cupom = df[df['cupom'] == False]['valor_pedido']\nt, gl, p_valor = teste_t_welch(com_cupom, sem_cupom)\nprint(f\"media_com: {com_cupom.mean():.2f}\")\nprint(f\"media_sem: {sem_cupom.mean():.2f}\")\nprint(f\"p_valor: {p_valor}\")\n", "t_ms": 11875}
-{"evento": "ferramenta_fim", "id": "call_8370094824364787167", "ms": 5942, "saida": "media_com: 52.01\nmedia_sem: 63.90\np_valor: 1.5791232640682538e-52\n", "t_ms": 17812}
-{"evento": "rascunho", "delta": "Os pedidos", "tentativa": 2, "t_ms": 18562}
-{"evento": "rascunho", "delta": " com cupom têm ticket médio diferente dos pedidos sem cupom. \n\nCon", "tentativa": 2, "t_ms": 18577}
-{"evento": "rascunho", "delta": "forme os dados obtidos:\n- Pedidos com cupom: ticket médio de R$ 52,01 (com", "tentativa": 2, "t_ms": 18640}
-{"evento": "rascunho", "delta": " 1.620 pedidos).\n- Pedidos sem cupom: ticket médio de R$ 63", "tentativa": 2, "t_ms": 18671}
-{"evento": "rascunho", "delta": ",90 (com 6.380 pedidos).\n\nRealizando o teste t de Welch, o resultado", "tentativa": 2, "t_ms": 18718}
-{"evento": "rascunho", "delta": " foi $p\\text{-valor} = 1,5791232640682538", "tentativa": 2, "t_ms": 18812}
-{"evento": "rascunho", "delta": " \\times 10^{-52}$, indicando que a diferença é estatisticamente expressiva.\n\n", "tentativa": 2, "t_ms": 18827}
-{"evento": "llm", "n": 7, "fase": "resposta", "modelo": "gemini-3.5-flash-lite", "ms": 1347, "tokens_entrada": 3033, "tokens_saida": 202, "t_ms": 19171}
-{"evento": "conferencia", "ok": false, "falhas": ["1,5791232640682538"], "tentativa": 2, "t_ms": 19171}
-{"evento": "descartado", "tentativa": 2, "falhas": ["1,5791232640682538"], "t_ms": 19171}
-{"evento": "llm", "n": 8, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 874, "tokens_entrada": 3291, "tokens_saida": 115, "t_ms": 20046}
-{"evento": "ferramenta_inicio", "id": "call_69030435384576898", "tipo": "python", "sql": "SELECT valor_pedido, cupom FROM pedidos", "codigo": "com_cupom = df[df['cupom'] == True]['valor_pedido']\nsem_cupom = df[df['cupom'] == False]['valor_pedido']\nt, gl, p_valor = teste_t_welch(com_cupom, sem_cupom)\nprint(f\"p_valor formatado: {p_valor:.2e}\")\n", "t_ms": 20046}
-{"evento": "ferramenta_fim", "id": "call_69030435384576898", "ms": 6848, "saida": "p_valor formatado: 1.58e-52\n", "t_ms": 26890}
-{"evento": "rascunho", "delta": "Os", "tentativa": 3, "t_ms": 27843}
-{"evento": "rascunho", "delta": " pedidos com cupom têm ticket médio de R$ 52,01,", "tentativa": 3, "t_ms": 27858}
-{"evento": "rascunho", "delta": " enquanto os pedidos sem cupom têm ticket médio de R$ 63,90. \n\nAplicando o teste t de Welch", "tentativa": 3, "t_ms": 27858}
-{"evento": "rascunho", "delta": ", o resultado mostra que a diferença é estatisticamente expressiva, com $p < 0,001", "tentativa": 3, "t_ms": 27921}
-{"evento": "rascunho", "delta": "$.\n\n", "tentativa": 3, "t_ms": 27952}
-{"evento": "llm", "n": 9, "fase": "resposta", "modelo": "gemini-3.5-flash-lite", "ms": 1188, "tokens_entrada": 3443, "tokens_saida": 128, "t_ms": 28077}
-{"evento": "conferencia", "ok": true, "falhas": [], "tentativa": 3, "t_ms": 28077}
-{"evento": "resposta", "texto": "Os pedidos com cupom têm ticket médio de R$ 52,01, enquanto os pedidos sem cupom têm ticket médio de R$ 63,90. \n\nAplicando o teste t de Welch, o resultado mostra que a diferença é estatisticamente expressiva, com $p < 0,001$.", "aviso": null, "reanalises": 2, "sugestoes": ["Qual é a taxa de entrega média para pedidos com e sem cupom?", "O tempo de entrega difere entre pedidos com e sem cupom?", "Como a utilização de cupons se distribui ao longo dos meses do ano?"], "conferido": true, "turno": 1, "t_ms": 28077}
-{"evento": "metricas", "ms_total": 28078, "chamadas_llm": 9, "chamadas_ferramenta": 5, "tokens_entrada": 22795, "tokens_saida": 1215, "reanalises": 2, "modelo": "gemini-3.5-flash-lite", "custo": "R$ 0 (plano gratuito)", "trace_id": "51055ec5d194", "versao_prompt": "2026-11-21.1", "t_ms": 28077}
-{"evento": "fim", "t_ms": 28077}
+{"evento": "llm", "n": 1, "fase": "plano", "modelo": "gemini-3.5-flash-lite", "ms": 3749, "tokens_entrada": 1311, "tokens_saida": 332, "t_ms": 3733}
+{"evento": "plano", "texto": "1. Calcular o ticket médio dos pedidos com e sem cupom utilizando SQL.\n2. Escrever um script em Python para rodar o teste estatístico (teste t de Welch) entre os dois grupos.\n3. Analisar o p-valor obtido para verificar se a diferença é estatisticamente significativa.\n4. Gerar um gráfico de barras comparando os valores médios de cada grupo.", "t_ms": 3733}
+{"evento": "llm", "n": 2, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 965, "tokens_entrada": 1933, "tokens_saida": 59, "t_ms": 4702}
+{"evento": "ferramenta_inicio", "id": "call_16600536513246297931", "tipo": "sql", "sql": "SELECT cupom, COUNT(*) as qtd, AVG(valor_pedido) as ticket_medio, STDDEV_SAMP(valor_pedido) as desvio_padrao FROM pedidos GROUP BY cupom", "t_ms": 4702}
+{"evento": "ferramenta_fim", "id": "call_16600536513246297931", "ms": 82, "colunas": ["cupom", "qtd", "ticket_medio", "desvio_padrao"], "linhas": [[false, 6380, 63.89744357366765, 32.051198980798034], [true, 1620, 52.00867283950603, 26.177370188259857]], "total_linhas": 2, "t_ms": 4796}
+{"evento": "llm", "n": 3, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1434, "tokens_entrada": 2124, "tokens_saida": 162, "t_ms": 6217}
+{"evento": "ferramenta_inicio", "id": "call_9653206908834574244", "tipo": "python", "sql": "SELECT valor_pedido, cupom FROM pedidos", "codigo": "a = df[df['cupom'] == True]['valor_pedido']\nb = df[df['cupom'] == False]['valor_pedido']\nt, gl, p = teste_t_welch(a, b)\nprint(f't = {t:.4f}')\nprint(f'gl = {gl:.4f}')\nprint(f'p_valor = {p:.3g}')\nprint(f'Media com cupom = {a.mean():.2f}')\nprint(f'Media sem cupom = {b.mean():.2f}')\n", "t_ms": 6217}
+{"evento": "ferramenta_fim", "id": "call_9653206908834574244", "ms": 5329, "saida": "t = -15.5570\ngl = 2976.6802\np_valor = 1.58e-52\nMedia com cupom = 52.01\nMedia sem cupom = 63.90\n", "t_ms": 11562}
+{"evento": "llm", "n": 4, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1172, "tokens_entrada": 2368, "tokens_saida": 93, "t_ms": 12717}
+{"evento": "ferramenta_inicio", "id": "call_171775792472258653", "tipo": "grafico", "sql": "SELECT CASE WHEN cupom THEN 'Com Cupom' ELSE 'Sem Cupom' END AS grupo, AVG(valor_pedido) AS ticket_medio FROM pedidos GROUP BY cupom", "t_ms": 12717}
+{"evento": "ferramenta_fim", "id": "call_171775792472258653", "ms": 66, "grafico": {"tipo": "ranking", "titulo": "Comparação do Ticket Médio entre Pedidos com e sem Cupom", "subtitulo": "", "resumo": "Maior: Sem Cupom (63,90). Menor: Com Cupom (52,01). Total: 115,91.", "x_nome": "grupo", "y_nome": "ticket_medio", "dados": [{"rotulo": "Sem Cupom", "valor": 63.89744357366765}, {"rotulo": "Com Cupom", "valor": 52.00867283950603}]}, "t_ms": 12796}
+{"evento": "rascunho", "delta": "Sim", "tentativa": 1, "t_ms": 13639}
+{"evento": "rascunho", "delta": ", pedidos com cupom têm um ticket médio diferente dos pedidos sem cupom. ", "tentativa": 1, "t_ms": 13671}
+{"evento": "rascunho", "delta": "\n\nO ticket médio dos pedidos **com cupom** é de R$ 52,01 (com base em 1.6", "tentativa": 1, "t_ms": 13702}
+{"evento": "rascunho", "delta": "20 pedidos e desvio padrão de R$ 26,18), enquanto o ticket médio dos pedidos **sem cup", "tentativa": 1, "t_ms": 13750}
+{"evento": "rascunho", "delta": "om** é de R$ 63,90 (com base em 6.380 pedidos e", "tentativa": 1, "t_ms": 13812}
+{"evento": "rascunho", "delta": " desvio padrão de R$ 32,05).\n\nRealizando o teste t de Welch, obtivemos uma", "tentativa": 1, "t_ms": 13889}
+{"evento": "rascunho", "delta": " estatística $t = -15,5570$ e um $p\\text{-valor} <", "tentativa": 1, "t_ms": 13921}
+{"evento": "rascunho", "delta": " 0,001$ ($p = 1,58 \\times 10^{-52}$). Portanto, a", "tentativa": 1, "t_ms": 13983}
+{"evento": "rascunho", "delta": " diferença observada é estatisticamente significativa.\n\n", "tentativa": 1, "t_ms": 14062}
+{"evento": "llm", "n": 5, "fase": "resposta", "modelo": "gemini-3.5-flash-lite", "ms": 1442, "tokens_entrada": 2581, "tokens_saida": 241, "t_ms": 14233}
+{"evento": "conferencia", "ok": false, "falhas": ["0,001"], "significancia": false, "tentativa": 1, "t_ms": 14233}
+{"evento": "descartado", "tentativa": 1, "falhas": ["0,001"], "significancia": false, "t_ms": 14233}
+{"evento": "llm", "n": 6, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 816, "tokens_entrada": 2865, "tokens_saida": 59, "t_ms": 15046}
+{"evento": "ferramenta_inicio", "id": "call_15654338532069920331", "tipo": "sql", "sql": "SELECT cupom, COUNT(*) as qtd, AVG(valor_pedido) as ticket_medio, STDDEV_SAMP(valor_pedido) as desvio_padrao FROM pedidos GROUP BY cupom", "t_ms": 15046}
+{"evento": "ferramenta_fim", "id": "call_15654338532069920331", "ms": 43, "colunas": ["cupom", "qtd", "ticket_medio", "desvio_padrao"], "linhas": [[false, 6380, 63.89744357366765, 32.051198980798034], [true, 1620, 52.00867283950603, 26.177370188259857]], "total_linhas": 2, "t_ms": 15092}
+{"evento": "llm", "n": 7, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 942, "tokens_entrada": 3056, "tokens_saida": 144, "t_ms": 16031}
+{"evento": "ferramenta_inicio", "id": "call_12869340480988348267", "tipo": "python", "sql": "SELECT valor_pedido, cupom FROM pedidos", "codigo": "a = df[df['cupom'] == True]['valor_pedido']\nb = df[df['cupom'] == False]['valor_pedido']\nt, gl, p = teste_t_welch(a, b)\nprint(f't = {t}')\nprint(f'gl = {gl}')\nprint(f'p_valor = {p}')\nprint(f'Media com cupom = {a.mean()}')\nprint(f'Media sem cupom = {b.mean()}')\n", "t_ms": 16031}
+{"evento": "ferramenta_fim", "id": "call_12869340480988348267", "ms": 4776, "saida": "t = -15.557003602610843\ngl = 2976.680244143782\np_valor = 1.5791232640682538e-52\nMedia com cupom = 52.00867283950617\nMedia sem cupom = 63.8974435736677\n", "t_ms": 20812}
+{"evento": "rascunho", "delta": "Sim,", "tentativa": 2, "t_ms": 22281}
+{"evento": "rascunho", "delta": " pedidos com cupom têm ticket médio diferente. \n\nO ticket médio dos pedidos", "tentativa": 2, "t_ms": 22327}
+{"evento": "rascunho", "delta": " com cupom é de R$ 52,01 (com base em 1.620 pedidos", "tentativa": 2, "t_ms": 22342}
+{"evento": "rascunho", "delta": " e desvio padrão de R$ 26,18), e o ticket médio dos pedidos sem cupom é de R$ 6", "tentativa": 2, "t_ms": 22421}
+{"evento": "rascunho", "delta": "3,90 (com base em 6.380 pedidos e desvio padrão de R$ 3", "tentativa": 2, "t_ms": 22467}
+{"evento": "rascunho", "delta": "2,05).\n\nAplicando o teste t de Welch, obtivemos uma estatística $t$ de -", "tentativa": 2, "t_ms": 22514}
+{"evento": "rascunho", "delta": "15,5570, graus de liberdade de 2.976,6802 e", "tentativa": 2, "t_ms": 22546}
+{"evento": "rascunho", "delta": " $p\\text{-valor} = 1,5791232640682538", "tentativa": 2, "t_ms": 22608}
+{"evento": "rascunho", "delta": "e-52$ (menor que 0,001). Portanto, a diferença é estatisticamente significativa.\n\n", "tentativa": 2, "t_ms": 22671}
+{"evento": "llm", "n": 8, "fase": "resposta", "modelo": "gemini-flash-lite-latest", "ms": 1995, "tokens_entrada": 3339, "tokens_saida": 255, "t_ms": 22812}
+{"evento": "conferencia", "ok": false, "falhas": ["0,001"], "significancia": false, "tentativa": 2, "t_ms": 22812}
+{"evento": "descartado", "tentativa": 2, "falhas": ["0,001"], "significancia": false, "t_ms": 22812}
+{"evento": "llm", "n": 9, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 884, "tokens_entrada": 3637, "tokens_saida": 59, "t_ms": 23702}
+{"evento": "ferramenta_inicio", "id": "call_2256183613301124002", "tipo": "sql", "sql": "SELECT cupom, COUNT(*) as qtd, AVG(valor_pedido) as ticket_medio, STDDEV_SAMP(valor_pedido) as desvio_padrao FROM pedidos GROUP BY cupom", "t_ms": 23702}
+{"evento": "ferramenta_fim", "id": "call_2256183613301124002", "ms": 44, "colunas": ["cupom", "qtd", "ticket_medio", "desvio_padrao"], "linhas": [[false, 6380, 63.89744357366765, 32.051198980798034], [true, 1620, 52.00867283950603, 26.177370188259857]], "total_linhas": 2, "t_ms": 23750}
+{"evento": "llm", "n": 10, "fase": "ferramentas", "modelo": "gemini-3.5-flash-lite", "ms": 1395, "tokens_entrada": 3828, "tokens_saida": 145, "t_ms": 25139}
+{"evento": "ferramenta_inicio", "id": "call_1147548267410861691", "tipo": "python", "sql": "SELECT valor_pedido, cupom FROM pedidos", "codigo": "a = df[df['cupom'] == True]['valor_pedido']\nb = df[df['cupom'] == False]['valor_pedido']\nt, gl, p = teste_t_welch(a, b)\nprint(f't = {t}')\nprint(f'gl = {gl}')\nprint(f'p_valor = {p}')\nprint(f'Media com cupom = {a.mean()}')\nprint(f'Media sem cupom = {b.mean()}')\n", "t_ms": 25139}
+{"evento": "ferramenta_fim", "id": "call_1147548267410861691", "ms": 5051, "saida": "t = -15.557003602610843\ngl = 2976.680244143782\np_valor = 1.5791232640682538e-52\nMedia com cupom = 52.00867283950617\nMedia sem cupom = 63.8974435736677\n", "t_ms": 30187}
+{"evento": "rascunho", "delta": "Sim,", "tentativa": 3, "t_ms": 31031}
+{"evento": "rascunho", "delta": " pedidos com cupom têm ticket médio diferente. \n\nO ticket médio dos pedidos com cupom", "tentativa": 3, "t_ms": 31062}
+{"evento": "rascunho", "delta": " é de 52,01 (com base em 1.620 pedidos e desvio padrão de", "tentativa": 3, "t_ms": 31108}
+{"evento": "rascunho", "delta": " 26,18), e o ticket médio dos pedidos sem cupom é de 63,90", "tentativa": 3, "t_ms": 31139}
+{"evento": "rascunho", "delta": " (com base em 6.380 pedidos e desvio padrão de 32,05).\n\n", "tentativa": 3, "t_ms": 31202}
+{"evento": "rascunho", "delta": "Aplicando o teste t de Welch, obtivemos uma estatística t de -15,5570", "tentativa": 3, "t_ms": 31233}
+{"evento": "rascunho", "delta": "03602610843, graus de liberdade de 2.976,6", "tentativa": 3, "t_ms": 31281}
+{"evento": "rascunho", "delta": "80244143782 e p_valor igual a 1.579123", "tentativa": 3, "t_ms": 31327}
+{"evento": "rascunho", "delta": "2640682538e-52. O p-valor é menor que 0,001", "tentativa": 3, "t_ms": 31375}
+{"evento": "rascunho", "delta": ", portanto a diferença é estatisticamente significativa.\n\n", "tentativa": 3, "t_ms": 31437}
+{"evento": "llm", "n": 11, "fase": "resposta", "modelo": "gemini-3.5-flash-lite", "ms": 1325, "tokens_entrada": 4111, "tokens_saida": 263, "t_ms": 31514}
+{"evento": "conferencia", "ok": true, "falhas": [], "significancia": false, "tentativa": 3, "t_ms": 31514}
+{"evento": "resposta", "texto": "Sim, pedidos com cupom têm ticket médio diferente. \n\nO ticket médio dos pedidos com cupom é de 52,01 (com base em 1.620 pedidos e desvio padrão de 26,18), e o ticket médio dos pedidos sem cupom é de 63,90 (com base em 6.380 pedidos e desvio padrão de 32,05).\n\nAplicando o teste t de Welch, obtivemos uma estatística t de -15,557003602610843, graus de liberdade de 2.976,680244143782 e p_valor igual a 1.5791232640682538e-52. O p-valor é menor que 0,001, portanto a diferença é estatisticamente significativa.", "aviso": null, "reanalises": 2, "sugestoes": ["Qual é o impacto do uso de cupons no volume total de vendas ao longo dos meses?", "Os clientes que usam cupom fazem pedidos com maior frequência?", "Qual culinária apresenta a maior taxa de utilização de cupons?"], "conferido": true, "turno": 1, "t_ms": 31514}
+{"evento": "metricas", "ms_total": 31522, "chamadas_llm": 11, "chamadas_ferramenta": 7, "tokens_entrada": 31153, "tokens_saida": 1812, "reanalises": 2, "modelo": "gemini-3.5-flash-lite", "custo": "R$ 0 (plano gratuito)", "trace_id": "e116983bb231", "versao_prompt": "2026-11-21.1", "t_ms": 31514}
+{"evento": "fim", "t_ms": 31514}

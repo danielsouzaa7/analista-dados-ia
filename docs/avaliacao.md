@@ -43,7 +43,7 @@ O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes
 
 O gabarito antigo exigia a estatística t (15,6); o prompt novo a trocou pelo p-valor. A resposta correta para o usuário cita as médias e o p-valor: R$ 52,01 com cupom e R$ 63,90 sem (conferidos por SQL em `data/pedidos.csv`) e p < 0,001. Por isso `numeros_chave` tem agora só as duas médias; o p-valor esperado continua no texto de `esperado`. Mudar o gabarito não aprova resposta errada, porque número errado continua reprovando, e o conferidor da resposta segue exigindo p-valor para afirmar significância.
 
-Cassete de `cupom_ticket` (21/11/2026): o conferidor corrigido reconhece o p-valor em notação científica ("p-valor de 1,58 × 10⁻⁵²", que bate com o 1,579e-52 da saída) e passa a aceitar a 2ª resposta gravada, que o conferidor antigo reprovava por engano. As 2 respostas seguintes, que o agente não pede mais, foram removidas do cassete; nenhuma resposta usada foi alterada. A regravação completa com chamada real fica para quando houver cota num projeto de avaliação separado.
+Cassete de `cupom_ticket` (21/11/2026): o conferidor corrigido reconhece o p-valor em notação científica ("p-valor de 1,58 × 10⁻⁵²", que bate com o 1,579e-52 da saída) e passa a aceitar a 2ª resposta gravada, que o conferidor antigo reprovava por engano. As 2 respostas seguintes, que o agente não pede mais, foram removidas do cassete; nenhuma resposta usada foi alterada. Depois, o cassete e a gravação de `cupom_ticket` foram regravados com chamada real, numa chave de avaliação em projeto Google separado do da demo (a resposta nova sai conferida e cita as médias e o p-valor).
 
 ## Como reproduzir
 
