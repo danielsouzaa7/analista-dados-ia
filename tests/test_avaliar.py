@@ -245,8 +245,8 @@ def _r(id_, acerto, ms=1000, infra=False, faltando=(), errados=(), resposta="x")
 def test_tipo_de_falha_distingue_omitido_errado_infra_e_outro() -> None:
     assert avaliar.tipo_falha(_r("a", True)) is None
     assert avaliar.tipo_falha(_r("a", False, faltando=[1.5])) == "número omitido"
-    assert avaliar.tipo_falha(_r("a", False, errados=["9,9"])) == "número errado"
-    assert avaliar.tipo_falha(_r("a", False, faltando=[1.5], errados=["9,9"])) == "número errado"
+    assert avaliar.tipo_falha(_r("a", False, errados=["9,9"])) == "número sem fonte"
+    assert avaliar.tipo_falha(_r("a", False, faltando=[1.5], errados=["9,9"])) == "número sem fonte"
     assert avaliar.tipo_falha(_r("a", False, infra=True)) == "erro de infraestrutura"
     assert avaliar.tipo_falha(_r("a", False, resposta="")) == "outro"
 
@@ -271,7 +271,7 @@ def test_agregar_rodadas_taxa_media_faixa_pass_n_e_falhas() -> None:
     assert ag["n"] == 2 and ag["rodadas"] == 3 and ag["certos_por_rodada"] == [2, 1]
     assert (ag["media"], ag["minimo"], ag["maximo"]) == (1.5, 1, 2)
     assert ag["pass_n"] == ["a"]
-    assert ag["falhas"] == {"número omitido": 2, "número errado": 1, "erro de infraestrutura": 1, "outro": 0}
+    assert ag["falhas"] == {"número omitido": 2, "número sem fonte": 1, "erro de infraestrutura": 1, "outro": 0}
     assert ag["mediana_ms"] == 25  # sem o caso de infra: 10,10,10,20,30,40,50,60
 
 

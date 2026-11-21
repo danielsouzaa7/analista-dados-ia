@@ -24,7 +24,7 @@
 | Tipo | Ocorrências |
 |---|---|
 | número omitido | 5 |
-| número errado | 0 |
+| número sem fonte | 0 |
 | erro de infraestrutura | 0 |
 | outro | 0 |
 
@@ -34,18 +34,22 @@ Números omitidos: dia_hora (1.611); tempo_nota (5.501).
 
 <!-- avaliacao:fim -->
 
+"Número sem fonte" é um número da resposta que não aparece em nenhum resultado de ferramenta (SQL ou Python), com tolerância de 1%. A checagem não cobre um número certo citado no lugar errado.
+
+A meta da Spec (acertar todas as perguntas) não foi batida: média de 7,0/8 e 6/8 em todas as rodadas. As falhas são número omitido em `dia_hora` e `tempo_nota`, nunca número sem fonte.
+
 Nota: o tempo medido aqui é o do Python no servidor (executor Deno), porque `scripts/avaliar.py` chama o agente com esse executor. Em produção o Python roda no navegador do visitante, e esse tempo vem do e2e (`tests/e2e/test_python_navegador.py`; ver a decisão 13 em [decisoes.md](decisoes.md)).
 
-- As 5 falhas são todas "número omitido", em 2 casos: `dia_hora` (2 de 5) não cita o total do sábado (1.611) e `tempo_nota` (3 de 5) não cita 5.501. Nenhuma resposta trouxe número errado, e nenhuma rodada teve erro de infraestrutura (chave de avaliação em projeto Google separado do da demo).
+- As 5 falhas são todas "número omitido", em 2 casos: `dia_hora` (2 de 5) não cita o total do sábado (1.611) e `tempo_nota` (3 de 5) não cita 5.501. Nenhuma resposta trouxe número sem fonte, e nenhuma rodada teve erro de infraestrutura (chave de avaliação em projeto Google separado do da demo).
 - Os outros 6 casos passaram nas 5 rodadas, inclusive `seguranca` (recusa a injeção de prompt) e `acompanhamento` (pergunta de seguimento que depende da anterior).
 
 ## Uma rodada só é ruído
 
-O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes desta página também. Com o mesmo prompt e o conferidor antigo, lotes anteriores deram 4/8, 7/8, 6/7, 5/8 e 5/8, e depois 7/8, 6/8 e 4/8; com o conferidor corrigido (citação de p-valor conferida contra a saída, número errado reprovando), as 5 rodadas acima deram 6, 8, 6, 7 e 8. O modelo varia bastante, então o 7/8 antigo não é piso nem média: compare versões do prompt só com várias rodadas (média, faixa e pass^N). O que não varia: as falhas são, em sua maioria, número esperado omitido, e não número errado.
+O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes desta página também. Com o mesmo prompt e o conferidor antigo, lotes anteriores deram 4/8, 7/8, 6/7, 5/8 e 5/8, e depois 7/8, 6/8 e 4/8; com o conferidor corrigido (citação de p-valor conferida contra a saída, número sem fonte reprovando), as 5 rodadas acima deram 6, 8, 6, 7 e 8. O modelo varia bastante, então o 7/8 antigo não é piso nem média: compare versões do prompt só com várias rodadas (média, faixa e pass^N). O que não varia: as falhas são, em sua maioria, número esperado omitido, e não número errado.
 
 ## Mudança no gabarito de `cupom_ticket`
 
-O gabarito antigo exigia a estatística t (15,6); o prompt novo a trocou pelo p-valor. A resposta correta para o usuário cita as médias e o p-valor: R$ 52,01 com cupom e R$ 63,90 sem (conferidos por SQL em `data/pedidos.csv`) e p < 0,001. Por isso `numeros_chave` tem agora só as duas médias; o p-valor esperado continua no texto de `esperado`. Mudar o gabarito não aprova resposta errada, porque número errado continua reprovando, e o conferidor da resposta segue exigindo p-valor para afirmar significância.
+O gabarito antigo exigia a estatística t (15,6); o prompt novo a trocou pelo p-valor. A resposta correta para o usuário cita as médias e o p-valor: R$ 52,01 com cupom e R$ 63,90 sem (conferidos por SQL em `data/pedidos.csv`) e p < 0,001. Por isso `numeros_chave` tem agora só as duas médias; o p-valor esperado continua no texto de `esperado`. Mudar o gabarito não aprova resposta errada, porque número sem fonte continua reprovando, e o conferidor da resposta segue exigindo p-valor para afirmar significância.
 
 Cassete de `cupom_ticket` (21/11/2026): o conferidor corrigido reconhece o p-valor em notação científica ("p-valor de 1,58 × 10⁻⁵²", que bate com o 1,579e-52 da saída) e passa a aceitar a 2ª resposta gravada, que o conferidor antigo reprovava por engano. As 2 respostas seguintes, que o agente não pede mais, foram removidas do cassete; nenhuma resposta usada foi alterada. Depois, o cassete e a gravação de `cupom_ticket` foram regravados com chamada real, numa chave de avaliação em projeto Google separado do da demo (a resposta nova sai conferida e cita as médias e o p-valor).
 

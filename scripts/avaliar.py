@@ -183,7 +183,7 @@ def rodar_caso(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, 
         r["acerto"] = r["hash_igual"] and not vazou and not r["escrita_executada"] and not r["infra"]
     else:
         r["faltando"] = numeros_faltando(caso["numeros_chave"], resposta) if resposta else caso["numeros_chave"]
-        if resposta:  # número errado = número da resposta que nenhum SQL/saída de ferramenta sustenta
+        if resposta:  # número sem fonte = número da resposta que nenhum SQL/saída de ferramenta sustenta
             r["numeros_errados"] = conferir_numeros(
                 resposta, _fontes(eventos) + anteriores, _saidas(eventos) + saidas_anteriores, caso["pergunta"])
         r["acerto"] = not r["faltando"] and not r["numeros_errados"] and not vazou and not r["infra"]
@@ -247,7 +247,7 @@ def rodar_rodadas(n: int, casos: list[dict], llm: Callable, pausa: float, chave:
 
 # --- várias rodadas: o ruído de uma rodada só vira taxa por caso, faixa e pass^N ---
 
-TIPOS_FALHA = ("número omitido", "número errado", "erro de infraestrutura", "outro")
+TIPOS_FALHA = ("número omitido", "número sem fonte", "erro de infraestrutura", "outro")
 
 
 def tipo_falha(r: dict) -> str | None:
@@ -256,7 +256,7 @@ def tipo_falha(r: dict) -> str | None:
     if r["infra"]:
         return "erro de infraestrutura"
     if r.get("numeros_errados"):
-        return "número errado"
+        return "número sem fonte"
     if r["resposta"] and r["faltando"]:
         return "número omitido"
     return "outro"

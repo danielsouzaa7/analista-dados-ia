@@ -5,9 +5,9 @@ Um agente que responde perguntas em português sobre um CSV ou um Postgres: plan
 **Por que não é mais um "chat com seu CSV":**
 
 - **Não confia no próprio texto.** Antes de responder, código (não prompt) confere se cada número da resposta saiu de uma ferramenta. Se não saiu, a resposta é descartada e a análise é refeita.
-- **É medido contra o LLM real.** 8 casos com resposta esperada calculada fora do agente, em pandas, em várias rodadas (média, faixa e pass^N): **7,0/8 de média em 5 rodadas** (faixa 6–8), 6/8 passando em todas, **0 números errados**, mediana de 9,3 s por caso ([docs/avaliacao.md](docs/avaliacao.md), com as falhas explicadas e sem ajustar o prompt para passar). A avaliação pegou um bug que a suíte de testes não pegava: o Python calculava a correlação só sobre as 1.000 primeiras linhas (r = -0,497 em vez de -0,506), e a conferência aprovava porque comparava com a saída já cortada.
+- **É medido contra o LLM real.** 8 casos com resposta esperada calculada fora do agente, em pandas, em várias rodadas (média, faixa e pass^N): **7,0/8 de média em 5 rodadas** (faixa 6–8), 6/8 passando em todas, **0 números sem fonte** (todo número da resposta aparece nos resultados das ferramentas, com tolerância de 1%; não cobre um número certo citado no lugar errado), mediana de 9,3 s por caso ([docs/avaliacao.md](docs/avaliacao.md), com as falhas explicadas e sem ajustar o prompt para passar). A avaliação pegou um bug que a suíte de testes não pegava: o Python calculava a correlação só sobre as 1.000 primeiras linhas (r = -0,497 em vez de -0,506), e a conferência aprovava porque comparava com a saída já cortada.
 - **Continua de pé sem cota.** Cada avaliação grava o stream de eventos: quando a cota gratuita acaba, a demo toca a gravação (marcada na tela), e os mesmos cassetes viram teste de regressão sem chamar o LLM.
-- **Isola de verdade.** SQL validado pela árvore sintática; o Python da IA roda em WebAssembly num Web Worker do navegador, com uma CSP que não deixa sair rede, e o servidor nunca executa código da IA (rodar Python no servidor gratuito, com 0,1 vCPU, estourava os 30 s). Cinco rodadas de red team, com cada achado reproduzido e fechado com teste ([docs/seguranca.md](docs/seguranca.md)).
+- **Isola de verdade.** SQL validado pela árvore sintática; o Python da IA roda em WebAssembly num Web Worker do navegador, com uma CSP que não deixa sair rede, e o servidor nunca executa o Python da IA (o SQL gerado pela IA roda no servidor, validado pela árvore sintática e só leitura; rodar Python no servidor gratuito, com 0,1 vCPU, estourava os 30 s). Cinco rodadas de red team, com cada achado reproduzido e fechado com teste ([docs/seguranca.md](docs/seguranca.md)).
 
 ## Experimente
 
@@ -128,7 +128,7 @@ Publicação no Render (plano gratuito): no painel, *New → Blueprint*, escolha
 
 - Os testes usam um LLM falso. Os do sandbox rodam o Deno de verdade e são pulados sem `deno` no PATH. Os testes do sandbox levam alguns minutos.
 - Testes do cliente (`static/python.js`, `stream.js`): `deno test --allow-read tests/js/`.
-- E2E do Python no navegador (`tests/e2e/test_python_worker*.py`, `test_python_navegador.py`, `test_desconexao.py`): Playwright em Chromium, Firefox e WebKit, com o jsDelivr ao vivo; o job `e2e-navegador` do CI roda com `E2E_PYODIDE=1`.
+- E2E do Python no navegador (`tests/e2e/test_python_worker*.py`, `test_python_navegador.py`, `test_desconexao.py`): Playwright em Chromium, Firefox e WebKit, com o jsDelivr ao vivo; o job `e2e-navegador` do CI roda com `E2E_PYODIDE=1`. São 10 vetores de fuga bloqueados, testados em 3 motores; 3 vazamentos aceitos ficam registrados (query string ao jsDelivr, IndexedDB/Cache, BroadcastChannel).
 - Regressão com cassetes: `tests/test_regressao.py` reproduz respostas gravadas do LLM pelo agente real, sem chamar o Gemini. Sem cassete, é pulado; os casos que usam Python também são pulados sem `deno`.
 - E2E no navegador (Playwright): `tests/e2e/test_fluxo.py` só roda com o app no ar e `E2E_URL` definida (`pip install playwright && playwright install chromium`; com chave, gasta 1 pergunta da cota):
 
@@ -143,7 +143,7 @@ docker exec pgteste psql -U postgres -c "create table vendas_pg(v int); insert i
 PG_TEST_URL=postgresql://postgres:teste@127.0.0.1:55432/postgres .venv/Scripts/python -m pytest -q tests/test_sql_tool.py
 ```
 
-O CI (`.github/workflows/ci.yml`) roda ruff e pytest com cobertura, e um segundo job com `postgres:16` para o teste real. Não usa segredos nem chama o LLM.
+O CI (`.github/workflows/ci.yml`) roda ruff e pytest com cobertura, e um segundo job com `postgres:16` para o teste real. Não usa segredos nem chama o LLM. O job `e2e-navegador` (Playwright em Chromium, Firefox e WebKit, `test_python_worker.py`, `test_python_worker_fuga_extra.py` e `test_python_navegador.py`) depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`).
 
 ## Dados de exemplo
 
