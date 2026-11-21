@@ -93,6 +93,12 @@ def test_worker_carrega_e_roda_print(rodar) -> None:
     assert rodar.pagina.violacoes == []
 
 
+def test_worker_para_de_acumular_saida_gigante(rodar) -> None:
+    r = rodar("for _ in range(100_000):\n    print('x' * 100)")  # ~10 MB de saída
+    assert r["tipo"] == "resultado" and r["erro"] is None, r
+    assert 10_000 <= len(r["saida"]) <= 25_000, len(r["saida"])  # o cliente ainda corta em 10 mil pontos de código
+
+
 def test_worker_nao_alcanca_rede_externa_nem_o_proprio_site(rodar) -> None:
     for alvo in ("https://example.com", "/api/status"):
         r = _fuga(rodar, f"import js\nr = await js.fetch({alvo!r})\nprint('SAIU', r.status)")

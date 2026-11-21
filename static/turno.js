@@ -1,8 +1,8 @@
 // Um turno da conversa: pergunta, linha do tempo ao vivo, rascunho, resposta, feedback e trace.
 // Todo texto que vem do servidor/LLM/CSV entra por textContent (via el()).
-import { el, botao, icone, fmtNum, fmtMs, fmtCelula, baixarCsv, copiar, renderTexto } from "./dom.js";
+import { rotuloFalha, el, botao, icone, fmtNum, fmtMs, fmtCelula, baixarCsv, copiar, renderTexto } from "./dom.js";
 import { desenharGrafico } from "./graficos.js";
-import { estaPronto } from "./python.js";
+import { estaPronto, statusPython } from "./python.js";
 
 const LINHAS_VISIVEIS = 100;
 const ROTULO_FASE = { plano: "plano", ferramentas: "ferramentas", resposta: "resposta" };
@@ -156,7 +156,12 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
       p.selo = el("span", "no seu navegador", "selo");
       p.dur.before(p.selo);
     }
-    setStatus(estaPronto() ? "Rodando o Python no seu navegador…" : "Carregando o Python no seu navegador (só na primeira vez)…");
+    setStatus(statusPython());
+  }
+
+  // a batida de 2 s do servidor: o worker carregou depois do pedido, então o texto de carga já mentiu
+  function aoAguardandoPython() {
+    if (estaPronto()) setStatus(statusPython());
   }
 
   function aoFimFerramenta(d) {
@@ -211,8 +216,9 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
       r.caixa.classList.add("conferido");
       setStatus("Números conferidos.");
     } else {
-      r.rotulo.replaceChildren(el("span", "alguns números não bateram"));
-      setStatus("Alguns números não bateram. Decidindo o que fazer…");
+      const rotulo = rotuloFalha(d);
+      r.rotulo.replaceChildren(el("span", rotulo));
+      setStatus(`${rotulo[0].toUpperCase()}${rotulo.slice(1)}${rotulo.endsWith(".") ? "" : "."} Decidindo o que fazer…`);
     }
   }
 
@@ -224,6 +230,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
       renderTexto(r.texto, r.buf);
       r.caixa.classList.add("descartado");
       r.rotulo.replaceChildren(el("span", "descartado"));
+      if (!falhas.length && d.significancia) r.caixa.append(el("p", rotuloFalha(d), "rotulo-mini"));
       if (falhas.length) {
         const ul = el("ul", null, "falhas");
         falhas.forEach((f) => ul.append(el("li", String(f))));
@@ -406,6 +413,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
       }
       case "ferramenta_inicio": aoInicioFerramenta(d); break;
       case "python_pedido": aoPedidoPython(d); break;
+      case "python_aguardando": aoAguardandoPython(); break;
       case "ferramenta_fim": aoFimFerramenta(d); break;
       case "rascunho": aoRascunho(d); break;
       case "conferencia": aoConferencia(d); break;

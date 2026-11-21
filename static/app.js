@@ -299,6 +299,7 @@ async function enviar(pergunta, { exemplo_id = null, substituir = null } = {}) {
     if (e && e.name === "AbortError") turno.falhar("Você interrompeu esta pergunta.");
     else turno.falhar(e instanceof ErroStream ? e.message : "Algo deu errado do nosso lado. Tente de novo.");
   } finally {
+    estado.abort?.abort(); // o stream acabou, mas um Python em curso desta pergunta não pode ficar vivo
     estado.abort = null;
     definirOcupado(false);
     atualizarStatus();

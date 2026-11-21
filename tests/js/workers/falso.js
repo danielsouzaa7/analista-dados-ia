@@ -4,6 +4,7 @@ export class FalsoWorker {
     this.onmessage = null;
     this.onerror = null;
     this.encerrado = false;
+    this.pedidos = 0;
     this.aoPedido = aoPedido;
     if (inicio) setTimeout(() => this.emitir({ tipo: inicio }), 0);
   }
@@ -11,6 +12,7 @@ export class FalsoWorker {
     if (!this.encerrado) this.onmessage?.({ data });
   }
   postMessage(msg) {
+    this.pedidos++;
     this.aoPedido?.(this, msg);
   }
   terminate() {

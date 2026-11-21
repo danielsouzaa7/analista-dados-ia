@@ -97,6 +97,7 @@ def test_python_roda_no_navegador_do_visitante(pagina, url, caplog) -> None:
     sync_api.expect(turno.locator(".final")).to_contain_text("números conferidos")
 
     segunda = _perguntar(pagina, "E de novo?")
+    assert "8000" in pagina.locator(".turno").last.locator(".passo-python .saida").inner_text()
     bytes_pedido = [int(m) for m in re.findall(r"python_pedido bytes=(\d+)", caplog.text)]
     print(f"\n[{pagina.motor}] 1a execucao {primeira:.1f} s, 2a {segunda:.1f} s, python_pedido {bytes_pedido} bytes")
     assert bytes_pedido and bytes_pedido[0] > 30_000  # o CSV de 8.000 linhas viaja inteiro

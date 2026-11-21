@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { fmtValor, ehMoeda } from "../../static/dom.js";
+import { fmtValor, ehMoeda, rotuloFalha } from "../../static/dom.js";
 import { marcas } from "../../static/marcas.js";
 
 // Intl usa espaço não separável entre "R$" e o número.
@@ -40,4 +40,13 @@ Deno.test("N1: nomes de dinheiro continuam sendo moeda", () => {
   for (const c of ["valor_pedido", "taxa_entrega", "desconto", "receita_total", "ticket_medio", "receita (R$)", "preco_unitario"]) {
     assertEquals(ehMoeda(c), true, c);
   }
+});
+
+Deno.test("conferência: só a significância falhando não diz que números não bateram", () => {
+  const sig = { ok: false, falhas: [], significancia: true };
+  assertEquals(rotuloFalha(sig), "A afirmação de significância estatística não tem um teste que a sustente.");
+  assertEquals(rotuloFalha({ ok: false, conferencia: { significancia: true }, falhas: [] }), rotuloFalha(sig));
+  assertEquals(rotuloFalha({ ok: false, falhas: ["x"], significancia: true }), "alguns números não bateram");
+  assertEquals(rotuloFalha({ ok: false, falhas: ["x"] }), "alguns números não bateram");
+  assertEquals(rotuloFalha({ ok: false }), "alguns números não bateram");
 });

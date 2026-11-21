@@ -184,3 +184,11 @@ export function renderTexto(alvo, texto) {
 }
 
 export const reduzMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Rótulo de uma conferência que falhou: só a significância reprovada não pode dizer que números não bateram. */
+export function rotuloFalha(d) {
+  const soSignificancia = (d?.significancia || d?.conferencia?.significancia) && !(d?.falhas?.length);
+  return soSignificancia
+    ? "A afirmação de significância estatística não tem um teste que a sustente."
+    : "alguns números não bateram";
+}
