@@ -819,3 +819,7 @@ def test_conteudo_das_ferramentas_vai_ao_llm_dentro_de_dados(s: Sessao) -> None:
     eventos(llm, s, "Qual o total?")
     conteudo = next(m["content"] for m in llm.chamadas[-1] if m["role"] == "tool")
     assert conteudo.startswith("<dados>\n") and conteudo.endswith("\n</dados>") and "350" in conteudo
+
+
+def test_csv_do_python_respeita_5_mb() -> None:
+    assert agent.MAX_BYTES_PYTHON == 5 * 1024 * 1024

@@ -19,9 +19,9 @@ from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, Up
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
-from app import agent, config, perfil, prompts, sessions
+from app import agent, config, perfil, prompts, python_navegador, python_tool, sessions
 from app.errors import ErroUsuario
 
 log = logging.getLogger("analista")
@@ -40,6 +40,7 @@ def _teto_do_ambiente() -> int:
 MAX_SESSOES = 200
 LIMITE_DIARIO = _teto_do_ambiente()  # perguntas por dia, global (protege a cota gratuita do Gemini)
 LIMITE_CORPO = 16 * 1024
+LIMITE_RESULTADO_PYTHON = 80 * 1024  # 10 mil caracteres no pior caso de escape JSON, mais o erro
 FOLGA_MULTIPART = 64 * 1024
 PAUSA_GRAVACAO = 0.4  # fração do tempo original
 PAUSA_MAXIMA = 1.5  # segundos entre eventos
@@ -91,6 +92,20 @@ class FeedbackIn(BaseModel):
     turno: int = Field(ge=1, le=100_000)
     nota: Literal["util", "nao_util"]
     motivo: Literal["numeros_errados", "nao_entendeu", "grafico_ruim", "lento", "outro"] | None = None
+
+
+class ResultadoPythonIn(BaseModel):
+    sessao: str = Field(max_length=64)
+    id: str = Field(max_length=128)
+    nonce: str = Field(pattern=r"^[0-9a-f]{32}$")
+    saida: str = Field(max_length=python_tool.MAX_CHARS)
+    erro: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("saida", "erro", mode="before")
+    @classmethod
+    def _sanear_surrogates(cls, v: object) -> object:
+        # um surrogate solto faria _sse(...).encode() levantar e derrubaria o stream (antes: o str do pydantic o recusa)
+        return v.encode("utf-8", "replace").decode() if isinstance(v, str) else v
 
 
 class SessaoOut(BaseModel):
@@ -159,7 +174,8 @@ def _corpo_grande_demais(request: Request) -> bool:
     tamanho = request.headers.get("content-length")
     if tamanho is None:
         return "chunked" in request.headers.get("transfer-encoding", "").lower()
-    limite = sessions.MAX_CSV_BYTES + FOLGA_MULTIPART if request.url.path == "/api/sessao/csv" else LIMITE_CORPO
+    limite = {"/api/sessao/csv": sessions.MAX_CSV_BYTES + FOLGA_MULTIPART,
+              "/api/python/resultado": LIMITE_RESULTADO_PYTHON}.get(request.url.path, LIMITE_CORPO)
     return not tamanho.isdigit() or int(tamanho) > limite
 
 
@@ -433,6 +449,12 @@ def create_app() -> FastAPI:
             _estat[corpo.nota] += 1
             if corpo.motivo:
                 _estat["por_motivo"][corpo.motivo] += 1
+        return Response(status_code=204)
+
+    @app.post("/api/python/resultado", status_code=204)
+    def resultado_python(corpo: ResultadoPythonIn) -> Response:
+        if not python_navegador.entregar(corpo.sessao, corpo.id, corpo.nonce, corpo.saida, corpo.erro):
+            raise ErroUsuario("Não há execução de Python esperando esse resultado.")
         return Response(status_code=204)
 
     @app.post("/api/perguntar")

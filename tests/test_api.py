@@ -634,3 +634,65 @@ def test_versao_do_pyodide_igual_no_worker_no_runner_e_na_csp() -> None:
     na_csp = re.findall(r"pyodide/v([\d.]+)/full", main.CSP_WORKER)
     assert no_worker and no_runner and na_csp
     assert set(no_worker) == set(no_runner) == set(na_csp)
+
+
+# ---------- Python no navegador (fatia 5) ----------
+
+MSG_SEM_PENDENTE = "Não há execução de Python esperando esse resultado."
+
+
+def _pendente_de_teste(sessao: str = "s-py", id_: str = "t1"):
+    """Registra uma pendente como o executor faz e devolve (gerador, nonce)."""
+    from app import python_navegador
+    g = python_navegador.executor(sessao)(id_, "print(1)", "a\r\n1\r\n", 120)
+    return g, next(g)["nonce"]
+
+
+def _retorno(g) -> dict:
+    while True:
+        try:
+            next(g)
+        except StopIteration as fim:
+            return fim.value
+
+
+def _resultado(nonce: str = "0" * 32, **campos) -> dict:
+    return {"sessao": "s-py", "id": "t1", "nonce": nonce, "saida": "ok", "erro": None, **campos}
+
+
+def test_resultado_python_valida_corpo(client: TestClient) -> None:
+    assert client.post("/api/python/resultado", json=_resultado(nonce="xyz")).status_code == 422
+    assert client.post("/api/python/resultado", json=_resultado(nonce="G" * 32)).status_code == 422
+    assert client.post("/api/python/resultado", json=_resultado(saida="a" * 10_001)).status_code == 422
+    r = client.post("/api/python/resultado", json=_resultado())
+    assert r.status_code == 400 and r.json()["detail"] == MSG_SEM_PENDENTE
+
+
+def test_recusas_do_resultado_python_tem_uma_mensagem_so(client: TestClient) -> None:
+    g, nonce = _pendente_de_teste()
+    erradas = [_resultado(nonce, sessao="outra"), _resultado(nonce, id="outro"), _resultado("1" * 32)]
+    respostas = [client.post("/api/python/resultado", json=c) for c in erradas]
+    g.close()
+    assert {r.status_code for r in respostas} == {400}
+    assert {r.json()["detail"] for r in respostas} == {MSG_SEM_PENDENTE}
+
+
+def test_corpo_do_resultado_python_tem_limite_proprio(client: TestClient) -> None:
+    g, nonce = _pendente_de_teste()
+    grande = client.post("/api/python/resultado", content=b" " * (80 * 1024 + 1),
+                         headers={"content-type": "application/json"})
+    assert grande.status_code == 413
+    assert client.post("/api/python/resultado", json=_resultado(nonce, saida="é" * 10_000)).status_code == 204
+    assert _retorno(g)["saida"] == "é" * 10_000
+
+
+def test_surrogate_solto_no_resultado_nao_derruba_o_stream(client: TestClient) -> None:
+    g, nonce = _pendente_de_teste()
+    corpo = json.dumps(_resultado(nonce, saida="a\ud800b"))  # ensure_ascii: vai como escape no JSON
+    r = client.post("/api/python/resultado", content=corpo, headers={"content-type": "application/json"})
+    assert r.status_code in (204, 422)  # o parser JSON do pydantic já recusa; se aceitar, o validador sanea
+    g.close()
+    # pelo caminho do validador (modo Python): o surrogate vira ? e o SSE consegue codificar
+    modelo = main.ResultadoPythonIn(**_resultado(nonce, saida="a\ud800b", erro="x\udfffy"))
+    main._sse({"evento": "ferramenta_fim", "saida": modelo.saida, "erro": modelo.erro})
+    assert modelo.saida == "a?b" and modelo.erro == "x?y"
