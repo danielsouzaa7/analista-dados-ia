@@ -7,7 +7,7 @@ import numpy as np
 ResultadoTeste = namedtuple("ResultadoTeste", "t gl p_valor")
 ResultadoCorrelacao = namedtuple("ResultadoCorrelacao", "r gl p_valor")
 MAXIT = 10_000
-GL_NORMAL = 1e5  # acima disso a t é praticamente a normal
+GL_NORMAL = 1e7  # acima disso a t é a normal (erro < 2e-8); abaixo, a fração contínua é rápida e mais exata
 
 
 def _fracao_continua(a, b, x):
@@ -59,6 +59,8 @@ def p_bicaudal_t(t, gl):
 def _limpar(valores, nome):
     v = np.asarray(valores, dtype=float).ravel()
     v = v[~np.isnan(v)]
+    if not np.isfinite(v).all():
+        raise ValueError(f"{nome} tem valores infinitos; remova-os antes do teste.")
     if len(v) < 2:
         raise ValueError(f"{nome} precisa de pelo menos 2 valores válidos (NaN é descartado).")
     return v

@@ -29,6 +29,10 @@ def test_p_bate_com_a_integracao_numerica_independente(t: float, gl: float) -> N
     assert p_bicaudal_t(t, gl) == pytest.approx(p_por_integracao(t, gl), abs=1e-6)
 
 
+def test_gl_grande_nao_troca_pela_normal() -> None:
+    assert p_bicaudal_t(2.5, 2e5) == pytest.approx(p_por_integracao(2.5, 2e5), abs=2e-8)
+
+
 def test_welch_bate_com_a_formula() -> None:
     r = welch([1, 2, 3, 4, 5], [3, 4, 5, 6, 7])
     assert r.t == pytest.approx(-2.0) and r.gl == pytest.approx(8.0)
@@ -47,8 +51,10 @@ def test_t_enorme_da_p_minusculo_sem_erro() -> None:
 
 
 def test_gl_gigante_nao_estoura_iteracoes() -> None:
-    assert p_bicaudal_t(1.959964, 1e7) == pytest.approx(math.erfc(1.959964 / math.sqrt(2)), abs=1e-9)
-    assert p_bicaudal_t(2.5, 99_999) == pytest.approx(math.erfc(2.5 / math.sqrt(2)), abs=1e-4)
+    # a normal só entra acima de 1e7 (antes de 1e5 ela errava ~1e-6); a fração contínua é exata abaixo disso
+    assert p_bicaudal_t(1.959964, 1e7) == pytest.approx(math.erfc(1.959964 / math.sqrt(2)), abs=1e-7)
+    assert p_bicaudal_t(2.5, 1e12) == pytest.approx(math.erfc(2.5 / math.sqrt(2)), abs=1e-7)
+    assert p_bicaudal_t(2.5, math.inf) == pytest.approx(math.erfc(2.5 / math.sqrt(2)), abs=1e-12)
 
 
 def test_correlacao_perfeita_da_p_zero() -> None:
@@ -80,3 +86,10 @@ def test_ignora_nan() -> None:
 def test_grupo_pequeno_ou_variancia_zero_levanta_erro_em_portugues(chamada) -> None:
     with pytest.raises(ValueError, match="[a-zç]"):
         chamada()
+
+
+def test_infinito_na_amostra_tem_mensagem_propria() -> None:
+    with pytest.raises(ValueError, match="infinit"):
+        welch([1, 2, math.inf], [3, 4, 5])
+    with pytest.raises(ValueError, match="infinit"):
+        correlacao([1, 2, 3, -math.inf], [1, 2, 3, 4])

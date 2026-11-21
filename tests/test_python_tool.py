@@ -10,6 +10,7 @@ from app import python_tool
 pytestmark = pytest.mark.skipif(shutil.which("deno") is None, reason="deno não está no PATH")
 
 CSV = "a,b\n1,2\n3,4\n"
+FOLGA_S = 90  # com a suíte inteira rodando o Pyodide demora a subir; o timeout de produção (30 s) não muda
 SEGREDO = Path(__file__)  # arquivo real fora da pasta liberada
 
 
@@ -42,13 +43,13 @@ def test_timeout() -> None:
     # 20 s cobre o carregamento do Pyodide: o estouro tem de acontecer dentro do while True.
     r = rodar("print('antes', flush=True)\nwhile True: pass", timeout=20)
     assert "Tempo limite" in r["erro"]
-    assert rodar("print(1)")["saida"].strip() == "1"
+    assert rodar("print(1)", timeout=FOLGA_S)["saida"].strip() == "1"
 
 
 def test_saida_gigante_do_deno_e_cortada() -> None:
     codigo = ("import js\nb = js.Uint8Array.new(1024*1024)\n"
               "for _ in range(5): js.Deno.stdout.writeSync(b)\n")
-    r = rodar(codigo)
+    r = rodar(codigo, timeout=FOLGA_S)
     assert "grande demais" in (r["erro"] or ""), r
 
 
@@ -94,7 +95,7 @@ print("legitimo")
 
 
 def test_js_json_stringify_trocado_nao_forja_saida() -> None:
-    r = rodar(CODIGO_FORJA)
+    r = rodar(CODIGO_FORJA, timeout=FOLGA_S)
     assert r["saida"] == "legitimo\n" and not r["erro"], r
 
 
