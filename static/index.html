@@ -116,7 +116,7 @@
         <figure class="diagrama">
           <svg viewBox="0 0 404 428" role="img" aria-labelledby="dg-titulo dg-desc" focusable="false">
             <title id="dg-titulo">Fluxo do agente</title>
-            <desc id="dg-desc">A pergunta vai ao orquestrador, que planeja e usa três ferramentas: consulta SQL, código Python e gráfico. Os resultados passam pela conferência dos números. Se algum número não bater, o fluxo volta ao orquestrador, até duas vezes. Se tudo bater, sai a resposta com o gráfico.</desc>
+            <desc id="dg-desc">A pergunta vai ao orquestrador, que planeja e usa três ferramentas: consulta SQL, código Python (executado no navegador do visitante, sem rede) e gráfico. Os resultados passam pela conferência dos números. Se algum número não bater, o fluxo volta ao orquestrador, até duas vezes. Se tudo bater, sai a resposta com o gráfico.</desc>
             <defs>
               <marker id="seta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" class="d-ponta"/></marker>
               <marker id="seta-loop" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" class="d-ponta-loop"/></marker>
@@ -138,8 +138,8 @@
 
             <rect class="d-caixa" x="144" y="168" width="112" height="70" rx="12"/>
             <text class="d-t" x="200" y="192" text-anchor="middle">Python</text>
-            <text class="d-s" x="200" y="212" text-anchor="middle">sandbox, sem rede</text>
-            <text class="d-s" x="200" y="227" text-anchor="middle">nem arquivos</text>
+            <text class="d-s" x="200" y="212" text-anchor="middle">no seu navegador,</text>
+            <text class="d-s" x="200" y="227" text-anchor="middle">sem rede</text>
 
             <rect class="d-caixa" x="274" y="168" width="112" height="70" rx="12"/>
             <text class="d-t" x="330" y="192" text-anchor="middle">Gráfico</text>
@@ -167,7 +167,7 @@
           <h3>O que protege os dados e o serviço</h3>
           <dl class="lista-def">
             <div><dt>SQL só leitura</dt><dd>Um único SELECT por chamada. Escrita, vários comandos e leitura de arquivos são recusados antes de rodar. Limite de 30 s.</dd></div>
-            <div><dt>Python isolado</dt><dd>Roda em WebAssembly, sem rede, sem arquivos fora dos seus dados e sem variáveis de ambiente. Limite de 30 s.</dd></div>
+            <div><dt>Python isolado</dt><dd>Roda no seu navegador, em WebAssembly, num Worker sem rede e sem acesso à página. Limite de 30 s.</dd></div>
             <div><dt>Números conferidos</dt><dd>Cada número da resposta precisa bater com os resultados das ferramentas, com margem de 1%. Se não bater, o agente refaz a análise até 2 vezes.</dd></div>
             <div><dt>Limites</dt><dd>No máximo 8 ferramentas, 12 chamadas ao modelo e 120 s por pergunta. Uma pergunta por vez, com teto diário.</dd></div>
             <div><dt>Memória curta</dt><dd>Lembra as 3 últimas perguntas da sessão, para entender "e só em São Paulo?". Nova conversa apaga tudo.</dd></div>

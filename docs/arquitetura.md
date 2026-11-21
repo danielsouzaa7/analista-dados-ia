@@ -1,10 +1,10 @@
 # Arquitetura
 
-Última revisão: 2026-11-19. Tudo aqui foi conferido contra o código em `app/`, `sandbox/` e `static/`.
+Última revisão: 2026-11-21. Tudo aqui foi conferido contra o código em `app/`, `sandbox/` e `static/`.
 
 ## Visão geral
 
-Um processo FastAPI (1 worker) serve a página estática e uma API. O visitante carrega dados (CSV ou Postgres), faz uma pergunta e recebe a resposta em streaming SSE. O agente (`app/agent.py`) é um laço próprio, sem framework de agentes: chama o LLM com três ferramentas (`consultar_banco`, `rodar_python`, `gerar_grafico`), confere os números da resposta em código e refaz a análise até 2 vezes se algum número não bater.
+Um processo FastAPI (1 worker) serve a página estática e uma API. O visitante carrega dados (CSV ou Postgres), faz uma pergunta e recebe a resposta em streaming SSE. O agente (`app/agent.py`) é um laço próprio, sem framework de agentes: chama o LLM com três ferramentas (`consultar_banco`, `rodar_python`, `gerar_grafico`), confere os números da resposta em código e refaz a análise até 2 vezes se algum número não bater. Em produção, o servidor nunca executa o Python da IA: ele pede a execução ao navegador do visitante (decisão 13). O executor Deno continua só na avaliação, nos testes e na regressão.
 
 ## Fluxo do agente
 
@@ -36,9 +36,12 @@ flowchart LR
     A <--> D[DuckDB]
     D --- CSV[(CSV da sessão<br/>arquivo .duckdb somente leitura)]
     D --- PG[(Postgres do visitante<br/>ATTACH READ_ONLY via SECRET)]
-    A <-- "stdin/stdout" --> S[Subprocesso Deno<br/>sem permissões]
-    S --> W[Pyodide WASM + pandas]
+    N <-- "python_pedido (SSE) / POST /api/python/resultado" --> W[Web Worker novo por execução<br/>Pyodide 0.28.3 + pandas, CSP própria]
+    A <-. "avaliação e testes" .-> S[Subprocesso Deno<br/>sem permissões]
+    S --> P[Pyodide WASM + pandas]
 ```
+
+O agente não conhece o executor de Python: `agent.executar` recebe uma função. Na web ao vivo, ela é `app/python_navegador.py` (o Worker do navegador); a avaliação (`scripts/avaliar.py`), os testes e a regressão usam o padrão, `app/python_tool.py` (Deno, aresta tracejada). O Pyodide do navegador vem do jsDelivr, não do servidor.
 
 ## Contrato de eventos SSE
 
@@ -51,6 +54,8 @@ flowchart LR
 | `llm` | `n`, `fase` (`plano`, `ferramentas`, `resposta`), `modelo`, `ms`, `tokens_entrada`, `tokens_saida` | Fim de cada chamada ao LLM |
 | `aguardando_cota` | `segundos` | O provedor devolveu 429 e o agente vai esperar para tentar de novo |
 | `ferramenta_inicio` | `id`, `tipo` (`sql`, `python`, `grafico`), `sql`, `codigo` (só no Python) | Antes de rodar uma ferramenta |
+| `python_pedido` | `id`, `nonce`, `codigo`, `csv`, `preludio` | Só na web ao vivo, entre `ferramenta_inicio` e `ferramenta_fim` do Python: o servidor pede ao navegador que execute o código. O nonce fica entre o servidor e a página (o worker não o recebe) |
+| `python_aguardando` | `id` | A cada 2 s enquanto o servidor espera o resultado. A página o ignora; a batida faz o gerador devolver o controle ao Starlette, o que deixa o cancelamento entrar quando a aba fecha |
 | `ferramenta_fim` | `id`, `ms` e: `colunas`, `linhas`, `total_linhas` (SQL); `saida` (Python); `grafico` (gráfico); ou `erro` | Depois de cada ferramenta |
 | `rascunho` | `delta`, `tentativa` | Texto da resposta em pedaços. O marcador `SUGESTOES:` nunca é transmitido |
 | `conferencia` | `ok`, `falhas`, `significancia`, `tentativa` | Depois de cada rascunho completo |
@@ -60,7 +65,7 @@ flowchart LR
 | `metricas` | `ms_total`, `chamadas_llm`, `chamadas_ferramenta`, `tokens_entrada`, `tokens_saida`, `reanalises`, `modelo`, `custo`, `trace_id`, `versao_prompt` | Sempre, antes do `fim` |
 | `fim` | (vazio) | Último evento |
 
-Ordem típica: `recebido`, `llm`, `plano`, (`llm`, `ferramenta_inicio`, `ferramenta_fim`)\*, `llm`, `rascunho`\*, `conferencia`, `resposta`, `metricas`, `fim`. Em `ferramenta_fim` com erro, o texto do erro volta ao LLM e o laço continua.
+Ordem típica: `recebido`, `llm`, `plano`, (`llm`, `ferramenta_inicio`, [`python_pedido`, `python_aguardando`\*,] `ferramenta_fim`)\*, `llm`, `rascunho`\*, `conferencia`, `resposta`, `metricas`, `fim`. Em `ferramenta_fim` com erro, o texto do erro volta ao LLM e o laço continua.
 
 O contrato é executável: `static/fake-stream.html` carrega a tela inteira com `static/fake-api.js`, que troca `fetch` por um servidor falso que responde nesses eventos (perfil, métricas e feedback incluídos). Serve para desenvolver e testar a tela sem LLM nem backend.
 
@@ -75,6 +80,7 @@ O contrato é executável: `static/fake-stream.html` carrega a tela inteira com 
 | `POST /api/sessao/csv`, `/exemplo`, `/postgres` | Criam a sessão e devolvem tabelas, perfil e perguntas sugeridas |
 | `POST /api/conversa/nova` | Apaga a memória da sessão |
 | `POST /api/feedback` | Nota `util`/`nao_util` do turno, com motivo opcional |
+| `POST /api/python/resultado` | Devolve a saída do Python executado no navegador. Corpo `{sessao, id, nonce, saida, erro}` (até 80 KB). Aceita um único resultado por execução pendente, da mesma sessão, com o mesmo id e nonce; qualquer divergência recebe a mesma mensagem 400. 204 em caso de sucesso |
 
 `/docs`, `/redoc` e `/openapi.json` estão desligados.
 
@@ -108,8 +114,13 @@ Dado pessoal: uma coluna é marcada `pii` (`cpf`, `email`, `telefone`) pelo nome
 | Linhas devolvidas ao LLM | 1.000 por consulta, 50 no texto; 5.000 no gráfico | `sql_tool.executar`, `para_texto`, `agent.MAX_LINHAS_GRAFICO` |
 | Linhas no `df` do Python | 100.000; acima disso a saída começa com um aviso de corte para o modelo agregar no SQL | `agent.MAX_LINHAS_PYTHON` |
 | Texto de resultado | 10.000 caracteres | `sql_tool.MAX_CHARS` |
-| Saída do Python | 10.000 caracteres; leitura do processo até 1 MB | `python_tool.MAX_CHARS`, `MAX_STDOUT_BYTES` |
-| Sandboxes simultâneos | 2 | `python_tool.SEMAFORO` |
+| Saída do Python | 10.000 caracteres; no executor Deno, leitura do processo até 1 MB | `python_tool.MAX_CHARS`, `MAX_STDOUT_BYTES` |
+| Sandboxes simultâneos (Deno: avaliação e testes) | 2 | `python_tool.SEMAFORO` |
+| Python no navegador: carga do Pyodide / execução | 45 s / 30 s, com `terminate()` | `static/python.js` |
+| Python no navegador: espera do servidor por resultado | 80 s (45 + 30 + 5 de folga), ou o que resta dos 120 s da pergunta (já descontado o SQL) | `python_navegador.PRAZO_S` |
+| Batida `python_aguardando` | 2 s | `python_navegador.BATIDA_S` |
+| Corpo de `POST /api/python/resultado` | 80 KB | `main.LIMITE_RESULTADO_PYTHON` |
+| `python_pedido` | 2 MiB por pedido serializado e 6 MiB por pergunta | `python_navegador.MAX_BYTES_PEDIDO_PYTHON`, `ORCAMENTO_BYTES_PERGUNTA` |
 | DuckDB | `memory_limit` 512 MB, 2 threads, sem arquivos temporários | `sql_tool.LIMITES_DUCKDB` |
 | Gráficos | ranking 12 barras (resto em "Outros"), composição 6 fatias, tendência 400 pontos e 4 séries, mapa de calor 31 x 24, dispersão 1.500 pontos | `app/graficos.py` |
 
@@ -117,10 +128,10 @@ Todos os contadores do teto diário e das sessões ficam em memória e reiniciam
 
 ## Gravações e cassetes
 
-- **Gravações** (`data/gravacoes/<id>.jsonl`): o stream de eventos de um caso da avaliação, gerado por `scripts/avaliar.py`. Quando o teto diário acaba, não há vaga, ou o provedor devolve 429 antes de qualquer evento substantivo, e a pergunta veio de um exemplo (`exemplo_id`), a API reproduz a gravação, com pausa de 40% do tempo original (no máximo 1,5 s entre eventos) e `"gravacao": true` em cada evento. A tela marca o turno com o selo "gravação". O `exemplo_id` só aceita ids que existem na pasta.
+- **Gravações** (`data/gravacoes/<id>.jsonl`): o stream de eventos de um caso da avaliação que passou, gerado por `scripts/avaliar.py` (que usa o executor Deno, então não há `python_pedido` nelas). Quando o teto diário acaba, não há vaga, ou o provedor devolve 429 antes de qualquer evento substantivo, e a pergunta veio de um exemplo (`exemplo_id`), a API reproduz a gravação, com pausa de 40% do tempo original (no máximo 1,5 s entre eventos) e `"gravacao": true` em cada evento. A tela marca o turno com o selo "gravação". O `exemplo_id` só aceita ids que existem na pasta.
 - **Cassetes** (`tests/cassetes/<id>.json`): as respostas do LLM de um acerto, gravadas com `--gravar-cassetes`. `tests/test_regressao.py` as reproduz pelo agente real, sem chamar o Gemini, e confere os números-chave. Sem cassete, o teste é pulado.
 
-Ambos são gerados por uma execução real da avaliação; esta cópia do repositório ainda não os traz (`data/gravacoes/` não existe e `tests/cassetes/` só tem `.gitkeep`).
+Ambos são gerados por uma execução real da avaliação, que mede o Python do servidor (Deno); o tempo do Python no navegador vem do e2e (decisão 13). Com `--rodadas N` a avaliação não sobrescreve as gravações nem grava cassetes; ver [avaliacao.md](avaliacao.md).
 
 ## Observabilidade
 
@@ -131,7 +142,7 @@ Ambos são gerados por uma execução real da avaliação; esta cópia do reposi
 
 ## Front-end
 
-Sem build: HTML, CSS e módulos ES em `static/`. Apache ECharts 5.5.0 vem de CDN com SRI (`integrity` sha384) e a CSP só libera `script-src 'self'` e a CDN.
+Sem build: HTML, CSS e módulos ES em `static/`. Apache ECharts 5.5.0 vem de CDN com SRI (`integrity` sha384) e a CSP só libera `script-src 'self'` e a CDN. O Python roda num Worker de módulo (`static/python-worker.js`) que carrega o Pyodide do jsDelivr; a resposta desse arquivo leva uma CSP própria, sem rede além do caminho do Pyodide.
 
 - **Trilho de passos e linha do tempo ao vivo** por turno (`turno.js`): plano, cada ferramenta (SQL, Python, gráfico) com código e tabela de resultado (até 100 linhas visíveis) e o rascunho aparecendo.
 - **Conferência visível**: o rascunho aprovado recebe o selo "números conferidos"; um rascunho descartado fica marcado "descartado" e a resposta mostra "reanalisou N×". Se sobrar número sem conferência, aparece o aviso.
@@ -149,16 +160,20 @@ Sem build: HTML, CSS e módulos ES em `static/`. Apache ECharts 5.5.0 vem de CDN
 | `app/agent.py` | Laço do agente, contrato de eventos, retentor do marcador `SUGESTOES:`, memória, cliente LLM com 429 e modelo reserva |
 | `app/checker.py` | Conferência determinística dos números (formato BR, 1% de tolerância, `%`, "mil", "milhão") |
 | `app/sql_tool.py` | Validação do SQL (extract_statements + árvore sintática), conexão travada, timeout, redação de segredos |
-| `app/python_tool.py` | Subprocesso Deno, entrada por stdin, nonce, teto de 1 MB, semáforo |
+| `app/python_tool.py` | Executor Deno (avaliação, testes e regressão): subprocesso, entrada por stdin, nonce, teto de 1 MB, semáforo |
+| `app/python_navegador.py` | Executor de produção: emite `python_pedido`, espera o resultado com batida de 2 s, aceita um único resultado por nonce, tetos de bytes |
 | `app/graficos.py` | Moldagem dos 5 tipos de gráfico a partir do resultado SQL |
 | `app/perfil.py` | Perfil dos dados, grounding, detecção de PII, perguntas sugeridas |
 | `app/sessions.py` | Sessões isoladas (CSV vira um `.duckdb` próprio; URL Postgres só em memória), TTL |
 | `app/prompts.py` | Prompts versionados (`VERSAO`) |
 | `app/config.py`, `app/errors.py` | Variáveis de ambiente; `ErroUsuario` (mensagem segura em português) |
-| `sandbox/runner.ts` | Executor Pyodide 0.28.3 + pandas dentro do Deno |
-| `static/` | `index.html`, `app.js`, `turno.js`, `graficos.js`, `stream.js`, `dom.js`, `style.css`, `fake-api.js`, `fake-stream.html` |
+| `sandbox/runner.ts` | Executor Pyodide 0.28.3 + pandas dentro do Deno (avaliação e testes) |
+| `sandbox/preludio.py` | Prelúdio estatístico (`teste_t_welch`, `teste_correlacao`; numpy e `math`, sem scipy), enviado no `python_pedido` e carregado também pelo Deno |
+| `static/python.js` | Cliente do Python no navegador: worker novo por execução, reserva aquecida, prazos de 45 s e 30 s, corte da saída, `POST` do resultado com uma nova tentativa |
+| `static/python-worker.js` | Worker de módulo: carrega Pyodide e pandas do jsDelivr, roda o código e devolve a saída |
+| `static/` | `index.html`, `app.js`, `turno.js`, `graficos.js`, `stream.js`, `dom.js`, `marcas.js`, `style.css`, `fake-api.js`, `fake-stream.html` (além dos dois acima) |
 | `scripts/gerar_exemplo.py` | Gera `data/pedidos.csv` e `data/perguntas.json` |
-| `scripts/avaliar.py` | Avaliação com o LLM real; grava relatório, gravações e cassetes |
+| `scripts/avaliar.py` | Avaliação com o LLM real, em uma ou várias rodadas (`--rodadas`); grava relatório, gravações e cassetes |
 | `tests/` | Testes com LLM falso; regressão por cassetes |
 
 Decisões e alternativas: [decisoes.md](decisoes.md). Ameaças e revisões de segurança: [seguranca.md](seguranca.md).

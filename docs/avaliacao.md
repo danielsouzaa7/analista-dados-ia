@@ -29,6 +29,8 @@
 | outro | 3 |
 <!-- avaliacao:fim -->
 
+Nota: o tempo medido aqui é o do Python no servidor (executor Deno), porque `scripts/avaliar.py` chama o agente com esse executor. Em produção o Python roda no navegador do visitante, e esse tempo vem do e2e (`tests/e2e/test_python_navegador.py`; ver a decisão 13 em [decisoes.md](decisoes.md)).
+
 - Os 4 omitidos são todos de `dia_hora`: o modelo não cita o total do sábado (1.611).
 - As outras 4 falhas (`tempo_nota` 2 vezes, `cupom_ticket` e `seguranca` 1 vez cada) são 1 "número errado" e 3 "outro". Esta avaliação não salvou as gravações (de propósito, para não sobrescrever as atuais), então a causa de cada uma não foi inspecionada. "Número errado" é um número da resposta que não aparece nos resultados das ferramentas e pode ser falso positivo do conferidor, por exemplo quando o resultado foi cortado.
 - Os 12 erros de infraestrutura são de cota (rodadas 4 e 5) e não contam contra o agente.
