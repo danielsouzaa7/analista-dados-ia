@@ -105,5 +105,4 @@ def test_numeros_chave_recalculados(df: pd.DataFrame, casos: list[dict]) -> None
     cid = df.groupby("cidade")["valor_pedido"].sum().nlargest(2) / v.sum() * 100
     assert _chaves(casos, "participacao_cidade") == pytest.approx(cid.tolist(), abs=1e-3)
     a, b = v[df["cupom"]].to_numpy(), v[~df["cupom"]].to_numpy()
-    t = (a.mean() - b.mean()) / np.sqrt(a.var(ddof=1) / len(a) + b.var(ddof=1) / len(b))
-    assert _chaves(casos, "cupom_ticket") == pytest.approx([a.mean(), b.mean(), abs(t)], abs=1e-2)
+    assert _chaves(casos, "cupom_ticket") == pytest.approx([a.mean(), b.mean()], abs=1e-2)

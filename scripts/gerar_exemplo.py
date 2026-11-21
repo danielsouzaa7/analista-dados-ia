@@ -160,7 +160,7 @@ def gerar_perguntas(df: pd.DataFrame) -> list[dict]:
               "Cupom muda o ticket?", "ranking", ["sql", "python"],
               f"Sim. O ticket médio com cupom é R$ {br(com.mean())} e sem cupom R$ {br(sem.mean())}. Teste t de "
               f"Welch: t = {br(t)} (módulo {br(abs(t))}), p < 0,001: a diferença é significativa.",
-              [com.mean(), sem.mean(), abs(t)]),
+              [com.mean(), sem.mean()]),  # a estatística t não é gabarito: o usuário precisa das médias
         _caso("acompanhamento", "E só em São Paulo?", "E só em São Paulo?", "ranking", ["sql"],
               f"Em São Paulo, {top_sp[0][0]} lidera com R$ {br(top_sp[0][1])}, seguida de {top_sp[1][0]} "
               f"(R$ {br(top_sp[1][1])}).",

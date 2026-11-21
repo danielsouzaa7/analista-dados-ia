@@ -1,40 +1,48 @@
 # Avaliação do agente
 
 - Data: 21/11/2026
-- Modelo: `gemini-3.5-flash-lite`
-- Taxa de acerto: **5/8** casos (62%)
-- Erros de infraestrutura (429, rede; excluídos da taxa): 0
-- Tempo: Mediana 13,1 s, p90 28,1 s
-- Médias por caso: 5,2 chamadas ao LLM, 2,9 de ferramenta, 13.861,0 tokens de entrada, 1.311,0 de saída, 0,5 reanálises
+- Modelo: `gemini-3.5-flash-lite` (prompt 2026-11-21.1)
+- Rodadas: 5 pedidas (`scripts/avaliar.py --rodadas 5`), **3 completas**. A cota gratuita acabou na rodada 4 (4 casos válidos, 4 com erro de infraestrutura) e a rodada 5 inteira caiu por cota. As estatísticas abaixo usam só as 3 rodadas completas; rodar de novo com cota nova dá as 5.
+- Média: **5,7/8** casos certos por rodada (7, 6 e 4); faixa **4–7**
+- pass^3 (casos que passaram nas 3 rodadas completas): **4/8**
+- Tempo: mediana 12,3 s por caso (todas as rodadas, sem erros de infraestrutura)
 
-| Caso | Acerto | Tempo | Chamadas LLM | Chamadas ferramenta | Tokens (entrada/saída) | Reanálises |
-|---|---|---|---|---|---|---|
-| receita_culinaria | sim | 8,3 s | 4 | 2 | 9300/1025 | 0 |
-| pedidos_mes | sim | 5,7 s | 4 | 2 | 8121/618 | 0 |
-| dia_hora | não | 13,2 s | 4 | 2 | 10683/1593 | 0 |
-| tempo_nota | não | 21,6 s | 6 | 4 | 15031/868 | 1 |
-| participacao_cidade | sim | 13,0 s | 5 | 3 | 13173/1449 | 0 |
-| cupom_ticket | não | 28,1 s | 9 | 5 | 22795/1215 | 2 |
-| acompanhamento | sim | 9,6 s | 4 | 2 | 13939/1924 | 0 |
-| seguranca | sim | 15,0 s | 6 | 3 | 17846/1796 | 1 |
+| Caso | Acerto (k/3) |
+|---|---|
+| receita_culinaria | 3/3 |
+| pedidos_mes | 3/3 |
+| dia_hora | 0/3 |
+| tempo_nota | 1/3 |
+| participacao_cidade | 3/3 |
+| cupom_ticket | 2/3 |
+| acompanhamento | 3/3 |
+| seguranca | 2/3 |
 
-## Falhas
+## Falhas por tipo (as 5 rodadas)
 
-### dia_hora
-- Números esperados ausentes na resposta: 1.611.
-- Reanálises: 0. Resposta: "1. Agrupar os pedidos por dia da semana e hora da data_hora. 2. Contar a quantidade de pedidos em cada combinação de dia e horário. 3. Identificar os momentos de maior concentração de pedidos. 4. Gerar o mapa de calor para visualizar os horários de pico.  Os pedidos concentram-se fortemente nos fins de semana e nos horários de almoço e jantar. O maior pico de pedidos de toda a base de dados ocorre"
-- Análise: o modelo omitiu o total do sábado (1.611) nesta rodada; o número aparece nas rodadas em que o caso passou. Omissão do modelo, não erro de número.
+| Tipo | Ocorrências |
+|---|---|
+| número omitido | 4 |
+| número errado | 1 |
+| erro de infraestrutura | 12 |
+| outro | 3 |
 
-### tempo_nota
-- Números esperados ausentes na resposta: 5.501.
-- Reanálises: 1. Resposta: "Sim, o tempo de entrega afeta a nota do cliente. Ao analisar os dados dos pedidos que possuem avaliação, encontramos uma correlação de -0,5063 entre o tempo de entrega em minutos e a avaliação. O p-valor obtido foi 0,0."
-- Análise: mesma omissão de antes (5.501 pedidos avaliados), agora com o p-valor impresso e citado (p < 0,001). Omissão do modelo.
+- Os 4 omitidos são todos de `dia_hora`: o modelo não cita o total do sábado (1.611).
+- As outras 4 falhas (`tempo_nota` 2 vezes, `cupom_ticket` e `seguranca` 1 vez cada) são 1 "número errado" e 3 "outro". Esta avaliação não salvou as gravações (de propósito, para não sobrescrever as atuais), então a causa de cada uma não foi inspecionada. "Número errado" é um número da resposta que não aparece nos resultados das ferramentas e pode ser falso positivo do conferidor, por exemplo quando o resultado foi cortado.
+- Os 12 erros de infraestrutura são de cota (rodadas 4 e 5) e não contam contra o agente.
 
-### cupom_ticket
-- Números esperados ausentes na resposta: 15,6.
-- Reanálises: 2. Resposta: "Os pedidos com cupom têm ticket médio de R$ 52,01, enquanto os pedidos sem cupom têm ticket médio de R$ 63,90.   Aplicando o teste t de Welch, o resultado mostra que a diferença é estatisticamente expressiva, com $p < 0,001$."
-- Análise: a resposta traz as duas médias e o p-valor (p < 0,001), sem erro de Python e sem afirmar significância sem teste. O esperado 15,6 é a estatística t, que o modelo deixou de citar ao priorizar o p-valor pedido pelo prompt: o critério do caso, e não a resposta, ficou desatualizado.
+## Uma rodada só é ruído
 
-## Variação entre rodadas (21/11/2026, prompt 2026-11-21.1)
+O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes desta página também. Com o mesmo prompt, um lote anterior deu 4/8, 7/8, 6/7, 5/8 e 5/8, e este deu 7/8, 6/8 e 4/8. O modelo varia bastante, então o 7/8 antigo não é piso nem média: compare versões do prompt só com várias rodadas (média, faixa e pass^N). O que não varia: as falhas são, em sua maioria, número esperado omitido, e não número errado.
 
-Cinco rodadas seguidas com o mesmo prompt deram 4/8, 7/8, 6/7 (1 erro de infraestrutura), 5/8 e esta (5/8): o modelo `gemini-3.5-flash-lite` varia bastante. A rodada anterior à mudança (19/11) deu 7/8. As falhas são números esperados que o modelo omite, não números errados nem afirmação de significância sem p-valor. Os cassetes guardam, por caso, a última rodada em que ele passou.
+## Mudança no gabarito de `cupom_ticket`
+
+O gabarito antigo exigia a estatística t (15,6); o prompt novo a trocou pelo p-valor. A resposta correta para o usuário cita as médias e o p-valor: R$ 52,01 com cupom e R$ 63,90 sem (conferidos por SQL em `data/pedidos.csv`) e p < 0,001. Por isso `numeros_chave` tem agora só as duas médias; o p-valor esperado continua no texto de `esperado`. Mudar o gabarito não aprova resposta errada, porque número errado continua reprovando, e o conferidor da resposta segue exigindo p-valor para afirmar significância.
+
+## Como reproduzir
+
+```
+SESSIONS_DIR=<pasta temporária> .venv/Scripts/python scripts/avaliar.py --rodadas 5
+```
+
+`SESSIONS_DIR` isola as sessões da avaliação: o `lifespan` do uvicorn limpa o diretório de sessões e apagava as da avaliação quando os dois rodavam juntos. Com `--rodadas > 1` as gravações vão para uma pasta temporária (não sobrescrevem `data/gravacoes/`), `--gravar-cassetes` é recusado e rodadas com erro de infraestrutura ficam fora do k/N, da média e do pass^N. Atenção: com `--rodadas > 1` o script reescreve este arquivo inteiro; as seções de contexto acima são manuais.

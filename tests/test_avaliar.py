@@ -231,3 +231,78 @@ def test_400_do_provedor_e_falha_do_agente_nao_infra(sessao, tmp_path, monkeypat
     r = rodar(CASO, sessao, tmp_path, monkeypatch, agente([{"evento": "erro", "mensagem": msg}], None))
     assert r["infra"] is False and r["acerto"] is False
     assert (tmp_path / "total.jsonl").exists()
+
+
+# --- várias rodadas ---
+
+def _r(id_, acerto, ms=1000, infra=False, faltando=(), errados=(), resposta="x"):
+    return {"id": id_, "acerto": acerto, "ms": ms, "infra": infra, "faltando": list(faltando),
+            "numeros_errados": list(errados), "resposta": resposta, "erro": None}
+
+
+def test_tipo_de_falha_distingue_omitido_errado_infra_e_outro() -> None:
+    assert avaliar.tipo_falha(_r("a", True)) is None
+    assert avaliar.tipo_falha(_r("a", False, faltando=[1.5])) == "número omitido"
+    assert avaliar.tipo_falha(_r("a", False, errados=["9,9"])) == "número errado"
+    assert avaliar.tipo_falha(_r("a", False, faltando=[1.5], errados=["9,9"])) == "número errado"
+    assert avaliar.tipo_falha(_r("a", False, infra=True)) == "erro de infraestrutura"
+    assert avaliar.tipo_falha(_r("a", False, resposta="")) == "outro"
+
+
+def test_rodar_caso_acha_numero_errado_que_nao_vem_dos_resultados(sessao, tmp_path, monkeypatch) -> None:
+    fim = [{"evento": "ferramenta_fim", "id": "t9", "ms": 1, "colunas": ["v"], "linhas": [[1234.56, 29.2]]}]
+    r = rodar(CASO, sessao, tmp_path, monkeypatch, agente(fim, "Total 1.234,56, 29,2% e 987,65 pedidos."))
+    assert r["numeros_errados"] == ["987,65"]
+    ok = rodar(CASO, sessao, tmp_path, monkeypatch, agente(fim, "Total 1.234,56 e 29,2%"))
+    assert ok["numeros_errados"] == []
+
+
+def test_agregar_rodadas_taxa_media_faixa_pass_n_e_falhas() -> None:
+    rodadas = [
+        [_r("a", True, 10), _r("b", True, 20), _r("c", False, 30, faltando=[1.0])],
+        [_r("a", True, 10), _r("b", False, 40, errados=["9"]), _r("c", False, 50, faltando=[1.0])],
+        [_r("a", True, 10), _r("b", False, 0, infra=True), _r("c", True, 60)],
+    ]
+    ag = avaliar.agregar(rodadas)
+    # a rodada 3 teve infra (cota): fica fora do k/N, da média e do pass^N, mas as falhas dela são contadas
+    assert ag["por_caso"] == {"a": 2, "b": 1, "c": 0}
+    assert ag["n"] == 2 and ag["rodadas"] == 3 and ag["certos_por_rodada"] == [2, 1]
+    assert (ag["media"], ag["minimo"], ag["maximo"]) == (1.5, 1, 2)
+    assert ag["pass_n"] == ["a"]
+    assert ag["falhas"] == {"número omitido": 2, "número errado": 1, "erro de infraestrutura": 1, "outro": 0}
+    assert ag["mediana_ms"] == 25  # sem o caso de infra: 10,10,10,20,30,40,50,60
+
+
+def test_agregar_sem_nenhuma_rodada_completa_nao_quebra() -> None:
+    ag = avaliar.agregar([[_r("a", False, infra=True)]])
+    assert ag["n"] == 0 and ag["pass_n"] == [] and ag["media"] == 0 and ag["falhas"]["erro de infraestrutura"] == 1
+
+
+def test_relatorio_de_rodadas_mostra_k_sobre_n_e_pass_n(tmp_path) -> None:
+    rodadas = [[_r("a", True), _r("b", False, faltando=[1.0])], [_r("a", True), _r("b", True)]]
+    destino = tmp_path / "r.md"
+    avaliar.escrever_relatorio_rodadas(rodadas, "modelo-x", destino)
+    texto = destino.read_text(encoding="utf-8")
+    assert "| a | 2/2 |" in texto and "| b | 1/2 |" in texto
+    assert "pass^2" in texto and "número omitido" in texto and "1,5" in texto and "1–2" in texto
+
+
+def test_rodar_rodadas_repete_e_nao_mexe_no_padrao(tmp_path, monkeypatch) -> None:
+    chamadas = []
+    monkeypatch.setattr(avaliar, "rodar_todos", lambda *a, **k: chamadas.append(1) or [_r("a", True)])
+    assert len(avaliar.rodar_rodadas(3, [CASO], lambda *a: None, 0, CHAVE, tmp_path)) == 3
+    assert len(chamadas) == 3
+
+
+def test_gravar_cassetes_com_varias_rodadas_e_recusado(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(avaliar, "obter_chave", lambda: pytest.fail("não deveria chegar na chave"))
+    with pytest.raises(SystemExit):
+        avaliar.main(["--rodadas", "3", "--gravar-cassetes"])
+    assert "--gravar-cassetes" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        avaliar.main(["--rodadas", "0"])
+
+
+def test_gabarito_do_cupom_ticket_pede_as_duas_medias() -> None:
+    caso = next(c for c in avaliar.carregar_casos() if c["id"] == "cupom_ticket")
+    assert caso["numeros_chave"] == [52.0087, 63.8974]

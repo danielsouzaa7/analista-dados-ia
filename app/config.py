@@ -14,7 +14,7 @@ LLM_BASE_URL = os.environ.get(
 LLM_MODEL = os.environ.get("LLM_MODEL", "gemini-3.5-flash-lite")
 
 DATA_DIR = RAIZ / "data"
-SESSIONS_DIR = DATA_DIR / "sessions"
+SESSIONS_DIR = Path(os.environ.get("SESSIONS_DIR") or DATA_DIR / "sessions")  # a avaliação isola as sessões do uvicorn de teste
 SANDBOX_DIR = RAIZ / "sandbox"
 
 # Só para teste local e CI: libera Postgres em endereço interno (sem isso, só IP público: evita SSRF).

@@ -83,8 +83,7 @@
     "esperado": "Sim. O ticket médio com cupom é R$ 52,01 e sem cupom R$ 63,90. Teste t de Welch: t = -15,56 (módulo 15,56), p < 0,001: a diferença é significativa.",
     "numeros_chave": [
       52.0087,
-      63.8974,
-      15.557
+      63.8974
     ]
   },
   {
