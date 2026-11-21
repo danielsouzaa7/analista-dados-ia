@@ -108,26 +108,33 @@ def _perfil_texto(tabela: dict) -> str:
     return NL.join(linhas)
 
 
-def _sem_delimitador(texto: str) -> str:
-    """Tira as tags <dados>. A detecção é feita no texto normalizado (NFKC, sem Cf, sem homóglifos), mas só
-    os trechos que viram tag saem do original: o resto do texto fica intacto."""
+def _sem_delimitadores(texto: str) -> str:
+    """Tira as tags <dados> até não sobrar nenhuma ("</da</dados>dos>" vira tag depois da 1ª passada). A detecção
+    é feita no texto normalizado (NFKC, sem Cf, sem homóglifos), uma só vez; só os trechos que viram tag saem
+    do original: o resto do texto fica intacto."""
     norm, origem = [], []
     for i, c in enumerate(texto):
-        n = unicodedata.normalize("NFKC", c).translate(_HOMOGLIFOS)
         if unicodedata.category(c) != "Cf":
-            norm.extend(n)
+            n = unicodedata.normalize("NFKC", c).translate(_HOMOGLIFOS)
+            norm.append(n)
             origem.extend([i] * len(n))
-    apagar: set[int] = set()
-    for m in _TAG_DADOS.finditer("".join(norm)):
-        apagar.update(range(origem[m.start()], origem[m.end() - 1] + 1))
-    return "".join(c for i, c in enumerate(texto) if i not in apagar)
+    norm = "".join(norm)
+    apagar = bytearray(len(texto))
+    while achados := list(_TAG_DADOS.finditer(norm)):
+        partes, fim = [], 0
+        for m in achados:
+            apagar[origem[m.start()]:origem[m.end() - 1] + 1] = b"" * (origem[m.end() - 1] - origem[m.start()] + 1)
+            partes.append(slice(fim, m.start()))
+            fim = m.end()
+        partes.append(slice(fim, None))
+        norm = "".join(norm[p] for p in partes)
+        origem = [o for p in partes for o in origem[p]]
+    return "".join(c for c, x in zip(texto, apagar, strict=True) if not x)
 
 
 def _como_dado(texto: str) -> str:
     """O conteúdo do CSV não pode fechar o delimitador nem virar instrução."""
-    while (limpo := _sem_delimitador(texto)) != texto:  # "</da</dados>dos>" vira tag depois da 1ª passada
-        texto = limpo
-    return f"<dados>{NL}{texto}{NL}</dados>"
+    return f"<dados>{NL}{_sem_delimitadores(texto)}{NL}</dados>"
 
 
 def _esquema(sessao: Sessao) -> str:

@@ -1,5 +1,6 @@
 import json
 import re
+import time
 
 import httpx
 import openai
@@ -864,3 +865,21 @@ def test_prazo_do_python_desconta_o_tempo_gasto_no_sql(s: Sessao, monkeypatch: p
     for _ in agent._rodar("t", "rodar_python", {"sql": SQL_VALOR, "codigo": "print(1)"}, s, 10.0, python):
         pass
     assert vistos[0] <= 9.75
+
+
+def _tempo_como_dado(texto: str) -> float:
+    inicio = time.perf_counter()
+    agent._como_dado(texto)
+    return time.perf_counter() - inicio
+
+
+def test_como_dado_aninhamento_fundo_e_rapido() -> None:
+    assert _tempo_como_dado("<da" * 1420 + "<dados>" + "dos>" * 1420) < 0.3
+
+
+def test_como_dado_60_niveis_em_200kb_e_rapido() -> None:
+    n = 60
+    miolo = "x" * 1600
+    texto = ("<da" + miolo) * n + "<dados>" + ("dos>" + miolo) * n
+    assert len(texto) > 190_000
+    assert _tempo_como_dado(texto) < 1.0
