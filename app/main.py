@@ -10,9 +10,9 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, closing, contextmanager
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
@@ -70,7 +70,7 @@ CABECALHOS = {
 PYODIDE_CAMINHO = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/"
 CSP_WORKER = (f"default-src 'none'; script-src {PYODIDE_CAMINHO} 'wasm-unsafe-eval'; connect-src {PYODIDE_CAMINHO}; "
               f"worker-src {PYODIDE_CAMINHO}; base-uri 'none'")  # sem 'self': o worker não alcança nem o próprio site
-CAMINHO_WORKER = "/static/python-worker.js"  # sem CSP na resposta, o worker http(s) ficaria sem nenhuma
+NOME_WORKER = "python-worker.js"  # pelo nome do arquivo: "//" e maiúsculas também chegam ao worker; sem CSP ele ficaria sem nenhuma
 CABECALHOS_SSE = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
@@ -311,17 +311,18 @@ def _ao_vivo(corpo: PerguntaIn, sessao: sessions.Sessao, llm: agent.LlmFn, grava
     desde = time.perf_counter()
     try:
         try:
-            for ev in agent.executar(corpo.pergunta, sessao, llm, saida=saida,
-                                    python=python_navegador.executor(sessao.id)):
-                nome = ev["evento"]
-                if nome == "erro" and ev["mensagem"] == agent.MSG_COTA and gravacao and not vistos & _SUBSTANTIVOS:
-                    reproduzido = True  # cota do provedor esgotada: o exemplo cai na gravação
-                    yield from map(_sse, _reproduzir(gravacao, pular_recebido=True))
-                    return
-                vistos.add(nome)
-                resposta = ev if nome == "resposta" else resposta
-                metricas = ev if nome == "metricas" else metricas
-                yield _sse(ev)
+            with closing(agent.executar(corpo.pergunta, sessao, llm, saida=saida,  # o close roda o finally do agente
+                                        python=python_navegador.executor(sessao.id))) as eventos:
+                for ev in eventos:
+                    nome = ev["evento"]
+                    if nome == "erro" and ev["mensagem"] == agent.MSG_COTA and gravacao and not vistos & _SUBSTANTIVOS:
+                        reproduzido = True  # cota do provedor esgotada: o exemplo cai na gravação
+                        yield from map(_sse, _reproduzir(gravacao, pular_recebido=True))
+                        return
+                    vistos.add(nome)
+                    resposta = ev if nome == "resposta" else resposta
+                    metricas = ev if nome == "metricas" else metricas
+                    yield _sse(ev)
         except Exception as exc:  # noqa: BLE001 - só o tipo vai para o log: a mensagem pode ter segredos
             log.error("Erro inesperado no stream: %s", type(exc).__name__)
             saida["erro_tipo"] = "interno"
@@ -353,7 +354,7 @@ class _RespostaSSE(StreamingResponse):
             try:  # o Starlette não fecha o gerador síncrono; o GC o fecharia numa thread qualquer, com locks presos
                 getattr(self._gerador, "close", lambda: None)()  # geradores assíncronos (testes) não têm close
             except ValueError:  # gerador ainda em execução: a vaga volta mesmo assim
-                pass
+                log.warning("Gerador do SSE ainda em execução ao encerrar o stream")
             finally:
                 if self._liberar:
                     self._liberar()
@@ -395,7 +396,7 @@ def create_app() -> FastAPI:
                 log.error("Erro inesperado: %s", type(exc).__name__)
                 resposta = JSONResponse({"detail": MSG_INTERNO}, status_code=500)
         resposta.headers.update(CABECALHOS)
-        if request.url.path == CAMINHO_WORKER:
+        if PurePosixPath(request.url.path).name.lower() == NOME_WORKER:
             resposta.headers["Content-Security-Policy"] = CSP_WORKER
         return resposta
 

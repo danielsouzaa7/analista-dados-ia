@@ -130,3 +130,44 @@ def test_bytes_do_pedido_vao_para_o_log(caplog: pytest.LogCaptureFixture) -> Non
         next(g)
     g.close()
     assert f"bytes={len(CSV) + len('print(1)')}" in caplog.text
+
+
+MIB = 1024 * 1024
+
+
+def test_python_pedido_tem_teto_em_bytes() -> None:
+    # x01 vira  no JSON (6 bytes): 5 Mi caracteres seriam ~30 MiB no fio; o teto é em bytes serializados
+    g = _executar_com(csv=chr(1) * 400_000)  # 2,4 MB no fio, com só 400 mil caracteres
+    eventos, retorno = _drenar(g)
+    assert eventos == [] and "agregue no SQL" in retorno["erro"] and pn._PENDENTES == {}
+    ok = pn.executor("s1")("t1", "print(1)", "a" * (pn.MAX_BYTES_PEDIDO_PYTHON - 1000), 120)
+    assert next(ok)["evento"] == "python_pedido"
+    ok.close()
+
+
+def test_python_pedido_tem_orcamento_de_bytes_por_pergunta() -> None:
+    executor = pn.executor("s1")  # um executor por pergunta: o orçamento vale para a pergunta inteira
+    csv = "a" * (3 * MIB // 2)
+    for i in range(4):
+        g = executor(f"t{i}", "print(1)", csv, 120)
+        if i < 3:
+            assert next(g)["evento"] == "python_pedido"
+            g.close()
+        else:
+            eventos, retorno = _drenar(g)
+            assert eventos == [] and "agregue no SQL" in retorno["erro"]
+    assert pn.executor("s1") is not executor
+    novo = pn.executor("s1")("t9", "print(1)", csv, 120)  # outra pergunta começa com o orçamento cheio
+    assert next(novo)["evento"] == "python_pedido"
+    novo.close()
+
+
+def test_executor_devolve_copia_do_erro_de_prazo(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pn, "PRAZO_S", 0.05)
+    _, retorno = _drenar(_executar())
+    retorno["erro"] = "alterado"
+    assert pn.ERRO_PRAZO["erro"].startswith("O navegador não devolveu")
+
+
+def _executar_com(csv: str):
+    return pn.executor("s1")("t1", "print(1)", csv, 120)

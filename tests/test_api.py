@@ -626,6 +626,12 @@ def test_csp_do_worker_vale_tambem_na_resposta_304(client: TestClient) -> None:
     assert r.headers["content-security-policy"] == CSP_WORKER
 
 
+@pytest.mark.parametrize("caminho", ["/static//python-worker.js", "/static/PYTHON-WORKER.JS", "/static/./python-worker.js"])
+def test_csp_do_worker_vale_em_caminho_alternativo(client: TestClient, caminho: str) -> None:
+    # a CSP da página vale para a página; o worker precisa da dele, seja qual for a grafia do caminho
+    assert client.get(caminho).headers["content-security-policy"] == CSP_WORKER
+
+
 def test_versao_do_pyodide_igual_no_worker_no_runner_e_na_csp() -> None:
     import re
     raiz = Path(__file__).resolve().parent.parent
@@ -690,8 +696,8 @@ def test_surrogate_solto_no_resultado_nao_derruba_o_stream(client: TestClient) -
     g, nonce = _pendente_de_teste()
     corpo = json.dumps(_resultado(nonce, saida="a\ud800b"))  # ensure_ascii: vai como escape no JSON
     r = client.post("/api/python/resultado", content=corpo, headers={"content-type": "application/json"})
-    assert r.status_code in (204, 422)  # o parser JSON do pydantic já recusa; se aceitar, o validador sanea
-    g.close()
+    assert r.status_code == 204
+    assert _retorno(g)["saida"] == "a?b"  # o validador troca o surrogate solto: o SSE seguinte consegue codificar
     # pelo caminho do validador (modo Python): o surrogate vira ? e o SSE consegue codificar
     modelo = main.ResultadoPythonIn(**_resultado(nonce, saida="a\ud800b", erro="x\udfffy"))
     main._sse({"evento": "ferramenta_fim", "saida": modelo.saida, "erro": modelo.erro})
@@ -783,3 +789,45 @@ def test_python_pedido_descartado_na_reproducao(tmp_path: Path) -> None:
               {"evento": "python_aguardando", "id": "x"}, {"evento": "ferramenta_fim", "saida": "1"}, {"evento": "fim"}]
     arq.write_text("\n".join(json.dumps(x) for x in linhas), encoding="utf-8")
     assert [e["evento"] for e in main._reproduzir(arq)] == ["recebido", "ferramenta_fim", "fim"]
+
+
+def test_ao_vivo_fecha_o_gerador_do_agente_ao_cancelar(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+    fechado, guardados = [], []
+
+    def executar(*a, **k):
+        try:
+            yield {"evento": "recebido"}
+            yield {"evento": "fim"}
+        finally:
+            fechado.append(True)
+
+    def falso(*a, **k):
+        guardados.append(executar(*a, **k))  # segura uma referência: só o close() explícito o fecha
+        return guardados[-1]
+
+    monkeypatch.setattr(main.agent, "executar", falso)
+    monkeypatch.setattr(main, "_registrar", lambda linha: None)
+    g = main._ao_vivo(SimpleNamespace(pergunta="x"), SimpleNamespace(id="s"), None, None, lambda: None)
+    next(g)
+    g.close()
+    assert fechado == [True]
+
+
+def test_gerador_em_execucao_no_fim_do_sse_vai_para_o_log(caplog: pytest.LogCaptureFixture,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+
+    class Gerador:
+        def close(self) -> None:
+            raise ValueError("generator already executing")
+
+    async def nada(self, scope, receive, send) -> None:
+        return None
+
+    monkeypatch.setattr(main.StreamingResponse, "__call__", nada)
+    liberou = []
+    resp = main._RespostaSSE(Gerador(), lambda: liberou.append(True))
+    with caplog.at_level(logging.WARNING, logger="analista"):
+        asyncio.run(resp({}, None, None))
+    assert liberou == [True] and "ainda em execução" in caplog.text
