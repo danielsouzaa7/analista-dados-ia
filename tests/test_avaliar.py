@@ -402,10 +402,29 @@ def test_com_gravar_cassetes_so_grava_o_stream_do_caso_que_passa(sessao, tmp_pat
     assert (tmp_path / "total.jsonl").exists()
 
 
-def test_sem_gravar_cassetes_a_gravacao_sai_mesmo_com_falha(sessao, tmp_path, monkeypatch) -> None:
+def test_gravacao_da_demo_nunca_sai_de_caso_que_falha_nem_sem_gravar_cassetes(sessao, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(avaliar, "GRAVACOES", tmp_path)
     monkeypatch.setattr(avaliar.agent, "executar", agente([], "Total 1.300,00 e 29,2%"), raising=False)
     assert avaliar.rodar_caso(CASO, sessao, lambda *a: None, tmp_path, CHAVE)["acerto"] is False
-    assert (tmp_path / "total.jsonl").exists()
+    assert not (tmp_path / "total.jsonl").exists()
+
+
+def test_acompanhamento_de_dependencia_com_infra_nao_grava_gravacao_nem_cassete(tmp_path, monkeypatch) -> None:
+    casos = [CASO, {**CASO, "id": "depois", "depende_de": "total"}]
+
+    def executar(pergunta, sessao, llm):
+        if pergunta == CASO["pergunta"]:
+            yield {"evento": "erro", "mensagem": "O limite gratuito do modelo de IA foi atingido."}
+        else:  # a resposta parece boa, mas a dependência caiu por infra
+            yield {"evento": "ferramenta_fim", "id": "t1", "ms": 1, "linhas": [[1234.56, 29.2]]}
+            yield {"evento": "resposta", "texto": "1.234,56 e 29,2%"}
+        yield {"evento": "fim"}
+
+    monkeypatch.setattr(avaliar.agent, "executar", executar, raising=False)
+    monkeypatch.setattr(avaliar, "criar_sessao", lambda: sessions.criar_de_csv("pedidos.csv", CSV))
+    avaliar.rodar_todos([casos[0], {**casos[1], "pergunta": "e no mês seguinte?"}], lambda *a: iter([]),
+                        pausa=0, chave=CHAVE, pasta=tmp_path / "grav", pasta_cassetes=tmp_path / "cass")
+    assert not (tmp_path / "grav" / "depois.jsonl").exists() and not (tmp_path / "cass" / "depois.json").exists()
 
 
 def test_rodar_todos_com_cassetes_nao_grava_gravacao_de_caso_que_falha(tmp_path, monkeypatch) -> None:

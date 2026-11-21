@@ -150,9 +150,10 @@ def _gravar(caso: dict, eventos: list[dict], pasta: Path, chave: str) -> None:
 
 
 def rodar_caso(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, chave: str,
-               so_se_passar: bool = False) -> dict:
-    """`so_se_passar`: a gravação do stream só é escrita se o caso passa (com --gravar-cassetes, uma rodada
-    ruim não pode trocar a gravação publicada). A de um caso com erro de infraestrutura nunca é escrita."""
+               so_se_passar: bool = False, dependencia_infra: bool = False) -> dict:
+    """`so_se_passar`: a gravação do stream só é escrita se o caso passa; em GRAVACOES (o que a demo reproduz)
+    isso vale sempre. A de um caso com erro de infraestrutura nunca é escrita, nem a de quem depende de um
+    caso que caiu por infraestrutura (`dependencia_infra`: sem a resposta anterior, a falha é da cota)."""
     antes = _hash(sessao.caminho_db)
     inicio = time.monotonic()
     # o agente confere contra os turnos anteriores da sessão (acompanhamento): a avaliação faz o mesmo
@@ -186,7 +187,10 @@ def rodar_caso(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, 
             r["numeros_errados"] = conferir_numeros(
                 resposta, _fontes(eventos) + anteriores, _saidas(eventos) + saidas_anteriores, caso["pergunta"])
         r["acerto"] = not r["faltando"] and not r["numeros_errados"] and not vazou and not r["infra"]
-    if not r["infra"] and (r["acerto"] or not so_se_passar):  # o stream de uma cota estourada não apaga a gravação boa
+    if dependencia_infra:
+        r["infra"], r["acerto"] = True, False
+    # o stream de uma cota estourada ou de um caso que falhou não apaga a gravação boa
+    if not r["infra"] and (r["acerto"] or not (so_se_passar or pasta == GRAVACOES)):
         _gravar(caso, eventos, pasta, chave)
     return r
 
@@ -220,9 +224,7 @@ def rodar_todos(casos: list[dict], llm: Callable, pausa: float, chave: str, past
         sessoes[caso["id"]] = sessao
         cassete: list = []
         r = rodar_caso(caso, sessao, gravar_llm(llm, cassete) if pasta_cassetes else llm, pasta, chave,
-                       so_se_passar=pasta_cassetes is not None)
-        if caso.get("depende_de") in infra_ids:  # sem a resposta anterior, a falha é da cota, não do agente
-            r["infra"], r["acerto"] = True, False
+                       so_se_passar=pasta_cassetes is not None, dependencia_infra=caso.get("depende_de") in infra_ids)
         if r["infra"]:
             infra_ids.add(caso["id"])
         resultados.append(r)

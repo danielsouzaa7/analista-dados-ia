@@ -19,7 +19,7 @@ def rodar(codigo: str, **kw) -> dict:
 
 
 def test_soma() -> None:
-    r = rodar("print(df['a'].sum())")
+    r = rodar("print(df['a'].sum())", timeout=FOLGA_S)
     assert r["saida"].strip() == "4" and not r["erro"]
 
 
@@ -29,9 +29,9 @@ def test_soma() -> None:
     f"import js\nprint(js.Deno.readTextFileSync({SEGREDO.as_posix()!r}))",
 ])
 def test_fugas_bloqueadas_pelo_deno(codigo: str) -> None:
-    r = rodar(codigo)
+    r = rodar(codigo, timeout=FOLGA_S)
     assert "NotCapable" in (r["erro"] or ""), r
-    assert rodar("print(1+1)")["saida"].strip() == "2"
+    assert rodar("print(1+1)", timeout=FOLGA_S)["saida"].strip() == "2"
 
 
 def test_fs_virtual_do_pyodide_nao_ve_o_host() -> None:
