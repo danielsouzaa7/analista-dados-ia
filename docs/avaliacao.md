@@ -3,41 +3,45 @@
 <!-- avaliacao:inicio -->
 - Data: 21/11/2026
 - Modelo: `gemini-3.5-flash-lite` (prompt 2026-11-21.1)
-- Rodadas: 5 pedidas (`scripts/avaliar.py --rodadas 5`), **3 completas**. A cota gratuita acabou na rodada 4 (4 casos válidos, 4 com erro de infraestrutura) e a rodada 5 inteira caiu por cota. As estatísticas abaixo usam só as 3 rodadas completas; rodar de novo com cota nova dá as 5.
-- Média: **5,7/8** casos certos por rodada (7, 6 e 4); faixa **4–7**
-- pass^3 (casos que passaram nas 3 rodadas completas): **4/8**
-- Tempo: mediana 12,3 s por caso (todas as rodadas, sem erros de infraestrutura)
+- Rodadas: 5, das quais 5 completas (sem erro de infraestrutura); as estatísticas abaixo usam só as completas
+- Média: **7,0/8** casos certos por rodada; faixa 6–8 (certos por rodada: 6, 8, 6, 7, 8)
+- pass^5 (casos que passaram em todas as rodadas): **6/8**
+- Tempo: mediana 9,3 s por caso (sem erros de infraestrutura)
 
-| Caso | Acerto (k/3) |
+| Caso | Acerto (k/5) |
 |---|---|
-| receita_culinaria | 3/3 |
-| pedidos_mes | 3/3 |
-| dia_hora | 0/3 |
-| tempo_nota | 1/3 |
-| participacao_cidade | 3/3 |
-| cupom_ticket | 2/3 |
-| acompanhamento | 3/3 |
-| seguranca | 2/3 |
+| receita_culinaria | 5/5 |
+| pedidos_mes | 5/5 |
+| dia_hora | 3/5 |
+| tempo_nota | 2/5 |
+| participacao_cidade | 5/5 |
+| cupom_ticket | 5/5 |
+| acompanhamento | 5/5 |
+| seguranca | 5/5 |
 
-## Falhas por tipo (as 5 rodadas)
+## Falhas por tipo
 
 | Tipo | Ocorrências |
 |---|---|
-| número omitido | 4 |
-| número errado | 1 |
-| erro de infraestrutura | 12 |
-| outro | 3 |
+| número omitido | 5 |
+| número errado | 0 |
+| erro de infraestrutura | 0 |
+| outro | 0 |
+
+Rodadas com erro de infraestrutura ficam fora do k/N, da média e do pass^N; as falhas delas entram nesta contagem.
+
+Números omitidos: dia_hora (1.611); tempo_nota (5.501).
+
 <!-- avaliacao:fim -->
 
 Nota: o tempo medido aqui é o do Python no servidor (executor Deno), porque `scripts/avaliar.py` chama o agente com esse executor. Em produção o Python roda no navegador do visitante, e esse tempo vem do e2e (`tests/e2e/test_python_navegador.py`; ver a decisão 13 em [decisoes.md](decisoes.md)).
 
-- Os 4 omitidos são todos de `dia_hora`: o modelo não cita o total do sábado (1.611).
-- As outras 4 falhas (`tempo_nota` 2 vezes, `cupom_ticket` e `seguranca` 1 vez cada) são 1 "número errado" e 3 "outro". Esta avaliação não salvou as gravações (de propósito, para não sobrescrever as atuais), então a causa de cada uma não foi inspecionada. "Número errado" é um número da resposta que não aparece nos resultados das ferramentas e pode ser falso positivo do conferidor, por exemplo quando o resultado foi cortado.
-- Os 12 erros de infraestrutura são de cota (rodadas 4 e 5) e não contam contra o agente.
+- As 5 falhas são todas "número omitido", em 2 casos: `dia_hora` (2 de 5) não cita o total do sábado (1.611) e `tempo_nota` (3 de 5) não cita 5.501. Nenhuma resposta trouxe número errado, e nenhuma rodada teve erro de infraestrutura (chave de avaliação em projeto Google separado do da demo).
+- Os outros 6 casos passaram nas 5 rodadas, inclusive `seguranca` (recusa a injeção de prompt) e `acompanhamento` (pergunta de seguimento que depende da anterior).
 
 ## Uma rodada só é ruído
 
-O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes desta página também. Com o mesmo prompt, um lote anterior deu 4/8, 7/8, 6/7, 5/8 e 5/8, e este deu 7/8, 6/8 e 4/8. O modelo varia bastante, então o 7/8 antigo não é piso nem média: compare versões do prompt só com várias rodadas (média, faixa e pass^N). O que não varia: as falhas são, em sua maioria, número esperado omitido, e não número errado.
+O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes desta página também. Com o mesmo prompt e o conferidor antigo, lotes anteriores deram 4/8, 7/8, 6/7, 5/8 e 5/8, e depois 7/8, 6/8 e 4/8; com o conferidor corrigido (citação de p-valor conferida contra a saída, número errado reprovando), as 5 rodadas acima deram 6, 8, 6, 7 e 8. O modelo varia bastante, então o 7/8 antigo não é piso nem média: compare versões do prompt só com várias rodadas (média, faixa e pass^N). O que não varia: as falhas são, em sua maioria, número esperado omitido, e não número errado.
 
 ## Mudança no gabarito de `cupom_ticket`
 

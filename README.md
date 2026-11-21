@@ -45,7 +45,7 @@ O app roda em hospedagem gratuita (a primeira visita pode demorar a acordar) e t
 
 ## Avaliação
 
-Resultado da última avaliação contra o LLM real: ver [docs/avaliacao.md](docs/avaliacao.md). Números mais recentes (acertos por caso, média, faixa, pass^N e tempo): <!-- numeros-avaliacao -->
+Resultado da última avaliação contra o LLM real: ver [docs/avaliacao.md](docs/avaliacao.md). Números mais recentes (21/11/2026, prompt 2026-11-21.1, 5 rodadas): média de 7,0/8 casos certos por rodada (faixa 6–8), pass^5 de 6/8, mediana de 9,3 s por caso. As 5 falhas são número esperado omitido (`dia_hora` e `tempo_nota`); nenhuma resposta trouxe número errado.
 
 ```bash
 # EVAL_LLM_API_KEY (chave de outro projeto Google, opcional) ou LLM_API_KEY, no ambiente ou no .env
