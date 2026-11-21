@@ -147,6 +147,7 @@ const cenarioDispersaoComDescarte = () => [
   [80, "recebido", { modelo: MODELO, turno: 4 }], llm(1, "plano", 1100, 990, 70),
   [60, "plano", { texto: "Calcular a correlação entre tempo de entrega e nota, e mostrar a relação." }],
   [150, "ferramenta_inicio", { id: "t1", tipo: "python", codigo: "import numpy as np\nx = np.array(tempo_entrega_min, dtype=float)\ny = np.array(avaliacao, dtype=float)\nok = ~np.isnan(y)\nr = np.corrcoef(x[ok], y[ok])[0, 1]\nprint(f'r = {r:.2f}')" }],
+  [100, "python_pedido", { id: "t1", nonce: "0".repeat(32), codigo: "print(1)", csv: "a\n1\n", preludio: "" }],
   [2400, "aguardando_cota", { segundos: 6 }],
   [1500, "ferramenta_fim", { id: "t1", ms: 3120, saida: "r = -0.58" }],
   llm(2, "resposta", 1900, 1800, 150),
@@ -294,6 +295,7 @@ window.fetch = async (entrada, opcoes = {}) => {
     case "POST /api/sessao/exemplo": case "POST /api/sessao/csv": return json(SESSAO_FAKE);
     case "POST /api/sessao/postgres": return json({ detail: "Não consegui conectar ao banco. Confira a URL e se o banco aceita conexões." }, 400);
     case "POST /api/conversa/nova": return json({});
+    case "POST /api/python/resultado": return new Response(null, { status: 204 });
     case "POST /api/feedback": return new Response(null, { status: 204 });
     case "POST /api/perguntar": {
       const cenario = escolherCenario(JSON.parse(opcoes.body));

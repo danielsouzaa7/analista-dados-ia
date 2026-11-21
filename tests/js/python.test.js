@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { estaPronto, executarPython, preaquecer } from "../../static/python.js";
+import { estaPronto, executarPython, preaquecer, responderPython } from "../../static/python.js";
 import { ambiente, fabrica, responde } from "./workers/falso.js";
 
 const pedido = { codigo: "print(1)", csv: "a\n1", preludio: "" };
@@ -146,4 +146,61 @@ Deno.test("preaquecer respeita saveData", () => {
   const f = fabrica();
   preaquecer(f.criar);
   assertEquals(f.workers.length, 0);
+});
+
+const chega = { id: 7, nonce: 12, codigo: "print(1)", csv: "a\n1", preludio: "P", extra: "x" };
+const rede = () => Object.assign(new Error("rede"), { rede: true });
+
+Deno.test("responderPython manda os campos como String e só codigo, csv e preludio ao worker", async () => {
+  let recebido;
+  const postados = [];
+  await responderPython(chega, {
+    sessao: "s1",
+    executar: (p) => { recebido = p; return Promise.resolve({ saida: { a: 1 }, erro: null }); },
+    postar: (c) => { postados.push(c); return Promise.resolve(); },
+  });
+  assertEquals(recebido, { codigo: "print(1)", csv: "a\n1", preludio: "P" });
+  assertEquals(postados, [{ sessao: "s1", id: "7", nonce: "12", saida: "[object Object]", erro: null }]);
+});
+
+Deno.test("responderPython tenta de novo uma vez em erro de rede", async () => {
+  let posts = 0;
+  await responderPython(chega, {
+    sessao: "s", executar: () => Promise.resolve({ saida: "", erro: "x" }),
+    postar: () => { posts++; return posts === 1 ? Promise.reject(rede()) : Promise.resolve(); },
+  });
+  assertEquals(posts, 2);
+});
+
+Deno.test("responderPython desiste depois de duas falhas de rede", async () => {
+  let posts = 0;
+  await responderPython(chega, {
+    sessao: "s", executar: () => Promise.resolve({ saida: "", erro: null }),
+    postar: () => { posts++; return Promise.reject(rede()); },
+  });
+  assertEquals(posts, 2);
+});
+
+Deno.test("responderPython não tenta de novo num 400 ou 422", async () => {
+  let posts = 0;
+  await responderPython(chega, {
+    sessao: "s", executar: () => Promise.resolve({ saida: "", erro: null }),
+    postar: () => { posts++; return Promise.reject(new Error("400")); },
+  });
+  assertEquals(posts, 1);
+});
+
+Deno.test("responderPython não posta nada depois do abort", async () => {
+  let posts = 0;
+  const postar = () => { posts++; return Promise.resolve(); };
+  await responderPython(chega, {
+    sessao: "s", postar,
+    executar: () => Promise.reject(new DOMException("x", "AbortError")),
+  });
+  const c = new AbortController();
+  await responderPython(chega, {
+    sessao: "s", postar, signal: c.signal,
+    executar: () => { c.abort(); return Promise.resolve({ saida: "", erro: null }); },
+  });
+  assertEquals(posts, 0);
 });

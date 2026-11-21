@@ -3,6 +3,7 @@
 import { el, botao, fmtNum, fmtMs, fmtPct, fmtCelula, reduzMovimento } from "./dom.js";
 import { perguntarStream, ErroStream } from "./stream.js";
 import { criarTurno } from "./turno.js";
+import { preaquecer, responderPython } from "./python.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -35,7 +36,7 @@ async function api(caminho, opcoes) {
   try {
     resp = await fetch(caminho, opcoes);
   } catch {
-    throw new Error("Não consegui falar com o servidor. Confira sua conexão e tente de novo.");
+    throw Object.assign(new Error("Não consegui falar com o servidor. Confira sua conexão e tente de novo."), { rede: true });
   }
   const corpo = resp.status === 204 ? {} : await resp.json().catch(() => ({}));
   if (!resp.ok) {
@@ -173,6 +174,7 @@ function definirSessao(dados, fonte) {
   mostrar("erro-fonte", "");
   limparConversa();
   desenharEsquema(dados);
+  preaquecer(); // o Pyodide carrega enquanto o LLM planeja
 }
 
 async function carregarFonte(fonte, fn) {
@@ -282,8 +284,17 @@ async function enviar(pergunta, { exemplo_id = null, substituir = null } = {}) {
   const corpo = { sessao: estado.sessao, pergunta };
   // O servidor só aceita exemplo_id de quem tem gravação; sem ela a pergunta roda normalmente.
   if (exemplo_id && (estado.gravacoes || []).includes(exemplo_id)) corpo.exemplo_id = exemplo_id;
+  const { sessao } = estado;
+  const { signal } = estado.abort;
+  const aoEvento = (tipo, dados) => {
+    turno.aoEvento(tipo, dados);
+    // sem await: o laço do SSE não pode esperar o Python
+    if (tipo === "python_pedido" && !dados.gravacao) {
+      responderPython(dados, { sessao, signal, postar: (c) => postJson("/api/python/resultado", c) }).catch(() => {});
+    }
+  };
   try {
-    await perguntarStream(corpo, (tipo, dados) => turno.aoEvento(tipo, dados), { signal: estado.abort.signal });
+    await perguntarStream(corpo, aoEvento, { signal });
   } catch (e) {
     if (e && e.name === "AbortError") turno.falhar("Você interrompeu esta pergunta.");
     else turno.falhar(e instanceof ErroStream ? e.message : "Algo deu errado do nosso lado. Tente de novo.");

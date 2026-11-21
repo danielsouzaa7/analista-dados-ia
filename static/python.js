@@ -82,3 +82,19 @@ export function executarPython(pedido, { signal, criar = criarWorker, cargaMs = 
     });
   });
 }
+
+/** Roda o pedido e devolve o resultado ao servidor. `postar` rejeita com `.rede` verdadeiro em erro de rede. */
+export async function responderPython(pedido, { sessao, signal, postar, executar = executarPython }) {
+  let r;
+  try {
+    r = await executar({ codigo: pedido.codigo, csv: pedido.csv, preludio: pedido.preludio }, { signal });
+  } catch (e) {
+    if (e?.name === "AbortError") return; // aba parada: nada é postado
+    throw e;
+  }
+  // String(...): um objeto vindo do worker daria 422 e deixaria o visitante esperando o prazo do servidor.
+  const corpo = { sessao, id: String(pedido.id), nonce: String(pedido.nonce), saida: String(r.saida), erro: r.erro == null ? null : String(r.erro) };
+  for (let tentativa = 0; tentativa < 2 && !signal?.aborted; tentativa++) {
+    try { return await postar(corpo); } catch (e) { if (!e?.rede) return; } // 400/422: o servidor já fechou a execução
+  }
+}

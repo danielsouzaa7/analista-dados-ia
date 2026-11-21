@@ -2,6 +2,7 @@
 // Todo texto que vem do servidor/LLM/CSV entra por textContent (via el()).
 import { el, botao, icone, fmtNum, fmtMs, fmtCelula, baixarCsv, copiar, renderTexto } from "./dom.js";
 import { desenharGrafico } from "./graficos.js";
+import { estaPronto } from "./python.js";
 
 const LINHAS_VISIVEIS = 100;
 const ROTULO_FASE = { plano: "plano", ferramentas: "ferramentas", resposta: "resposta" };
@@ -146,6 +147,16 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
     if (d.tipo === "python") p.corpo.append(blocoCodigo("Python", d.codigo || ""));
     else if (d.sql) p.corpo.append(blocoCodigo("SQL", d.sql));
     setStatus(d.tipo === "python" ? "Rodando código Python…" : d.tipo === "grafico" ? "Preparando o gráfico…" : "Consultando os dados…");
+  }
+
+  function aoPedidoPython(d) {
+    const p = passos.get(d.id);
+    if (!p || d.gravacao) return;
+    if (!p.selo) {
+      p.selo = el("span", "no seu navegador", "selo");
+      p.dur.before(p.selo);
+    }
+    setStatus(estaPronto() ? "Rodando o Python no seu navegador…" : "Carregando o Python no seu navegador (só na primeira vez)…");
   }
 
   function aoFimFerramenta(d) {
@@ -394,6 +405,7 @@ export function criarTurno({ pergunta, aoSugestao, aoTentar, aoFeedback, extras 
         break;
       }
       case "ferramenta_inicio": aoInicioFerramenta(d); break;
+      case "python_pedido": aoPedidoPython(d); break;
       case "ferramenta_fim": aoFimFerramenta(d); break;
       case "rascunho": aoRascunho(d); break;
       case "conferencia": aoConferencia(d); break;
