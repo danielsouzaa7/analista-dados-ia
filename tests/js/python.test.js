@@ -111,8 +111,15 @@ Deno.test("erro fica com as 6 últimas linhas e até 2 mil caracteres", async ()
   assert(longo.erro.isWellFormed());
 });
 
-Deno.test("sem reserva quando deviceMemory < 4, ausente ou pointer coarse", async () => {
-  for (const amb of [{ deviceMemory: 2 }, { deviceMemory: undefined }, { deviceMemory: 8, grosso: true }]) {
+Deno.test("com reserva quando deviceMemory é ausente (Firefox e Safari de desktop)", async () => {
+  ambiente({ deviceMemory: undefined });
+  const f = fabrica({ aoPedido: responde({ saida: "", erro: null }) });
+  await executarPython(pedido, { criar: f.criar, ...rapido });
+  assertEquals(f.workers.length, 2);
+});
+
+Deno.test("sem reserva quando deviceMemory < 4 ou pointer coarse", async () => {
+  for (const amb of [{ deviceMemory: 2 }, { deviceMemory: undefined, grosso: true }, { deviceMemory: 8, grosso: true }]) {
     ambiente(amb);
     const f = fabrica({ aoPedido: responde({ saida: "", erro: null }) });
     await executarPython(pedido, { criar: f.criar, ...rapido });
