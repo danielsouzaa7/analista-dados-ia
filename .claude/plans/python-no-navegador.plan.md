@@ -54,8 +54,8 @@ Ordem de execução: 0 (texto aplicado; só fecha depois da 3) → 3 → 1 → 2
 | 5 | Protocolo no servidor | feita |
 | 6 | Cliente `python.js` | feita |
 | 7a | Servidor ligado e desconexão no uvicorn real | feita |
-| 7b | Front ligado e e2e no Chromium | pendente |
-| 7c | Matriz Firefox/WebKit e medições | pendente |
+| 7b | Front ligado e e2e no Chromium | feita |
+| 7c | Matriz Firefox/WebKit e medições | feita |
 | 8 | Red team do navegador e rodada 5 | pendente |
 | 9 | Imagem sem Deno e CI | pendente |
 | 10 | Documentação | pendente |
