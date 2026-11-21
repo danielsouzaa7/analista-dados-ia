@@ -10,33 +10,81 @@
    ],
    [
     "texto",
-    "1."
+    "Pl"
    ],
    [
     "texto",
-    " Consultar a base de dados para somar a receita (valor do pedido) agrup"
+    "ano:\n1. Consultar a base de dados para somar a receita total"
    ],
    [
     "texto",
-    "ada por tipo de culinária.\n2. Ordenar os resultados da maior para a menor receita.\n3. Formatar"
+    " de cada tipo de culinária.\n2. Ordenar os resultados da maior para a menor receita.\n3"
    ],
    [
     "texto",
-    " os valores numéricos obtidos de acordo com o padrão brasileiro.\n4. Gerar um gráfico de barras para visualizar o ranking das"
+    ". Formatar os valores numéricos encontrados conforme as regras estabelecidas.\n4. Gerar um gráfico de barras para"
    ],
    [
     "texto",
-    " culinárias.\n\n```sql\nSELECT culinaria, sum(valor_pedido) AS receita_total\nFROM pedidos"
+    " ilustrar a comparação entre as culinárias.\n\n```python\nimport pandas as pd\nimport duckdb\n\ncon"
    ],
    [
     "texto",
-    "\nGROUP BY culinaria\nORDER BY receita_total DESC;\n```"
+    " = duckdb.connect(database=':memory:')\n# Carregar dados (simulado a partir do esquema para"
+   ],
+   [
+    "texto",
+    " consulta)\n# Como não temos acesso direto ao arquivo csv/parquet, usamos a ferramenta rodar_sql implícita via"
+   ],
+   [
+    "texto",
+    " duckdb com os dados da tabela pedidos\n# Na verdade, usamos duckdb para consultar o banco duckdb padrão se"
+   ],
+   [
+    "texto",
+    " houver, ou criamos a query padrão sobre a tabela pedidos que já está no ambiente.\n# Vamos executar a query diretamente"
+   ],
+   [
+    "texto",
+    ":\nquery = \"\"\"\nSELECT culinaria, SUM(valor_pedido) AS receita_total\nFROM pedidos\nGROUP BY culinaria\n"
+   ],
+   [
+    "texto",
+    "ORDER BY receita_total DESC;\n\"\"\"\n# Como rodar_python executa código python, vamos ler via duckdb se a"
+   ],
+   [
+    "texto",
+    " tabela estiver acessível no arquivo ou ambiente. \n# Caso contrário, assumimos que o ambiente possui a tabela 'pedidos' acess"
+   ],
+   [
+    "texto",
+    "ível.\n```\n\nVamos executar a consulta SQL para obter os números exatos."
+   ],
+   [
+    "texto",
+    "\n\n```python\nimport pandas"
+   ],
+   [
+    "texto",
+    " as pd\nimport duckdb\n\n# O DuckDB no ambiente já possui a tabela pedidos ou"
+   ],
+   [
+    "texto",
+    " precisamos conectar à fonte? \n# Assumindo que o ambiente executa consultas na tabela pedidos:\ndf ="
+   ],
+   [
+    "texto",
+    " con.execute(\"\"\"\nSELECT culinaria, SUM(valor_pedido) AS receita_total\nFROM pedidos\nGROUP BY culinaria"
+   ],
+   [
+    "texto",
+    "\nORDER BY receita_total DESC;\n\"\"\").df()\nprint(df)\n```"
    ],
    [
     "usage",
     {
-     "entrada": 981,
-     "saida": 113
+     "entrada": 1307,
+     "saida": 388
     }
    ]
   ],
@@ -48,12 +96,12 @@
    [
     "tool_call",
     {
-     "id": "call_983476842347143847",
+     "id": "call_9370512741757583254",
      "nome": "consultar_banco",
-     "args": "{\"sql\":\"SELECT culinaria, sum(valor_pedido) AS receita_total\\nFROM pedidos\\nGROUP BY culinaria\\nORDER BY receita_total DESC;\"}",
+     "args": "{\"sql\":\"SELECT culinaria, sum(valor_pedido) as receita_total, count(pedido_id) as total_pedidos, avg(valor_pedido) as ticket_medio FROM pedidos GROUP BY culinaria ORDER BY receita_total DESC\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0TLYMK5+JjbLIaTMjegYlsb0VYVu9XwP6hy2rdbj4ksxW5xUZtXLPtXolOAwu4SO3YY/Or0SAOU8N8G6hNtBtQ2qLKtOG5GC+imecxkqbbqrkB4d0GTZipcDHlEChjY0lg5znv+3ymjpYVP987Ln6RJT4dfv0="
+       "thought_signature": "Eo4BCosBAWkUfROCn6rfGouho9Vk9vr235JhytQUupGleqr19oqNl8lZLHsZDhEL2UcJn3kjdeJldraANsJ4h2NGTHFVQSQVzig6wrJzHuc1l7bf89a6PTaMbfwxEm1vj/bhjPjKOfU5YezbvJixuU/ztUdc8PjSXq5JXsMbAoOottmRGxxEXpLnupC7cHgjig=="
       }
      }
     }
@@ -61,8 +109,8 @@
    [
     "usage",
     {
-     "entrada": 1569,
-     "saida": 47
+     "entrada": 2233,
+     "saida": 66
     }
    ]
   ],
@@ -74,12 +122,12 @@
    [
     "tool_call",
     {
-     "id": "call_14421883430941696000",
+     "id": "call_7970181161260079860",
      "nome": "gerar_grafico",
-     "args": "{\"titulo\":\"Receita Total por Tipo de Culinária\",\"sql\":\"SELECT culinaria, sum(valor_pedido) AS receita_total\\nFROM pedidos\\nGROUP BY culinaria\\nORDER BY receita_total DESC;\",\"x\":\"culinaria\",\"y\":\"receita_total\",\"tipo\":\"ranking\"}",
+     "args": "{\"y\":\"receita_total\",\"sql\":\"SELECT culinaria, sum(valor_pedido) as receita_total FROM pedidos GROUP BY culinaria ORDER BY receita_total DESC\",\"x\":\"culinaria\",\"titulo\":\"Receita Total por Culinária\",\"tipo\":\"ranking\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0TnMUd+gk5JUC3awdZYMmksHparE96onKt9oQj2paHACSciz1Io17o0ku4Lvvnfi/3+xkVolt1qxPgC0omUPRrvhHnDA/b+gRtZ/ueH4i197HuAfvbV5uNwKD7VXGpA8+yhHwYLETkyMUDjqjR3a25Hslwh+M="
+       "thought_signature": "Eo4BCosBAWkUfRMMNWX+4UTHCUbRrOO7ZUOJ2yaA95GUxXfR6qtuZqgKJs4+GI12MDYa5tyhN942DYN1/zfAeTdr3yfu5hnDFIBFSfwfxM0nOJrpfxo99tFhNu0D8f7ALgiAHvmXnBIoz5Nae2ld4m6CQBsygqkhlMUUhdK8bmJhfwcAi81joPfGiRafd/rN1A=="
       }
      }
     }
@@ -87,8 +135,8 @@
    [
     "usage",
     {
-     "entrada": 1824,
-     "saida": 83
+     "entrada": 2705,
+     "saida": 77
     }
    ]
   ],
@@ -99,57 +147,101 @@
    ],
    [
     "texto",
-    "As"
+    "A cul"
    ],
    [
     "texto",
-    " culinárias que geram maior receita total são lideradas pela culinária Jap"
+    "inária que gera mais receita disparada é a **Japonesa**, com um total de"
    ],
    [
     "texto",
-    "onesa, seguida por Pizza e Hambúrguer. \n\nAbaixo está a distribuição da receita total por tipo de cul"
+    " R$ 126.533,33, impulsionada pelo seu alto ticket médio (R"
    ],
    [
     "texto",
-    "inária:\n\n- Japonesa: R$ 126.533,33\n-"
+    "$ 96,22). Em seguida, destacam-se a **Pizza** (R$ 86.115"
    ],
    [
     "texto",
-    " Pizza: R$ 86.115,04\n- Hambúrguer: R$ 6"
+    ",04) e o **Hambúrguer** (R$ 69.648,16)."
    ],
    [
     "texto",
-    "9.648,16\n- Brasileira: R$ 62.182,07"
+    " \n\nAbaixo está o ranking completo da receita total por tipo de culinária, acompanhado do número de pedidos e do ticket"
    ],
    [
     "texto",
-    "\n- Italiana: R$ 54.697,06\n- Árabe: R$"
+    " médio:\n\n1. **Japonesa**: R$ 126.533,33"
    ],
    [
     "texto",
-    " 34.163,88\n- Saudável: R$ 34.036"
+    " (1.315 pedidos, ticket médio de R$ 96,22)\n2. **"
    ],
    [
     "texto",
-    ",38\n- Doces e Sobremesas: R$ 24.543,82"
+    "Pizza**: R$ 86.115,04 (1.249 pedidos, ticket médio"
    ],
    [
     "texto",
-    "\n\nSUGESTOES:\n- Qual é o ticket médio dos pedidos para cada tipo de culinária?\n- Como a receita"
+    " de R$ 68,95)\n3. **Hambúrguer**: R$ 69"
    ],
    [
     "texto",
-    " da culinária japonesa se distribui ao longo das regiões?\n- Quais restaurantes da culinária japonesa possuem maior volume"
+    ".648,16 (1.322 pedidos, ticket médio de R$ 52,"
    ],
    [
     "texto",
-    " de vendas?"
+    "68)\n4. **Brasileira**: R$ 62.182,07 ("
+   ],
+   [
+    "texto",
+    "1.426 pedidos, ticket médio de R$ 43,61)\n5. **Italian"
+   ],
+   [
+    "texto",
+    "a**: R$ 54.697,06 (657 pedidos, ticket médio de R"
+   ],
+   [
+    "texto",
+    "$ 83,25)\n6. **Árabe**: R$ 34.16"
+   ],
+   [
+    "texto",
+    "3,88 (590 pedidos, ticket médio de R$ 57,90)\n7"
+   ],
+   [
+    "texto",
+    ". **Saudável**: R$ 34.036,38 (735 pedidos,"
+   ],
+   [
+    "texto",
+    " ticket médio de R$ 46,31)\n8. **Doces e Sobremesas**: R"
+   ],
+   [
+    "texto",
+    "$ 24.543,82 (706 pedidos, ticket médio de R$ 3"
+   ],
+   [
+    "texto",
+    "4,76)\n\nSUGESTOES:\n- Como o ticket médio varia entre as diferentes cidades?\n- Quais"
+   ],
+   [
+    "texto",
+    " culinárias possuem os maiores tempos de entrega?\n-"
+   ],
+   [
+    "texto",
+    " Qual é a"
+   ],
+   [
+    "texto",
+    " participação dos cupons de desconto por tipo de culinária?"
    ],
    [
     "usage",
     {
-     "entrada": 2172,
-     "saida": 243
+     "entrada": 3055,
+     "saida": 494
     }
    ]
   ]

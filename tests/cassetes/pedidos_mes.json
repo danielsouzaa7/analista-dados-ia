@@ -14,33 +14,29 @@
    ],
    [
     "texto",
-    " Escrever o plano de análise.\n2. Consultar o banco de dados para contar"
+    " Escrever o plano de análise.\n2. Extrair a contagem de"
    ],
    [
     "texto",
-    " a quantidade de pedidos agrupados por mês.\n3. Gerar um gráfico de tendência com a evolução mensal.\n4. Responder com os"
+    " pedidos agrupados por mês usando SQL no DuckDB.\n3. Formatar os números por extenso e no padrão brasileiro.\n4. Ger"
    ],
    [
     "texto",
-    " números consolidados e o gráfico.\n\n```python\nimport duckdb\n\ncon = duckdb.connect()\nquery"
+    "ar o gráfico de tendência da evolução mensal dos pedidos.\n\n```sql\nSELECT \n    strftime(data_hora, '%Y"
    ],
    [
     "texto",
-    " = \"\"\"\n    SELECT strftime(data_hora, '%Y-%m') AS mes, count(pedido_id) AS total"
+    "-%m') AS mes,\n    COUNT(pedido_id) AS total_pedidos\nFROM pedidos\nGROUP BY 1\n"
    ],
    [
     "texto",
-    "_pedidos\n    FROM pedidos\n    GROUP BY mes\n    ORDER BY mes\n\"\"\"\ndf = con."
-   ],
-   [
-    "texto",
-    "execute(query).df()\nprint(df)\n```"
+    "ORDER BY 1;\n```"
    ],
    [
     "usage",
     {
-     "entrada": 982,
-     "saida": 138
+     "entrada": 1308,
+     "saida": 109
     }
    ]
   ],
@@ -52,12 +48,12 @@
    [
     "tool_call",
     {
-     "id": "call_753918388280413676",
+     "id": "call_14161644535226607371",
      "nome": "gerar_grafico",
-     "args": "{\"sql\":\"SELECT strftime(data_hora, '%Y-%m') AS mes, count(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY mes\\nORDER BY mes\",\"x\":\"mes\",\"titulo\":\"Evolução do Número de Pedidos Mês a Mês\",\"tipo\":\"tendencia\",\"y\":\"total_pedidos\"}",
+     "args": "{\"y\":\"total_pedidos\",\"x\":\"mes\",\"tipo\":\"tendencia\",\"sql\":\"SELECT \\n    strftime(data_hora, '%Y-%m') AS mes,\\n    COUNT(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY 1\\nORDER BY 1\",\"titulo\":\"Evolução do Número de Pedidos Mês a Mês\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0TkYD17DEcGvZKDFoAdQrJOOIL0zer8OtTetZC38D/KRYQ3gmp5ICjvv9BmXjQ8sGy7NIJkx45QeT4JyyEJNhlpG1NhnjgaPXfY1i40XQPVyBXBHVOX0DDB+N17f5UH9HvxIljKhBsBHngyIaeOytEQkFYfrI="
+       "thought_signature": "Eo4BCosBAWkUfRMs3SICcpSDdkKYgSkJA/HYDBaQan6vidJ9CUgRCYit7il4manfnhdBG0md5ihu6Ffq1784b6C3Oi220qB+ZeTe47/v6sL2d26zmW+nrJt1MRKwo12yHKGconsJqAxXiSlAjaf55wcQE0UqU17baTwz25oZLU1+/E4VLb6V/2f3YFUlaiYE4g=="
       }
      }
     }
@@ -65,8 +61,8 @@
    [
     "usage",
     {
-     "entrada": 1595,
-     "saida": 95
+     "entrada": 1955,
+     "saida": 101
     }
    ]
   ],
@@ -78,12 +74,12 @@
    [
     "tool_call",
     {
-     "id": "call_6984768965250024449",
+     "id": "call_15417833783074573249",
      "nome": "consultar_banco",
-     "args": "{\"sql\":\"SELECT strftime(data_hora, '%Y-%m') AS mes, count(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY mes\\nORDER BY mes\"}",
+     "args": "{\"sql\":\"SELECT \\n    strftime(data_hora, '%Y-%m') AS mes,\\n    COUNT(pedido_id) AS total_pedidos\\nFROM pedidos\\nGROUP BY 1\\nORDER BY 1\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0TFqeVLCQNle3+T0xyjWaH6bezUZqrd6cewfK1BWSc1BNEH4hkiu8jPvGNOF0U/IqTTr6UlqCxIjEQ+7z+9rPQvqNBbLIWqrH5XR8Q2JiYIRz+KgrW6Syb6WbQgdUcJuTlyv/CpsKFsxFxdHjhxxEijOVoWiw="
+       "thought_signature": "Eo4BCosBAWkUfRPlbU4Efesy1+hBOALlqXfM5uP47m7lbHkT8TGADhXDpETVF40vR5uHxAjqHfBc4uQjqSzxgZG/mp5cxjcEPk9RUcsZ76zLOVNbdL1/r3w5siqWpBMpiDXKZHXwpdxVspCwU5UJf62VSA7P2RdbcdoeC5bwzyB9fqSoNcK4OfCOQic4iKIqiA=="
       }
      }
     }
@@ -91,8 +87,8 @@
    [
     "usage",
     {
-     "entrada": 1934,
-     "saida": 55
+     "entrada": 2308,
+     "saida": 62
     }
    ]
   ],
@@ -103,65 +99,77 @@
    ],
    [
     "texto",
-    "A evolução"
+    "O"
    ],
    [
     "texto",
-    " do número de pedidos mês a mês ao longo do ano de 2025 apresentou"
+    " número de pedidos apresentou uma tendência geral de crescimento ao longo do ano de 2025"
    ],
    [
     "texto",
-    " um crescimento geral, registrando seu ponto mais baixo em fevereiro e o maior volume no mês de dezembro.\n\nAbaixo estão"
+    ", iniciando com 570 pedidos em janeiro e alcançando o volume máximo de 940 pedidos em dezembro. \n\n"
    ],
    [
     "texto",
-    " os totais mensais de pedidos:\n- **Janeiro de 2025:** 570 pedidos"
+    "Abaixo está a evolução mês a mês do total de pedidos registrados:\n\n- **2025-01**: 570"
    ],
    [
     "texto",
-    "\n- **Fevereiro de 2025:** 494 pedidos\n- **Março de"
+    " pedidos\n- **2025-02**: 494 pedidos\n- **2025"
    ],
    [
     "texto",
-    " 2025:** 610 pedidos\n- **Abril de 2025:** "
+    "-03**: 610 pedidos\n- **2025-04**: 606"
    ],
    [
     "texto",
-    "606 pedidos\n- **Maio de 2025:** 676 pedidos\n- **"
+    " pedidos\n- **2025-05**: 676 pedidos\n- **2025"
    ],
    [
     "texto",
-    "Junho de 2025:** 690 pedidos\n- **Julho de 202"
+    "-06**: 690 pedidos\n- **2025-07**: 673"
    ],
    [
     "texto",
-    "5:** 673 pedidos\n- **Agosto de 2025:** 673 pedidos\n- **Setembro"
+    " pedidos\n- **2025-08**: 673 pedidos\n- **2025"
    ],
    [
     "texto",
-    " de 2025:** 652 pedidos\n- **Outubro de 2025:**"
+    "-09**: 652 pedidos\n- **2025-10**: 700"
    ],
    [
     "texto",
-    " 700 pedidos\n- **Novembro de 2025:** 716 pedidos\n"
+    " pedidos\n- **2025-11**: 716 pedidos\n- **2025"
    ],
    [
     "texto",
-    "- **Dezembro de 2025:** 940 pedidos\n\nSUGESTOES:\n- Como vari"
+    "-12**: 9"
    ],
    [
     "texto",
-    "ou o valor total dos pedidos ao longo dos meses?\n- Qual foi o tempo médio de entrega em cada mês?\n- Qual"
+    "40 pedidos\n\nO"
    ],
    [
     "texto",
-    " cidade teve o maior crescimento de pedidos no período?"
+    " mês de fevereiro registrou o menor volume do ano, com 494 pedidos"
+   ],
+   [
+    "texto",
+    ", enquanto dezembro destacou-se com o maior volume, totalizando 940 pedidos.\n\nSUGESTOES"
+   ],
+   [
+    "texto",
+    ":\n- Como variou o valor médio dos pedidos ao longo dos meses?\n- Qual foi a culinária mais ped"
+   ],
+   [
+    "texto",
+    "ida em cada mês do ano?\n- Existe sazonalidade nas avaliações dos clientes mês a mês?"
    ],
    [
     "usage",
     {
-     "entrada": 2162,
-     "saida": 307
+     "entrada": 2550,
+     "saida": 346
     }
    ]
   ]

@@ -10,57 +10,133 @@
    ],
    [
     "texto",
-    "Pl"
+    "1."
    ],
    [
     "texto",
-    "ano:\n1. Consultar o banco de dados para calcular a receita total e"
+    " Calcular a receita total somando o valor dos pedidos de todas as cidades.\n2"
    ],
    [
     "texto",
-    " a receita por cidade, somando o valor dos pedidos.\n2. Calcular a porcentagem de participação de cada cidade"
+    ". Calcular a receita individual por cidade somando o valor dos pedidos para cada uma.\n3. Determinar o percentual de participação"
    ],
    [
     "texto",
-    " em relação à receita total.\n3. Formatar os valores monetários e percentuais no padrão brasileiro.\n4."
+    " de cada cidade dividindo a sua receita pela receita total.\n4. Ordenar os resultados da maior para a menor participação e gerar o"
    ],
    [
     "texto",
-    " Gerar um gráfico de composição para visualizar a participação das cidades na receita.\n\n```python\nimport duckdb\n\ncon"
+    " gráfico correspondente.\n\n```python\nimport duckdb\n\ncon = duckdb.connect()\ndf = con.execute"
    ],
    [
     "texto",
-    " = duckdb.connect()\ndf = con.execute(\"\"\"\n    SELECT \n        cidade, \n        "
+    "(\"\"\"\n    SELECT \n        cidade,\n        SUM(valor_pedido) AS receita_cidade\n"
    ],
    [
     "texto",
-    "SUM(valor_pedido) AS receita\n    FROM pedidos\n    GROUP BY cidade\n    ORDER BY receita DESC\n\"\"\")."
+    "    FROM pedidos\n    GROUP BY cidade\n    ORDER BY receita_cidade DESC\n\"\"\").df()\n\ntotal_receita"
    ],
    [
     "texto",
-    "df()\n\ntotal_receita = df['receita'].sum()\ndf['participacao_pct'] = (df['rece"
+    " = df['receita_cidade'].sum()\ndf['participacao_pct'] = (df['rece"
    ],
    [
     "texto",
-    "ita'] / total_receita) * 100\n\nfor idx, row in df.iterrows():\n    print(f"
+    "ita_cidade'] / total_receita) * 100\nprint(df)\nprint(f\"Total:"
    ],
    [
     "texto",
-    "\"{row['cidade']}: R$ {row['receita']:,.2f} ({row['participacao_pct']:"
+    " {total_receita}\")\n```\n\n```python\ngerar_grafico(\n    tipo='composicao',"
    ],
    [
     "texto",
-    ",.2f}%) - {row['receita']}\")\nprint(f\"Total: R$ {total_receita"
+    "\n    dados=df[['cidade', 'participacao_pct']],\n    titulo='Participação de cada cidade"
    ],
    [
     "texto",
-    ":,.2f}\")\n```"
+    " na receita'\n)\n```\n\nA participação de cada cidade na receita total de dois milhões duzentos e vinte e sete mil cento"
+   ],
+   [
+    "texto",
+    " e quarenta e nove reais e noventa e sete centavos (R$ 2.227.149,"
+   ],
+   [
+    "texto",
+    "97) é a seguinte:\n\n- São Paulo: quatrocentos e setenta e nove mil setecentos e nov"
+   ],
+   [
+    "texto",
+    "enta e três reais e quarenta e oito centavos (R$ 479.793,48"
+   ],
+   [
+    "texto",
+    "), representando 21,54%\n- Rio de Janeiro: trezentos e oitenta e seis mil o"
+   ],
+   [
+    "texto",
+    "itocentos e oitenta e quatro reais e quarenta e dois centavos (R$ 386"
+   ],
+   [
+    "texto",
+    ".884,42), representando 17,37%\n- Belo Horizonte: trezentos"
+   ],
+   [
+    "texto",
+    " e trinta e cinco mil oitocentos e noventa e três reais e quarenta e nove centavos (R$ "
+   ],
+   [
+    "texto",
+    "335.893,49), representando 15,08%\n- Curitiba:"
+   ],
+   [
+    "texto",
+    " duzentos e oitenta e oito mil oitocentos e setenta e nove reais e trinta e quatro"
+   ],
+   [
+    "texto",
+    " centavos (R$ 288.879,34), representando 12,97"
+   ],
+   [
+    "texto",
+    "%\n- Brasília: duzentos e oitenta mil oitocentos e quarenta e três reais e cinquenta e"
+   ],
+   [
+    "texto",
+    " quatro centavos (R$ 280.843,54), representando 12,6"
+   ],
+   [
+    "texto",
+    "1%\n- Porto Alegre: duzentos e sessenta e três mil cento e cinquenta e cinco reais e qu"
+   ],
+   [
+    "texto",
+    "arenta e um centavos (R$ 263.155,41), representando 1"
+   ],
+   [
+    "texto",
+    "1,82%\n- Salvador: cento e noventa e um mil setecentos e noventa e nove"
+   ],
+   [
+    "texto",
+    " reais e setenta e nove centavos (R$ 191.799,79), representando"
+   ],
+   [
+    "texto",
+    " 8,61%\n\nSUGESTOES:\n- Qual é o valor médio do pedido em cada cidade"
+   ],
+   [
+    "texto",
+    "\n- Como a receita se distribui entre as regiões\n- Quais são os tipos de culinária mais populares por"
+   ],
+   [
+    "texto",
+    " cidade"
    ],
    [
     "usage",
     {
-     "entrada": 980,
-     "saida": 258
+     "entrada": 1306,
+     "saida": 733
     }
    ]
   ],
@@ -72,38 +148,12 @@
    [
     "tool_call",
     {
-     "id": "call_18395825689339183173",
-     "nome": "rodar_python",
-     "args": "{\"codigo\":\"import duckdb\\n\\ncon = duckdb.connect()\\ndf = con.execute(\\\"\\\"\\\"\\n    SELECT \\n        cidade, \\n        SUM(valor_pedido) AS receita\\n    FROM pedidos\\n    GROUP BY cidade\\n    ORDER BY receita DESC\\n\\\"\\\"\\\").df()\\n\\ntotal_receita = df['receita'].sum()\\ndf['participacao_pct'] = (df['receita'] / total_receita) * 100\\n\\nfor idx, row in df['receita'].items():\\n    pass\\n\\nprint(f\\\"Total da receita: {total_receita}\\\")\\nprint(df.to_string())\\n\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
-     "extra_content": {
-      "google": {
-       "thought_signature": "EnsKeQFpFH0TosB8XwvqC+Qzi2FaCBtVY2A63XP6pkr7zOkVUE5YLenHYCvVjGHuu4LEr4QNcEttr1UajTbMeXzVlj7cJ+PBg8aEWRMB/Jmunt01AzjM2zuyYVaN1MbuCpNGefpXkDQOdmb+cefp7Wcw1yEAAq/SEHpv6Tg="
-      }
-     }
-    }
-   ],
-   [
-    "usage",
-    {
-     "entrada": 1713,
-     "saida": 179
-    }
-   ]
-  ],
-  [
-   [
-    "modelo",
-    "gemini-3.5-flash-lite"
-   ],
-   [
-    "tool_call",
-    {
-     "id": "call_7041593274456399638",
+     "id": "call_7885614162406411292",
      "nome": "consultar_banco",
-     "args": "{\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "args": "{\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita_cidade FROM pedidos GROUP BY cidade ORDER BY receita_cidade DESC\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0ThkuD2uZbrxGx62jOLkWuoXmFAiyb0d7WVkU9xoHIuok6//lEVlMDond7FUwmykN8R4kkLrQW+cFKxsVlC5bOjyn7TosIttynaZo0Yw/me0rcZLGWw9cYJGFdXgjDLOu5pehCQLa7NY6gXvwC0fUesPPJFyE="
+       "thought_signature": "Eo4BCosBAWkUfROGjK/h5mBqYZAG1NgkFO5+29FWw6Vf43O/mrfCQwDQCuV64cKlASqfL9h/aDvIEVXcVxuxrV16VxaSjvzKwLxQukcy8BVqYzoPjSIik3NwlaPCtrmygOxapjgYkTvDW01YS3mF68mzFrLvm16puAISQY/poT5Hq2poWg/NE8zP90TbysR0/A=="
       }
      }
     }
@@ -111,8 +161,8 @@
    [
     "usage",
     {
-     "entrada": 2002,
-     "saida": 37
+     "entrada": 2534,
+     "saida": 43
     }
    ]
   ],
@@ -124,12 +174,12 @@
    [
     "tool_call",
     {
-     "id": "call_3576935012721683279",
+     "id": "call_3022145952623296342",
      "nome": "rodar_python",
-     "args": "{\"codigo\":\"total = df['receita'].sum()\\ndf['pct'] = (df['receita'] / total) * 100\\nprint(f\\\"Total: {total}\\\")\\nfor i, r in df.iterrows():\\n    print(f\\\"{r['cidade']}: R$ {r['receita']:,.2f} ({r['pct']:,.2f}%)\\\")\\n\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "args": "{\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita_cidade FROM pedidos GROUP BY cidade ORDER BY receita_cidade DESC\",\"codigo\":\"import pandas as pd\\ntotal = df['receita_cidade'].sum()\\ndf['participacao'] = (df['receita_cidade'] / total) * 100\\nfor idx, row in df.iterrows():\\n    print(f\\\"{row['cidade']}: R$ {row['receita_cidade']:,.2f} ({row['participacao']:.2f}%)\\\")\\nprint(f\\\"Total: R$ {total:,.2f}\\\")\\n\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0T7BFHaT+BNoSBlyMhglpzmyJFr9cOYkU5Jrz+fyW6xKH72+rlcIkD1OhGBh1zSb1PpCZFx8m5ZVHmUXex6YAveHEEKoIq7HUkO+QHhjFZ6VSIMdJ2GTBWi7nsDxPPaAUT25z0t+FmpRR3cJCiGB9qay3oeKY="
+       "thought_signature": "Eo4BCosBAWkUfRP/Y2YUJcbXd6quomR9NpzdQtGllYRbYjudiV75Q+ZctaEeiSYpVrv4hkA5N033RTV/lfaFMYk/AcNAlajB21PeuzBdBnOUH4R2M40SG92brNTemBAi1rcGrkEALT6V/YXgUuQ2r5jE+gwRTSyoj6HUFQ83S8xel4PSquqzkWENE7Tpgi/mzA=="
       }
      }
     }
@@ -137,8 +187,8 @@
    [
     "usage",
     {
-     "entrada": 2219,
-     "saida": 126
+     "entrada": 2768,
+     "saida": 154
     }
    ]
   ],
@@ -150,12 +200,12 @@
    [
     "tool_call",
     {
-     "id": "call_7715228269991240150",
+     "id": "call_10137180034634533385",
      "nome": "gerar_grafico",
-     "args": "{\"tipo\":\"composicao\",\"titulo\":\"Participação de Cada Cidade na Receita Total\",\"x\":\"cidade\",\"y\":\"receita\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita FROM pedidos GROUP BY cidade ORDER BY receita DESC\"}",
+     "args": "{\"tipo\":\"composicao\",\"x\":\"cidade\",\"sql\":\"SELECT cidade, SUM(valor_pedido) AS receita_cidade FROM pedidos GROUP BY cidade ORDER BY receita_cidade DESC\",\"y\":\"receita_cidade\",\"titulo\":\"Participação de cada cidade na receita\"}",
      "extra_content": {
       "google": {
-       "thought_signature": "EnsKeQFpFH0TZoqHy4RLbK5HGDfNwZNniV/mK3wl1kkrAqvA48J1xEId7JW5apJfu2XlP+2d7Dqac1XDhiu0SauxhOPXym9TI8YBK05foj604KJ1AxRse0SSyhgdsaVp1dzJjBEVWyIC9tehhp17GFMOrPAqsU5Hc8YcUD0="
+       "thought_signature": "Eo4BCosBAWkUfRMLEwMeZ/gPBSis4AzwqzBB7zkulUSQ1jThWrhL9M96hCgtna3/F+ITYyIt8EOldJUviGzBni3QP6rR6ChCQHqRmCR+C6qN9Ljlfr3k5J0YfaLayNlstIyjM1Gm6J5vIvxXatRbvRNFK7rYO/3IcX0Dch8ccE3sM6I2Jv8aN674TisxLnCYbA=="
       }
      }
     }
@@ -163,8 +213,8 @@
    [
     "usage",
     {
-     "entrada": 2544,
-     "saida": 72
+     "entrada": 3122,
+     "saida": 80
     }
    ]
   ],
@@ -175,57 +225,89 @@
    ],
    [
     "texto",
-    "A"
+    "A receita"
    ],
    [
     "texto",
-    " receita total gerada pelos pedidos é de R$ 491.919,74"
+    " total gerada pelas cidades é de quatrocentos e noventa e um mil nove"
    ],
    [
     "texto",
-    ". A participação de cada cidade na receita está distribuída da seguinte forma:\n\n- **São Paulo**: R$ 143"
+    "centos e dezenas e quatro reais e setenta e quatro centavos (R$ 491."
    ],
    [
     "texto",
-    ".746,01 (29,22%)\n- **Rio de Janeiro**: R$ "
+    "919,74"
    ],
    [
     "texto",
-    "104.870,79 (21,32%)\n- **Salvador**: R"
+    "). A participação de cada cidade na receita é a seguinte:\n\n- São Paulo: cento e qu"
    ],
    [
     "texto",
-    "$ 76.660,24 (15,58%)\n- **Porto Alegre"
+    "arenta e três mil setecentos e quarenta e seis reais e um centavo (R$ 143.74"
    ],
    [
     "texto",
-    "**: R$ 69.406,96 (14,11%)\n- **Cur"
+    "6,01), representando 29,22%\n- Rio de Janeiro: cento e quatro mil o"
    ],
    [
     "texto",
-    "itiba**: R$ 45.219,45 (9,19%)\n- **B"
+    "itocentos e setenta reais e setenta e nove centavos (R$ 104.870,"
    ],
    [
     "texto",
-    "elo Horizonte**: R$ 34.031,56 (6,92%)\n- **"
+    "79), representando 21,32%\n- Salvador: setenta e seis mil seiscentos e sess"
    ],
    [
     "texto",
-    "Brasília**: R$ 17.984,73 (3,66%)\n\nSUGEST"
+    "enta reais e vinte e quatro centavos (R$ 76.660,24), representando 15,"
    ],
    [
     "texto",
-    "OES:\n- Qual é o ticket médio dos pedidos em cada cidade?\n- Como se comporta o tempo de entrega entre"
+    "58%\n- Porto Alegre: sessenta e nove mil quatrocentos e seis reais e noventa e seis centavos (R$ "
    ],
    [
     "texto",
-    " as diferentes cidades?\n- Quais são os tipos de culinária mais populares em cada região?"
+    "69.406,96), representando 14,11%\n- Curitiba: qu"
+   ],
+   [
+    "texto",
+    "arenta e cinco mil duzentos e dezenaje reais e quarenta e cinco centavos (R$"
+   ],
+   [
+    "texto",
+    " 45.219,45), representando 9,19%\n- Belo Horizonte: tr"
+   ],
+   [
+    "texto",
+    "inta e quatro mil e trinta e um reais e cinquenta e seis centavos (R$ 34."
+   ],
+   [
+    "texto",
+    "031,56), representando 6,92%\n- Brasília: dezessete mil novecentos"
+   ],
+   [
+    "texto",
+    " e oitenta e quatro reais e setenta e três centavos (R$ 17.984"
+   ],
+   [
+    "texto",
+    ",73), representando 3,66%\n\nSUGESTOES:\n- Qual é o ticket médio dos"
+   ],
+   [
+    "texto",
+    " pedidos em cada cidade?\n- Como a participação das cidades na receita se distribui ao longo dos meses?\n- Qual é o tipo"
+   ],
+   [
+    "texto",
+    " de culinária mais vendido em São Paulo e no Rio de Janeiro?"
    ],
    [
     "usage",
     {
-     "entrada": 2847,
-     "saida": 263
+     "entrada": 3443,
+     "saida": 439
     }
    ]
   ]

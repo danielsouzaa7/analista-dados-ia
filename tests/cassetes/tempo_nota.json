@@ -1,0 +1,227 @@
+{
+ "id": "tempo_nota",
+ "pergunta": "O tempo de entrega afeta a nota do cliente?",
+ "modelo": "gemini-3.5-flash-lite",
+ "respostas": [
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Plano"
+   ],
+   [
+    "texto",
+    ":\n1. Extrair os dados de tempo de entrega e avaliação dos pedidos."
+   ],
+   [
+    "texto",
+    "\n2. Calcular a correlação entre o tempo de entrega e a avaliação utilizando Python.\n3. Verificar a signific"
+   ],
+   [
+    "texto",
+    "ância estatística do teste de correlação.\n4. Gerar um gráfico de dispersão para visualizar a relação entre as"
+   ],
+   [
+    "texto",
+    " variáveis.\n\n```python\ndf = con.execute(\"SELECT tempo_entrega_min, avaliacao FROM pedidos WHERE avaliacao"
+   ],
+   [
+    "texto",
+    " IS NOT NULL\").df()\nr, gl, p_valor = teste_correlacao(df['tempo_entrega_min"
+   ],
+   [
+    "texto",
+    "'], df['avaliacao'])\nprint(f\"Correlação: {r:.4f}\")\nprint(f\"p_"
+   ],
+   [
+    "texto",
+    "valor = {p_valor:.3g}\")\n```"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 1308,
+     "saida": 164
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_13075729621368184289",
+     "nome": "rodar_python",
+     "args": "{\"sql\":\"SELECT tempo_entrega_min, avaliacao FROM pedidos WHERE avaliacao IS NOT NULL\",\"codigo\":\"df = con.execute(\\\"SELECT tempo_entrega_min, avaliacao FROM pedidos WHERE avaliacao IS NOT NULL\\\").df()\\nr, gl, p_valor = teste_correlacao(df['tempo_entrega_min'], df['avaliacao'])\\nprint(f\\\"Correlação: {r:.4f}\\\")\\nprint(f\\\"p_valor = {p_valor:.3g}\\\")\\n\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfROTSGldB2HRQzkFv0EmXxYWe21ccP01BV2JoESAt8BcokRPam3Ftu41PPCQ1K3Fn3oZIz781/LFhuagPWx0PqG87ygvtPVazAvfAVkDls9NgozB62Qjuh2RUdvF6Du4mxahdD5yVECoJOsuGM/TN4R48IAznbYtUpspyvJ+gLwqdNxO+x6tAA=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2010,
+     "saida": 131
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_12739525263589342554",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT count(*) FROM pedidos WHERE avaliacao IS NOT NULL\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfRNI6spw//E/4WoHUNn+AsWzPPA+y5I2gTSLstZnpGVDfMJNt8hsR5xNZohGj+8C50efNArizUznZHV9UK0wT2YJhG6RHIDbLiF7od/gNFOiNJ61AYUgkGAH/2q5FpB7jMT5asCki8OGhuLKe1dwHkWUryWsIBq45zzztVKvRG7Fq11JiwL9Pg=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2258,
+     "saida": 29
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_2652759963299087902",
+     "nome": "rodar_python",
+     "args": "{\"codigo\":\"df = con.execute(\\\"SELECT tempo_entrega_min, avaliacao FROM pedidos WHERE avaliacao IS NOT NULL\\\").df()\\nr, gl, p_valor = teste_correlacao(df['tempo_entrega_min'], df['avaliacao'])\\nprint(f\\\"Correlação: {r:.4f}\\\")\\nprint(f\\\"p_valor = {p_valor:.3g}\\\")\\n\",\"sql\":\"SELECT tempo_entrega_min, avaliacao FROM pedidos WHERE avaliacao IS NOT NULL\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfRN0xvjU71DpbbM7p0ssSIn/SVmiYEOR12p4lHNvYe4EpDw7SjM06kKuEpCYIbQcqVtnnoJvElZwWE1EUz+9I8cqoYEpQX3ZV6PvyLnQKHnvLSVHnInwTR70caH9kAvxWqhQFRvaoppK9yudqTFs06TDAsDDAmlAjrH7Gbc/Ltl3HqAYts7mzQ=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2326,
+     "saida": 130
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_4393021164302774045",
+     "nome": "gerar_grafico",
+     "args": "{\"titulo\":\"Relação entre Tempo de Entrega e Avaliação Média\",\"x\":\"tempo_entrega_min\",\"y\":\"avaliacao_media\",\"sql\":\"SELECT tempo_entrega_min, avg(avaliacao) as avaliacao_media FROM pedidos WHERE avaliacao IS NOT NULL GROUP BY tempo_entrega_min ORDER BY tempo_entrega_min\",\"tipo\":\"dispersao\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfRPqEjyNJD1X32AMQEEXYuRHIqI3tITAdYFEs1uOqPBgBxO9r9rb9x6GhCm1plNKlT2UHJpQzBDEMlx8pS9UVaTi9/kCRWSGJaRx+bCAem9/CjVFaG3oQ/Lj5Gp2RrU9D5H6ycZ/I/B4rKQaKxCn8fd127OcPa5R+EUgbLL9KRHkj4/y7pH9pQ=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 2574,
+     "saida": 104
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "tool_call",
+    {
+     "id": "call_7463643119462280221",
+     "nome": "consultar_banco",
+     "args": "{\"sql\":\"SELECT corr(tempo_entrega_min, avaliacao) as correlacao FROM pedidos WHERE avaliacao IS NOT NULL\"}",
+     "extra_content": {
+      "google": {
+       "thought_signature": "Eo4BCosBAWkUfRNaLdaRPOQGQ/rNRm9euE+a8IeULVjNQgOhEFjVnlW7HaV0qlBfXxaxqpgPlEv4/nnf63jlhO1M+CWPP5+FEBKjBYpA3x0rmLV+sn17g742D/t7X5VMuGaN1KG9r+KAHFbHlCHIlLHeruxDmyDNL94rkjmxcmPRouxJb5ey3fkw+YKRbLE8jg=="
+      }
+     }
+    }
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3652,
+     "saida": 43
+    }
+   ]
+  ],
+  [
+   [
+    "modelo",
+    "gemini-3.5-flash-lite"
+   ],
+   [
+    "texto",
+    "Sim"
+   ],
+   [
+    "texto",
+    ", o tempo de entrega afeta a nota do cliente. \n\nDe acordo com a"
+   ],
+   [
+    "texto",
+    " análise dos dados, existe uma correlação negativa expressiva de -0,51 entre o tempo de entrega (em minutos) e a avaliação"
+   ],
+   [
+    "texto",
+    " dos pedidos (disponível para 5.501 pedidos). Isso indica que, à medida que o tempo de"
+   ],
+   [
+    "texto",
+    " entrega aumenta, a nota média atribuída pelos clientes tende a diminuir de forma consistente.\n\nNão foi possível testar se"
+   ],
+   [
+    "texto",
+    " a diferença é estatisticamente significativa.\n\nSUGESTOES:\n- Qual é o tempo médio de entrega por"
+   ],
+   [
+    "texto",
+    " cidade?\n- O impacto do tempo de entrega na avaliação varia conforme a culinária?\n- Pedidos com taxa"
+   ],
+   [
+    "texto",
+    " de entrega zero possuem tempos de espera maiores?"
+   ],
+   [
+    "usage",
+    {
+     "entrada": 3748,
+     "saida": 156
+    }
+   ]
+  ]
+ ]
+}
