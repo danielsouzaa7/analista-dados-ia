@@ -4,12 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from app import sessions
+from app import prompts, sessions
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "scripts"))
 import avaliar  # noqa: E402
 
+NL = chr(10)
 CHAVE = "AIzaSyChaveDeTeste123"
 CSV = b"a,b\n1,2\n3,4\n"
 CASO = {"id": "total", "pergunta": "Qual o total?", "numeros_chave": [1234.56, 29.2], "usa": ["sql"],
@@ -24,7 +25,7 @@ def agente(eventos_extra: list[dict], texto: str | None, apagar: bool = False):
         yield {"evento": "recebido", "modelo": "falso", "turno": 1}
         yield {"evento": "llm", "n": 1, "fase": "plano", "ms": 10, "tokens_entrada": 100, "tokens_saida": 20}
         yield {"evento": "ferramenta_inicio", "id": "t1", "tipo": "sql", "sql": "SELECT 1"}
-        yield {"evento": "ferramenta_fim", "id": "t1", "ms": 5}
+        yield {"evento": "ferramenta_fim", "id": "t1", "ms": 5, "colunas": ["v"], "linhas": [[1234.56, 29.2]]}
         if apagar:  # simula um bug: o "agente" altera o arquivo de dados
             with open(sessao.caminho_db, "ab") as f:
                 f.write(b"x")
@@ -122,6 +123,7 @@ def test_acompanhamento_usa_a_sessao_do_caso_anterior(tmp_path, monkeypatch) -> 
 
     def executar(pergunta, sessao, llm):
         vistas.append(sessao.id)
+        yield {"evento": "ferramenta_fim", "id": "t1", "ms": 1, "linhas": [[1234.56, 29.2]]}
         yield {"evento": "resposta", "texto": "1.234,56 e 29,2%"}
         yield {"evento": "fim"}
 
@@ -306,3 +308,109 @@ def test_gravar_cassetes_com_varias_rodadas_e_recusado(monkeypatch, capsys) -> N
 def test_gabarito_do_cupom_ticket_pede_as_duas_medias() -> None:
     caso = next(c for c in avaliar.carregar_casos() if c["id"] == "cupom_ticket")
     assert caso["numeros_chave"] == [52.0087, 63.8974]
+
+
+def test_numero_errado_reprova_mesmo_com_os_numeros_chave_presentes(sessao, tmp_path, monkeypatch) -> None:
+    r = rodar(CASO, sessao, tmp_path, monkeypatch, agente([], "Total 1.234,56, 29,2% e 987,65 pedidos."))
+    assert r["faltando"] == [] and r["numeros_errados"] == ["987,65"] and r["acerto"] is False
+
+
+def test_fontes_usam_a_mesma_logica_de_citacao_de_p_do_agente(sessao, tmp_path, monkeypatch) -> None:
+    fim = [{"evento": "ferramenta_fim", "id": "t9", "ms": 1, "saida": "t = -4.0\np_valor = 0.2\n"}]
+    ruim = rodar(CASO, sessao, tmp_path, monkeypatch, agente(fim, "Total 1.234,56 e 29,2% (p = 0,01)."))
+    assert ruim["numeros_errados"] == ["0,01"] and ruim["acerto"] is False
+    bom = rodar(CASO, sessao, tmp_path, monkeypatch, agente(fim, "Total 1.234,56 e 29,2% (p = 0,2)."))
+    assert bom["numeros_errados"] == [] and bom["acerto"] is True
+
+
+def test_acompanhamento_soma_as_fontes_do_caso_de_que_depende(tmp_path, monkeypatch) -> None:
+    casos = [CASO, {**CASO, "id": "depois", "depende_de": "total"}]
+
+    def executar(pergunta, sessao, llm):
+        if pergunta == CASO["pergunta"]:  # o agente real guarda o turno no historico da sessão
+            sessao.historico = [{"resultados": "total=1234.56 pct=29.2", "saidas_python": ["p_valor = 0.0003"]}]
+            yield {"evento": "resposta", "texto": "1.234,56 e 29,2% (p = 0,0003)"}
+        else:
+            yield {"evento": "resposta", "texto": "Como antes: 1.234,56 e 29,2% (p = 0,0003)."}
+        yield {"evento": "fim"}
+
+    monkeypatch.setattr(avaliar.agent, "executar", executar, raising=False)
+    monkeypatch.setattr(avaliar, "criar_sessao", lambda: sessions.criar_de_csv("pedidos.csv", CSV))
+    res = avaliar.rodar_todos(casos, lambda *a: None, pausa=0, chave=CHAVE, pasta=tmp_path)
+    assert res[1]["numeros_errados"] == [] and res[1]["acerto"] is True
+
+
+MANUAL_ANTES = "# Avaliação do agente" + NL * 2 + "Texto manual antes." + NL
+MANUAL_DEPOIS = NL + "## Notas" + NL * 2 + "Texto manual depois." + NL
+INICIO, FIM = "<!-- avaliacao:inicio -->", "<!-- avaliacao:fim -->"
+
+
+def test_relatorio_escreve_so_o_bloco_e_preserva_as_secoes_manuais(tmp_path) -> None:
+    destino = tmp_path / "avaliacao.md"
+    destino.write_text(MANUAL_ANTES + NL + INICIO + NL + "BLOCO ANTIGO" + NL + FIM + NL + MANUAL_DEPOIS, encoding="utf-8")
+    avaliar.escrever_relatorio([_r_completo("a", True)], "modelo-x", destino)
+    texto = destino.read_text(encoding="utf-8")
+    assert texto.startswith(MANUAL_ANTES) and texto.endswith(MANUAL_DEPOIS)
+    assert "BLOCO ANTIGO" not in texto and "| a |" in texto and texto.count(INICIO) == texto.count(FIM) == 1
+    assert f"(prompt {prompts.VERSAO})" in texto
+
+
+def test_relatorio_sem_marcadores_acrescenta_o_bloco_sem_perder_texto(tmp_path) -> None:
+    destino = tmp_path / "avaliacao.md"
+    destino.write_text(MANUAL_ANTES + MANUAL_DEPOIS, encoding="utf-8")
+    avaliar.escrever_relatorio_rodadas([[_r("a", True)]], "modelo-x", destino)
+    texto = destino.read_text(encoding="utf-8")
+    assert MANUAL_ANTES in texto and MANUAL_DEPOIS in texto and INICIO in texto and FIM in texto
+    assert f"(prompt {prompts.VERSAO})" in texto
+    avaliar.escrever_relatorio_rodadas([[_r("b", True)]], "modelo-x", destino)  # a 2ª vez troca o bloco
+    segundo = destino.read_text(encoding="utf-8")
+    assert segundo.count(INICIO) == 1 and "| b |" in segundo and "| a |" not in segundo and MANUAL_DEPOIS in segundo
+
+
+def test_relatorio_novo_nasce_com_marcadores(tmp_path) -> None:
+    destino = tmp_path / "novo.md"
+    avaliar.escrever_relatorio([_r_completo("a", True)], "modelo-x", destino)
+    texto = destino.read_text(encoding="utf-8")
+    assert texto.startswith("# Avaliação do agente") and INICIO in texto and FIM in texto
+
+
+def test_relatorio_sem_rodada_completa_diz_isso(tmp_path) -> None:
+    destino = tmp_path / "r.md"
+    avaliar.escrever_relatorio_rodadas([[_r("a", False, infra=True)]], "modelo-x", destino)
+    texto = destino.read_text(encoding="utf-8")
+    assert "nenhuma rodada completa" in texto and "pass^0" not in texto and "0,0/" not in texto
+
+
+def test_casos_e_recusado_quando_o_destino_e_o_relatorio_oficial(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(avaliar, "obter_chave", lambda: pytest.fail("não deveria chegar na chave"))
+    with pytest.raises(SystemExit):
+        avaliar.main(["--casos", "pedidos_mes"])
+    assert "--casos" in capsys.readouterr().err
+
+
+def _r_completo(id_, acerto):
+    return {**_r(id_, acerto), "chamadas_llm": 1, "chamadas_ferramenta": 1, "tokens_entrada": 1,
+            "tokens_saida": 1, "reanalises": 0}
+
+
+def test_com_gravar_cassetes_so_grava_o_stream_do_caso_que_passa(sessao, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(avaliar.agent, "executar", agente([], "Total 1.300,00 e 29,2%"), raising=False)
+    ruim = avaliar.rodar_caso(CASO, sessao, lambda *a: None, tmp_path, CHAVE, so_se_passar=True)
+    assert ruim["acerto"] is False and not (tmp_path / "total.jsonl").exists()  # não troca a gravação publicada
+    monkeypatch.setattr(avaliar.agent, "executar", agente([], "Total 1.234,56 e 29,2%"), raising=False)
+    assert avaliar.rodar_caso(CASO, sessao, lambda *a: None, tmp_path, CHAVE, so_se_passar=True)["acerto"] is True
+    assert (tmp_path / "total.jsonl").exists()
+
+
+def test_sem_gravar_cassetes_a_gravacao_sai_mesmo_com_falha(sessao, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(avaliar.agent, "executar", agente([], "Total 1.300,00 e 29,2%"), raising=False)
+    assert avaliar.rodar_caso(CASO, sessao, lambda *a: None, tmp_path, CHAVE)["acerto"] is False
+    assert (tmp_path / "total.jsonl").exists()
+
+
+def test_rodar_todos_com_cassetes_nao_grava_gravacao_de_caso_que_falha(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(avaliar.agent, "executar", agente([], "Total 1.300,00 e 29,2%"), raising=False)
+    monkeypatch.setattr(avaliar, "criar_sessao", lambda: sessions.criar_de_csv("pedidos.csv", CSV))
+    avaliar.rodar_todos([CASO], lambda *a: iter([]), pausa=0, chave=CHAVE, pasta=tmp_path / "grav",
+                        pasta_cassetes=tmp_path / "cass")
+    assert not (tmp_path / "grav" / "total.jsonl").exists() and not (tmp_path / "cass" / "total.json").exists()

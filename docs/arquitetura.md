@@ -53,8 +53,8 @@ flowchart LR
 | `ferramenta_inicio` | `id`, `tipo` (`sql`, `python`, `grafico`), `sql`, `codigo` (só no Python) | Antes de rodar uma ferramenta |
 | `ferramenta_fim` | `id`, `ms` e: `colunas`, `linhas`, `total_linhas` (SQL); `saida` (Python); `grafico` (gráfico); ou `erro` | Depois de cada ferramenta |
 | `rascunho` | `delta`, `tentativa` | Texto da resposta em pedaços. O marcador `SUGESTOES:` nunca é transmitido |
-| `conferencia` | `ok`, `falhas`, `tentativa` | Depois de cada rascunho completo |
-| `descartado` | `tentativa`, `falhas` | O rascunho foi jogado fora e haverá reanálise |
+| `conferencia` | `ok`, `falhas`, `significancia`, `tentativa` | Depois de cada rascunho completo |
+| `descartado` | `tentativa`, `falhas`, `significancia` | (`significancia` true: afirmou significância sem p-valor nas saídas) O rascunho foi jogado fora e haverá reanálise |
 | `resposta` | `texto`, `aviso`, `reanalises`, `sugestoes`, `conferido`, `turno` | Resposta final |
 | `erro` | `mensagem` | Limite, cota, provedor indisponível, validação ou erro interno |
 | `metricas` | `ms_total`, `chamadas_llm`, `chamadas_ferramenta`, `tokens_entrada`, `tokens_saida`, `reanalises`, `modelo`, `custo`, `trace_id`, `versao_prompt` | Sempre, antes do `fim` |

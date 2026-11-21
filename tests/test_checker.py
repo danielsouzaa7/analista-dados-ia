@@ -4,7 +4,13 @@ from pathlib import Path
 import pytest
 
 from app import prompts
-from app.checker import afirma_significancia, sem_citacoes_de_p, significancia_sem_p_valor
+from app.checker import (
+    afirma_significancia,
+    conferir_numeros,
+    sem_citacoes_de_p,
+    significancia_sem_p_valor,
+    tem_p_valor,
+)
 from app.checker import numeros_nao_conferidos as nc
 
 
@@ -85,6 +91,10 @@ DISPARAM = [
     "Não testei a correlação; contudo a correlação é significativa.",
     "Faltou o teste. No entanto, a associação é significativa.",
     "A diferença significativa entre os grupos é clara.",
+    "Não foi possível testar, portanto a diferença é significativa.",
+    # Predicativo ("foi significativa") lê-se como afirmação estatística, mesmo sendo uma queda; o atributivo
+    # ("aumento significativo", em NAO_DISPARAM) é só magnitude. Decisão: o predicativo dispara.
+    "A queda foi significativa",
 ]
 NAO_DISPARAM = [
     "Não foi possível calcular a significância estatística.",
@@ -96,6 +106,8 @@ NAO_DISPARAM = [
     "O resultado foi um aumento significativo de receita.",
     "Os resultados mostram um crescimento significativo.",
     "Houve quedas significativas em março.",
+    "Não foi possível testar se a diferença de R$ 1.234,56 é significativa.",
+    "Não consegui rodar o teste; não sei se a diferença é significativa.",
     "O valor por pedido é de R$ 61,49.",
     "O valor pago foi alto.",
     "SP valoriza o ticket maior.",
@@ -123,7 +135,7 @@ def test_modelo_de_incapacidade_do_prompt_nao_dispara() -> None:
 
 
 @pytest.mark.parametrize("saida", [
-    "p_valor = 1.2e-54", "p < 0.001", "ResultadoTeste(t=-2.0, gl=8.0, p_valor=0.0805)", "p-valor bicaudal: 0.08",
+    "p_valor = 1.2e-54", "p < 0.001", "ResultadoTeste(t=-2.0, gl=8.0, p_valor=0.0805)", "p-valor (bicaudal): 0.08",
     "valor-p: 0.03", "p = .04",
 ])
 def test_p_valor_impresso_passa(saida: str) -> None:
@@ -140,16 +152,47 @@ def test_p_valor_so_no_codigo_nao_conta() -> None:
     assert significancia_sem_p_valor("A diferença é significativa.", ["sim"])
 
 
+@pytest.mark.parametrize("saida", [
+    "o p-valor e o ticket = 45,90", "Sem p-valor; ticket = 45.9", "grupo p: 12 pedidos", "p_valor = 12", "p = 1,5",
+])
+def test_so_rotulo_colado_ao_comparador_e_valor_em_0_1_conta_como_p(saida: str) -> None:
+    assert not tem_p_valor([saida])
+
+
 def test_p_valor_citado_em_formato_br_nao_reprova_numeros() -> None:
     resposta = "A diferença é significativa (p < 0,001; no teste, p = 1,2 × 10⁻⁵⁴)."
     saidas = ["p_valor = 1.2e-54"]
     assert nc(resposta, saidas, "pergunta") != []
-    assert nc(sem_citacoes_de_p(resposta), saidas, "pergunta") == []
+    assert nc(sem_citacoes_de_p(resposta, saidas), saidas, "pergunta") == []
+    assert conferir_numeros(resposta, saidas, saidas, "pergunta") == []
+
+
+@pytest.mark.parametrize("citacao, p, some", [
+    ("p = 0,01", "p_valor = 0.2", False),            # valor diferente do da saída: continua a conferir
+    ("p = 0,0805", "p_valor = 0.0805", True),
+    ("p = 0,08", "p_valor = 0.0805", True),          # arredondamento da citação
+    ("p = 0,0809", "p_valor = 0.0805", True),        # dentro de 1%
+    ("p < 0,001", "p_valor = 0.0805", False),        # nenhum p é < 0,001
+    ("p < 0,001", "p_valor = 1.2e-54", True),
+    ("p < 0,05", "p_valor = 0.2", False),
+    ("p = 1,2 × 10⁻⁵⁴", "p_valor = 1.2e-54", True),
+    ("p = 1,2 × 10⁻⁵⁴", "p_valor = 3.4e-54", False),
+    ("p = 0,03", "Sem teste aqui", False),
+])
+def test_so_some_a_citacao_de_p_que_a_saida_sustenta(citacao: str, p: str, some: bool) -> None:
+    resposta = f"Deu significativo ({citacao})."
+    assert (citacao not in sem_citacoes_de_p(resposta, [p])) is some
+
+
+def test_p_que_nao_bate_vira_numero_nao_conferido() -> None:
+    saidas = ["p_valor = 0.2"]
+    assert conferir_numeros("Significativa (p = 0,01).", saidas, saidas, "x") == ["0,01"]
+    assert conferir_numeros("Significativa (p < 0,001).", saidas, saidas, "x") == ["0,001"]
 
 
 def test_cita_p_nao_engole_numero_que_nao_e_p_valor() -> None:
-    assert "45,90" in sem_citacoes_de_p("O p-valor e o ticket = 45,90 reais.")
-    assert "0,03" not in sem_citacoes_de_p("O p-valor (Welch) = 0,03.")
+    assert "45,90" in sem_citacoes_de_p("O p-valor e o ticket = 45,90 reais.", ["p = 0.03"])
+    assert "0,03" not in sem_citacoes_de_p("O p-valor (Welch) = 0,03.", ["p = 0.03"])
 
 
 def _resposta_final(caminho: Path) -> str:
@@ -168,3 +211,50 @@ CORPUS = sorted([*(RAIZ / "data" / "gravacoes").glob("*.jsonl"), *(RAIZ / "tests
 @pytest.mark.parametrize("caminho", CORPUS, ids=[f"{c.parent.name}/{c.name}" for c in CORPUS])
 def test_corpus_real_das_gravacoes_e_cassetes(caminho: Path) -> None:
     assert afirma_significancia(_resposta_final(caminho)) is ESPERADO_AFIRMA.get(caminho.stem, False)
+
+
+FRASE_CASSETE = "O p-valor de $1,58 \\times 10^{-52}$ (ou seja, $p < 0,001$)."
+
+
+def test_frase_do_cassete_com_p_em_latex_sai_conferida() -> None:
+    saidas = ["media = 52.0\np_valor = 1.579e-52\n"]
+    assert conferir_numeros(FRASE_CASSETE, saidas, saidas, "x") == []
+
+
+def test_p_em_latex_que_nao_bate_com_a_saida_continua_reprovando() -> None:
+    saidas = ["p_valor = 0.2\n"]
+    assert conferir_numeros(FRASE_CASSETE, saidas, saidas, "x") != []
+
+
+@pytest.mark.parametrize("numero", [
+    "1,58 × 10^-52", "1,58 x 10^{-52}", "1,58 \\times 10^{-52}", "$1,58 \\times 10^{-52}$", "1,58·10⁻⁵²",
+    "1.58e-52", "1,58 \\cdot 10^{-52}",
+])
+def test_notacao_cientifica_e_um_numero_so(numero: str) -> None:
+    fontes = ["p_valor = 1.579e-52"]
+    assert nc(f"O valor foi {numero}.", fontes, "x") == []  # confere como UM número, não 1,58 e 52
+    assert nc(f"O valor foi {numero}.", ["p_valor = 0.2"], "x") != []
+
+
+@pytest.mark.parametrize("frase", ["O p-valor de 0,03 foi baixo.", "O p-valor igual a 0,03 foi baixo.", "p de $0,03$."])
+def test_p_valor_de_e_igual_a_sao_citacao(frase: str) -> None:
+    assert "0,03" not in sem_citacoes_de_p(frase, ["p_valor = 0.03"])
+    assert "0,03" in sem_citacoes_de_p(frase, ["p_valor = 0.2"])
+
+
+def test_ticket_de_reais_nao_vira_citacao_de_p() -> None:
+    assert "45,90" in sem_citacoes_de_p("O ticket de R$ 45,90 e o p-valor de 0,03.", ["p_valor = 0.03"])
+
+
+@pytest.mark.parametrize("comparador", ["inferior a", "menor que", "menor do que", "abaixo de", "≤", "<"])
+def test_limiar_em_palavras_vale_como_menor_que(comparador: str) -> None:
+    frase = f"O p-valor foi {comparador} 1e-15."
+    assert nc(sem_citacoes_de_p(frase, ["p_valor = 1.579e-52"]), [], "x") == []
+    assert conferir_numeros(frase, ["p_valor = 1.579e-52"], ["p_valor = 1.579e-52"], "x") == []
+    assert conferir_numeros(frase, ["p_valor = 0.2"], ["p_valor = 0.2"], "x") == ["1e-15"]
+
+
+def test_limiar_maior_que_o_menor_p_e_o_unico_que_sustenta() -> None:
+    saidas = ["p_valor = 0.2"]
+    assert conferir_numeros("O p-valor foi menor que 0,5.", saidas, saidas, "x") == []
+    assert conferir_numeros("O p-valor foi menor que 0,05.", saidas, saidas, "x") == ["0,05"]

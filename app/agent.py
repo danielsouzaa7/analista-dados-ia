@@ -9,6 +9,7 @@ import math
 import os
 import re
 import time
+import unicodedata
 import uuid
 from collections.abc import Callable, Generator, Iterator
 from decimal import Decimal
@@ -18,7 +19,7 @@ import openai
 from openai import OpenAI
 
 from app import config, graficos, prompts, python_tool, sql_tool
-from app.checker import numeros_nao_conferidos, sem_citacoes_de_p, significancia_sem_p_valor, tem_p_valor
+from app.checker import conferir_numeros, significancia_sem_p_valor
 from app.errors import ErroUsuario
 from app.sessions import Sessao
 
@@ -38,7 +39,8 @@ _DOBRA = str.maketrans("abcdefghijklmnopqrstuvwxyzõÕ", "ABCDEFGHIJKLMNOPQRSTUV
 MAX_NOME, MAX_ESQUEMA = 64, 8000  # nomes e esquema vão a até 13 chamadas por pergunta
 MAX_CELULA, MAX_BYTES_LINHAS = 200, 200_000  # ferramenta_fim vai para o navegador
 NL = chr(10)
-_TAG_DADOS = re.compile(r"<\s*/?\s*dados\s*>", re.IGNORECASE)
+_TAG_DADOS = re.compile(r"<\s*/?\s*dados\b[^>]*>", re.IGNORECASE)
+_HOMOGLIFOS = str.maketrans("аоѕԁ", "aosd")  # cirílicos que NFKC não une aos latinos
 _MARCADOR = re.compile(r"(?m)^[ *_#]*" + MARCADOR)  # só no começo da linha: "minhas sugestões:" na prosa é texto
 _dormir = time.sleep
 
@@ -106,9 +108,24 @@ def _perfil_texto(tabela: dict) -> str:
     return NL.join(linhas)
 
 
+def _sem_delimitador(texto: str) -> str:
+    """Tira as tags <dados>. A detecção é feita no texto normalizado (NFKC, sem Cf, sem homóglifos), mas só
+    os trechos que viram tag saem do original: o resto do texto fica intacto."""
+    norm, origem = [], []
+    for i, c in enumerate(texto):
+        n = unicodedata.normalize("NFKC", c).translate(_HOMOGLIFOS)
+        if unicodedata.category(c) != "Cf":
+            norm.extend(n)
+            origem.extend([i] * len(n))
+    apagar: set[int] = set()
+    for m in _TAG_DADOS.finditer("".join(norm)):
+        apagar.update(range(origem[m.start()], origem[m.end() - 1] + 1))
+    return "".join(c for i, c in enumerate(texto) if i not in apagar)
+
+
 def _como_dado(texto: str) -> str:
     """O conteúdo do CSV não pode fechar o delimitador nem virar instrução."""
-    while (limpo := _TAG_DADOS.sub("", texto)) != texto:  # "</da</dados>dos>" vira tag depois da 1ª passada
+    while (limpo := _sem_delimitador(texto)) != texto:  # "</da</dados>dos>" vira tag depois da 1ª passada
         texto = limpo
     return f"<dados>{NL}{texto}{NL}</dados>"
 
@@ -183,6 +200,7 @@ def python_deno(id_: str, codigo: str, csv: str, restante: float) -> Generator[d
 def _rodar(tc_id: str, nome: str, args: dict, sessao: Sessao, restante: float,
            python: ExecutorPython) -> Generator[dict, None, tuple[str, dict]]:
     """Roda uma ferramenta: devolve o texto para o LLM e os campos extras de ferramenta_fim (levanta ErroUsuario)."""
+    desde = time.monotonic()
     timeout = min(30, restante)
     if nome == "consultar_banco":
         r = sql_tool.executar(sessao, args["sql"], timeout=timeout)
@@ -192,7 +210,7 @@ def _rodar(tc_id: str, nome: str, args: dict, sessao: Sessao, restante: float,
     if nome == "rodar_python":
         r = sql_tool.executar(sessao, args["sql"], limite=MAX_LINHAS_PYTHON, timeout=timeout)
         dados, cabem = _csv(r)
-        res = yield from python(tc_id, args["codigo"], dados, restante)
+        res = yield from python(tc_id, args["codigo"], dados, restante - (time.monotonic() - desde))
         if res["erro"]:
             raise ErroUsuario(f"Erro no Python: {res['erro']}")
         aviso = (f"Atenção: o df recebeu só as {cabem} primeiras linhas do SELECT (resultado cortado). "
@@ -358,12 +376,12 @@ def _saidas_python(passos: list[dict]) -> list[str]:
 
 def _conferir(corpo: str, fontes: list[str], saidas: list[str], pergunta: str) -> tuple[list[str], bool, str, str | None]:
     """(números que faltam, afirma significância sem p-valor, pedido de reanálise, aviso final)."""
-    texto = sem_citacoes_de_p(corpo) if tem_p_valor(saidas) else corpo  # "p < 0,001" não é número a conferir
-    faltam = numeros_nao_conferidos(texto, fontes, pergunta)
+    faltam = conferir_numeros(corpo, fontes, saidas, pergunta)  # só some a citação de p que uma saída sustenta
     sem_teste = significancia_sem_p_valor(corpo, saidas)
     pedido = " ".join(([prompts.REANALISE.format(numeros=", ".join(faltam))] if faltam else [])
                       + ([prompts.REANALISE_SIGNIFICANCIA] if sem_teste else []))
-    avisos = ([f"Alguns números não puderam ser conferidos: {', '.join(faltam)}"] if faltam else [])         + (["A afirmação de significância estatística não tem um teste que a sustente."] if sem_teste else [])
+    avisos = ([f"Alguns números não puderam ser conferidos: {', '.join(faltam)}"] if faltam else [])
+    avisos += ["A afirmação de significância estatística não tem um teste que a sustente."] if sem_teste else []
     return faltam, sem_teste, pedido, ". ".join(avisos) or None
 
 
@@ -408,11 +426,12 @@ def _loop(pergunta: str, sessao: Sessao, llm: LlmFn, saida: dict, m: dict, inici
         faltam, sem_teste, pedido, aviso = _conferir(
             corpo, resultados + anteriores, _saidas_python(passos) + saidas_anteriores, pergunta)
         tentativa = saida["reanalises"] + 1
-        yield {"evento": "conferencia", "ok": not (faltam or sem_teste), "falhas": faltam, "tentativa": tentativa}
+        yield {"evento": "conferencia", "ok": not (faltam or sem_teste), "falhas": faltam,
+               "significancia": sem_teste, "tentativa": tentativa}
         if (faltam or sem_teste) and saida["reanalises"] < MAX_REANALISES:
             saida["reanalises"] += 1
-            passos.append({"tipo": "reanalise", "numeros": faltam})
-            yield {"evento": "descartado", "tentativa": tentativa, "falhas": faltam}
+            passos.append({"tipo": "reanalise", "numeros": faltam, "significancia": sem_teste})
+            yield {"evento": "descartado", "tentativa": tentativa, "falhas": faltam, "significancia": sem_teste}
             messages.append({"role": "user", "content": pedido})
             continue
         saida.update(resposta=corpo, sugestoes=sugestoes, aviso=aviso)

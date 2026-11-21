@@ -1,5 +1,6 @@
 # Avaliação do agente
 
+<!-- avaliacao:inicio -->
 - Data: 21/11/2026
 - Modelo: `gemini-3.5-flash-lite` (prompt 2026-11-21.1)
 - Rodadas: 5 pedidas (`scripts/avaliar.py --rodadas 5`), **3 completas**. A cota gratuita acabou na rodada 4 (4 casos válidos, 4 com erro de infraestrutura) e a rodada 5 inteira caiu por cota. As estatísticas abaixo usam só as 3 rodadas completas; rodar de novo com cota nova dá as 5.
@@ -26,6 +27,7 @@
 | número errado | 1 |
 | erro de infraestrutura | 12 |
 | outro | 3 |
+<!-- avaliacao:fim -->
 
 - Os 4 omitidos são todos de `dia_hora`: o modelo não cita o total do sábado (1.611).
 - As outras 4 falhas (`tempo_nota` 2 vezes, `cupom_ticket` e `seguranca` 1 vez cada) são 1 "número errado" e 3 "outro". Esta avaliação não salvou as gravações (de propósito, para não sobrescrever as atuais), então a causa de cada uma não foi inspecionada. "Número errado" é um número da resposta que não aparece nos resultados das ferramentas e pode ser falso positivo do conferidor, por exemplo quando o resultado foi cortado.
@@ -39,10 +41,12 @@ O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes
 
 O gabarito antigo exigia a estatística t (15,6); o prompt novo a trocou pelo p-valor. A resposta correta para o usuário cita as médias e o p-valor: R$ 52,01 com cupom e R$ 63,90 sem (conferidos por SQL em `data/pedidos.csv`) e p < 0,001. Por isso `numeros_chave` tem agora só as duas médias; o p-valor esperado continua no texto de `esperado`. Mudar o gabarito não aprova resposta errada, porque número errado continua reprovando, e o conferidor da resposta segue exigindo p-valor para afirmar significância.
 
+Cassete de `cupom_ticket` (21/11/2026): o conferidor corrigido reconhece o p-valor em notação científica ("p-valor de 1,58 × 10⁻⁵²", que bate com o 1,579e-52 da saída) e passa a aceitar a 2ª resposta gravada, que o conferidor antigo reprovava por engano. As 2 respostas seguintes, que o agente não pede mais, foram removidas do cassete; nenhuma resposta usada foi alterada. A regravação completa com chamada real fica para quando houver cota num projeto de avaliação separado.
+
 ## Como reproduzir
 
 ```
 SESSIONS_DIR=<pasta temporária> .venv/Scripts/python scripts/avaliar.py --rodadas 5
 ```
 
-`SESSIONS_DIR` isola as sessões da avaliação: o `lifespan` do uvicorn limpa o diretório de sessões e apagava as da avaliação quando os dois rodavam juntos. Com `--rodadas > 1` as gravações vão para uma pasta temporária (não sobrescrevem `data/gravacoes/`), `--gravar-cassetes` é recusado e rodadas com erro de infraestrutura ficam fora do k/N, da média e do pass^N. Atenção: com `--rodadas > 1` o script reescreve este arquivo inteiro; as seções de contexto acima são manuais.
+`SESSIONS_DIR` isola as sessões da avaliação: o `lifespan` do uvicorn limpa o diretório de sessões e apagava as da avaliação quando os dois rodavam juntos. Com `--rodadas > 1` as gravações vão para uma pasta temporária (não sobrescrevem `data/gravacoes/`), `--gravar-cassetes` é recusado e rodadas com erro de infraestrutura ficam fora do k/N, da média e do pass^N. O script reescreve só o bloco entre `<!-- avaliacao:inicio -->` e `<!-- avaliacao:fim -->` (no topo); o resto do arquivo é manual e fica intacto. `--casos` é recusado quando o destino é este arquivo (relatório parcial); use `--relatorio <outro arquivo>`.

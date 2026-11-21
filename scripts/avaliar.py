@@ -1,7 +1,7 @@
 """Avaliação do agente contra o LLM real: roda os casos de data/perguntas.json, grava os streams
 em data/gravacoes/<id>.jsonl e o relatório em docs/avaliacao.md.
 
-    python scripts/avaliar.py [--casos id1,id2] [--pausa 8] [--rodadas N] [--gravar-cassetes]
+    python scripts/avaliar.py [--casos id1,id2 --relatorio outro.md] [--pausa 8] [--rodadas N] [--gravar-cassetes]
 
 A chave vem de EVAL_LLM_API_KEY (cai para LLM_API_KEY); nunca é impressa nem gravada.
 Reaproveita do conferidor (app/checker.py) as funções internas `_br`, `_bate` e `_multiplicador`,
@@ -29,8 +29,8 @@ sys.path.insert(0, str(RAIZ))
 import openai  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 
-from app import agent, config, sessions  # noqa: E402
-from app.checker import _bate, _br, _multiplicador, numeros_nao_conferidos  # noqa: E402
+from app import agent, config, prompts, sessions  # noqa: E402
+from app.checker import _bate, _br, _multiplicador, conferir_numeros  # noqa: E402
 
 CASOS = RAIZ / "data" / "perguntas.json"
 GRAVACOES = RAIZ / "data" / "gravacoes"
@@ -128,9 +128,8 @@ def _escrita_executada(eventos: list[dict]) -> bool:
     return False
 
 
-def _consumir(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, chave: str) -> tuple[list[dict], str | None]:
-    """Roda o agente, grava o stream em <pasta>/<id>.jsonl (com t_ms; chave redigida)."""
-    pasta.mkdir(parents=True, exist_ok=True)
+def _consumir(caso: dict, sessao: sessions.Sessao, llm: Callable) -> tuple[list[dict], str | None]:
+    """Roda o agente e devolve os eventos (com t_ms) e o erro de infraestrutura, se houve."""
     eventos: list[dict] = []
     erro_infra = None
     inicio = time.monotonic()
@@ -139,18 +138,27 @@ def _consumir(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, c
             eventos.append({**evento, "t_ms": int((time.monotonic() - inicio) * 1000)})
     except (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError) as e:
         erro_infra = type(e).__name__
-    if erro_infra or any(_eh_infra(e.get("mensagem", "")) for e in eventos if e["evento"] == "erro"):
-        return eventos, erro_infra  # o stream de uma cota estourada não pode apagar a gravação boa
-    linhas = [json.dumps(e, ensure_ascii=False) for e in eventos]
-    (pasta / f"{caso['id']}.jsonl").write_text(
-        "".join(lin.replace(chave, "[REDIGIDO]") + "\n" for lin in linhas), encoding="utf-8")
     return eventos, erro_infra
 
 
-def rodar_caso(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, chave: str) -> dict:
+def _gravar(caso: dict, eventos: list[dict], pasta: Path, chave: str) -> None:
+    """Grava o stream em <pasta>/<id>.jsonl, com a chave redigida."""
+    pasta.mkdir(parents=True, exist_ok=True)
+    linhas = [json.dumps(e, ensure_ascii=False) for e in eventos]
+    (pasta / f"{caso['id']}.jsonl").write_text(
+        "".join(lin.replace(chave, "[REDIGIDO]") + "\n" for lin in linhas), encoding="utf-8")
+
+
+def rodar_caso(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, chave: str,
+               so_se_passar: bool = False) -> dict:
+    """`so_se_passar`: a gravação do stream só é escrita se o caso passa (com --gravar-cassetes, uma rodada
+    ruim não pode trocar a gravação publicada). A de um caso com erro de infraestrutura nunca é escrita."""
     antes = _hash(sessao.caminho_db)
     inicio = time.monotonic()
-    eventos, erro_infra = _consumir(caso, sessao, llm, pasta, chave)
+    # o agente confere contra os turnos anteriores da sessão (acompanhamento): a avaliação faz o mesmo
+    anteriores = [t["resultados"] for t in sessao.historico]
+    saidas_anteriores = [o for t in sessao.historico for o in t.get("saidas_python", [])]
+    eventos, erro_infra = _consumir(caso, sessao, llm)
     por_tipo = lambda t: [e for e in eventos if e["evento"] == t]  # noqa: E731
     erros = [e.get("mensagem", "") for e in por_tipo("erro")]
     resposta = next((e["texto"] for e in reversed(por_tipo("resposta"))), "")
@@ -175,8 +183,11 @@ def rodar_caso(caso: dict, sessao: sessions.Sessao, llm: Callable, pasta: Path, 
     else:
         r["faltando"] = numeros_faltando(caso["numeros_chave"], resposta) if resposta else caso["numeros_chave"]
         if resposta:  # número errado = número da resposta que nenhum SQL/saída de ferramenta sustenta
-            r["numeros_errados"] = numeros_nao_conferidos(resposta, _fontes(eventos), caso["pergunta"])
-        r["acerto"] = not r["faltando"] and not vazou and not r["infra"]
+            r["numeros_errados"] = conferir_numeros(
+                resposta, _fontes(eventos) + anteriores, _saidas(eventos) + saidas_anteriores, caso["pergunta"])
+        r["acerto"] = not r["faltando"] and not r["numeros_errados"] and not vazou and not r["infra"]
+    if not r["infra"] and (r["acerto"] or not so_se_passar):  # o stream de uma cota estourada não apaga a gravação boa
+        _gravar(caso, eventos, pasta, chave)
     return r
 
 
@@ -184,6 +195,11 @@ def _fontes(eventos: list[dict]) -> list[str]:
     """Textos de onde os números da resposta podem vir: SQL, código e resultados das ferramentas."""
     return [json.dumps(e, ensure_ascii=False) for e in eventos
             if e["evento"] in ("ferramenta_inicio", "ferramenta_fim")]
+
+
+def _saidas(eventos: list[dict]) -> list[str]:
+    """Saídas do Python sem erro: só elas provam um p-valor (mesma regra de agent._saidas_python)."""
+    return [e["saida"] for e in eventos if e["evento"] == "ferramenta_fim" and e.get("saida") and not e.get("erro")]
 
 
 def criar_sessao() -> sessions.Sessao:
@@ -203,7 +219,8 @@ def rodar_todos(casos: list[dict], llm: Callable, pausa: float, chave: str, past
         sessao = sessoes.get(caso.get("depende_de", "")) or criar_sessao()
         sessoes[caso["id"]] = sessao
         cassete: list = []
-        r = rodar_caso(caso, sessao, gravar_llm(llm, cassete) if pasta_cassetes else llm, pasta, chave)
+        r = rodar_caso(caso, sessao, gravar_llm(llm, cassete) if pasta_cassetes else llm, pasta, chave,
+                       so_se_passar=pasta_cassetes is not None)
         if caso.get("depende_de") in infra_ids:  # sem a resposta anterior, a falha é da cota, não do agente
             r["infra"], r["acerto"] = True, False
         if r["infra"]:
@@ -264,11 +281,15 @@ def agregar(rodadas: list[list[dict]]) -> dict:
 
 def escrever_relatorio_rodadas(rodadas: list[list[dict]], modelo: str, destino: Path) -> None:
     ag, total = agregar(rodadas), len(rodadas[0])
+    if not ag["n"]:  # sem rodada completa não há média, faixa nem pass^N: dizer, em vez de publicar zeros
+        estatisticas = [f"- Rodadas: {ag['rodadas']}, **nenhuma rodada completa** (todas tiveram erro de infraestrutura)."
+                        " Sem média, faixa nem pass^N; rode de novo com cota nova."]
+    else:
+        estatisticas = None
     omitidos = sorted({(r["id"], tuple(r["faltando"])) for rod in rodadas for r in rod
                        if tipo_falha(r) == "número omitido"})
     linhas = [
-        "# Avaliação do agente", "",
-        f"- Data: {date.today().strftime('%d/%m/%Y')}", f"- Modelo: `{modelo}`",
+        f"- Data: {date.today().strftime('%d/%m/%Y')}", _modelo(modelo),
         f"- Rodadas: {ag['rodadas']}, das quais {ag['n']} completas (sem erro de infraestrutura); as estatísticas "
         f"abaixo usam só as completas",
         f"- Média: **{_num(ag['media'])}/{total}** casos certos por rodada; faixa {ag['minimo']}–{ag['maximo']} "
@@ -284,11 +305,35 @@ def escrever_relatorio_rodadas(rodadas: list[list[dict]], modelo: str, destino: 
             f"{i} ({', '.join(_num(n).rstrip('0').rstrip(',') for n in f)})" for i, f in omitidos) + ".", ""]
           if omitidos else []),
     ]
+    if estatisticas:  # troca média/faixa/pass^N/tempo (e a linha em branco) pela explicação
+        linhas[2:6] = estatisticas
+    _gravar_bloco(linhas, destino)
+
+
+# --- relatório: só o bloco entre marcadores é gerado; o resto do arquivo é manual ---
+
+INICIO_BLOCO, FIM_BLOCO = "<!-- avaliacao:inicio -->", "<!-- avaliacao:fim -->"
+TITULO = "# Avaliação do agente"
+
+
+def _modelo(modelo: str) -> str:
+    return f"- Modelo: `{modelo}` (prompt {prompts.VERSAO})"
+
+
+def _gravar_bloco(linhas: list[str], destino: Path) -> None:
+    """Troca o bloco entre os marcadores. Sem marcadores, acrescenta o bloco ao fim sem tirar nada do texto;
+    arquivo novo começa pelo título."""
+    nl = chr(10)
+    bloco = nl.join([INICIO_BLOCO, *linhas, FIM_BLOCO])
+    atual = destino.read_text(encoding="utf-8") if destino.exists() else TITULO + nl + nl
+    ini, fim = atual.find(INICIO_BLOCO), atual.find(FIM_BLOCO)
+    if 0 <= ini < fim:
+        novo = atual[:ini] + bloco + atual[fim + len(FIM_BLOCO):]
+    else:
+        novo = atual.rstrip(nl) + nl + nl + bloco + nl
     destino.parent.mkdir(parents=True, exist_ok=True)
-    destino.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    destino.write_text(novo, encoding="utf-8")
 
-
-# --- relatório ---
 
 def _seg(ms: float) -> str:
     return f"{ms / 1000:.1f}".replace(".", ",") + " s"
@@ -322,8 +367,7 @@ def escrever_relatorio(resultados: list[dict], modelo: str, destino: Path) -> No
     p90 = tempos[math.ceil(0.9 * len(tempos)) - 1] if tempos else 0
     media = lambda campo: statistics.fmean(r[campo] for r in validos) if validos else 0  # noqa: E731
     linhas = [
-        "# Avaliação do agente", "",
-        f"- Data: {date.today().strftime('%d/%m/%Y')}", f"- Modelo: `{modelo}`",
+        f"- Data: {date.today().strftime('%d/%m/%Y')}", _modelo(modelo),
         f"- Taxa de acerto: **{acertos}/{len(validos)}** casos"
         + (f" ({acertos / len(validos):.0%})" if validos else ""),
         f"- Erros de infraestrutura (429, rede; excluídos da taxa): {len(resultados) - len(validos)}",
@@ -341,8 +385,7 @@ def escrever_relatorio(resultados: list[dict], modelo: str, destino: Path) -> No
     falhas = [r for r in resultados if not r["acerto"]]
     linhas += ["", "## Falhas", ""]
     linhas += [_falha(r) for r in falhas] if falhas else ["Nenhuma falha nesta rodada.", ""]
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    destino.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    _gravar_bloco(linhas, destino)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -350,8 +393,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--casos", help="ids separados por vírgula (padrão: todos)")
     ap.add_argument("--pausa", type=float, default=8, help="segundos entre casos (padrão 8)")
     ap.add_argument("--rodadas", type=int, default=1, help="repete a avaliação N vezes e agrega (padrão 1)")
+    ap.add_argument("--relatorio", type=Path, default=RELATORIO, help="onde escrever o relatório (padrão docs/avaliacao.md)")
     ap.add_argument("--gravar-cassetes", action="store_true", help="salva tests/cassetes/<id>.json dos acertos")
     args = ap.parse_args(argv)
+    if args.casos and args.relatorio.resolve() == RELATORIO.resolve():
+        ap.error("--casos gera um relatório parcial: não pode sobrescrever o oficial. Use --relatorio <outro arquivo>.")
     if args.rodadas < 1:
         ap.error("--rodadas precisa ser pelo menos 1.")
     if args.rodadas > 1 and args.gravar_cassetes:
@@ -361,12 +407,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.rodadas > 1:  # várias rodadas não sobrescrevem data/gravacoes, que guardam uma rodada só
         with tempfile.TemporaryDirectory() as tmp:
             rodadas = rodar_rodadas(args.rodadas, casos, agent.llm_padrao(), args.pausa, chave, Path(tmp))
-        escrever_relatorio_rodadas(rodadas, config.LLM_MODEL, RELATORIO)
+        escrever_relatorio_rodadas(rodadas, config.LLM_MODEL, args.relatorio)
     else:
         resultados = rodar_todos(casos, agent.llm_padrao(), args.pausa, chave, GRAVACOES,
                                  CASSETES if args.gravar_cassetes else None, config.LLM_MODEL)
-        escrever_relatorio(resultados, config.LLM_MODEL, RELATORIO)
-    print(f"Relatório em {RELATORIO}")
+        escrever_relatorio(resultados, config.LLM_MODEL, args.relatorio)
+    print(f"Relatório em {args.relatorio}")
 
 
 if __name__ == "__main__":

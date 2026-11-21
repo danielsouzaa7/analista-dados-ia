@@ -1,8 +1,14 @@
 """Conferência dos números da resposta (formato brasileiro) contra os resultados das ferramentas."""
+import math
 import re
 
 _SUFIXO = r"\s*(?:milh[ãõ]o|milh[ãõ]es|bilh[ãõ]o|bilh[ãõ]es|mil)\b"
-_BR = re.compile(rf"\d{{1,3}}(?:\.\d{{3}})+(?:,\d+)?(?:\s?%|{_SUFIXO})?|\d+(?:,\d+)?(?:\s?%|{_SUFIXO})?")
+# notação científica como um número só: 1,58 × 10^-52, 1,58 x 10^{-52}, 1,58 \times 10^{-52}, 1,58·10⁻⁵², 1.58e-52
+_EXP = r"10(?:\s*(?:\^|\*\*)\s*\{?\s*([-−]?\s*\d+)\s*\}?|([⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+))"  # com ^ ou sobrescrito: "3 x 100" não é ciência
+_CIENTIFICA = rf"(?:\s*(?:[×x·*]|\\times|\\cdot)\s*{_EXP}|[eE]([+-]?\d+))"
+_SUPERESCRITOS = str.maketrans("⁻⁰¹²³⁴⁵⁶⁷⁸⁹−", "-0123456789-")
+_BR = re.compile(rf"\d+(?:[.,]\d+)?{_CIENTIFICA}|\d{{1,3}}(?:\.\d{{3}})+(?:,\d+)?(?:\s?%|{_SUFIXO})?"
+                 rf"|\d+(?:,\d+)?(?:\s?%|{_SUFIXO})?")
 _MAQUINA = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 _INGLES = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?")  # saída Python: 1,234,567.89
 _BR_NOS_RESULTADOS = re.compile(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+,\d+")
@@ -19,10 +25,23 @@ def _br(texto: str) -> list[tuple[str, float, bool]]:
     achados = []
     for m in _BR.finditer(texto):
         original = m.group()
+        cientifico = _decompor(original)
+        if cientifico and cientifico[1] is not None:
+            achados.append((original, float(f"{cientifico[0]}e{cientifico[1]}"), False))
+            continue
         numero = re.match(r"[\d.,]+", original).group()
         valor = float(numero.replace(".", "").replace(",", "."))
         achados.append((original, valor, original == numero and "," not in numero and "." not in numero))
     return achados
+
+
+def _decompor(texto: str) -> tuple[str, int | None] | None:
+    """(mantissa com ponto, expoente ou None se não for científica) de um número isolado; None se não for número simples."""
+    m = re.fullmatch(rf"\s*\$?\s*(\d*[.,]?\d+)(?:{_CIENTIFICA})?\s*\$?\s*", texto)
+    if not m:
+        return None
+    expoente = m.group(2) or m.group(3) or m.group(4)
+    return m.group(1).replace(",", "."), (int(re.sub(r"\s", "", expoente.translate(_SUPERESCRITOS))) if expoente else None)
 
 
 def _bate(a: float, t: float) -> bool:
@@ -66,25 +85,76 @@ _INCAPACIDADE = re.compile(
     r"\bn[ãa]o\s+(?:foi|é|era)\s+poss[íi]vel\b|\bn[ãa]o\s+(?:consegui|pude)\b"
     r"|\bn[ãa]o\s+(?:posso|podemos|d[áa]\s+para|h[áa]\s+como|test(?:ei|amos)|calcul(?:ei|amos))\b"
     r"|\bseria\s+(?:preciso|necess[áa]rio)\b|\bsem\s+(?:um\s+)?teste\b", re.I)
-_FRASES = re.compile(r"[.!?;\n]+|\b(?:mas|porém|contudo|entretanto|no entanto)\b", re.I)
+# frase: termina em . ! ? seguido de espaço/fim (não quebra "R$ 1.234,56") ou em quebra de linha; ";" não separa
+_FRASES = re.compile(r"[.!?](?=\s|$)|\n+")
+# conectivos que invertem ou concluem: a oração depois deles vale por si
+_CONECTIVOS = re.compile(r"\b(?:mas|porém|contudo|entretanto|no entanto|portanto|por isso)\b", re.I)
 _ROTULO_P = r"\b(?:p[-_ ]?(?:valor|value)|valor[-_ ]?p|p)\b"
-_P_VALOR = re.compile(_ROTULO_P + r"[^\d\n]{0,20}?[=:<≤≈]\s*-?\.?\d", re.I)  # nas saídas: tolerante
-# na resposta: estrito (só espaço ou uma palavra curta entre o rótulo e o comparador)
-_CITA_P = re.compile(_ROTULO_P + r"(?:\s+\(?\w{1,12}\)?)?\s*[<≤=≈]\s*[\d.,]+(?:\s*[×x]\s*10\S*|e-?\d+)?", re.I)
+# entre o rótulo e o comparador: só espaço ou um qualificador entre parênteses
+_ENTRE = r"(?:\s*\([^)\n]{1,20}\)\s*|\s*)"
+_NUM = rf"\d*[.,]?\d+(?:{_CIENTIFICA})?"
+_P_VALOR = re.compile(rf"{_ROTULO_P}{_ENTRE}[=:<≤≈]\s*-?({_NUM})(?![\d.,]*\d)", re.I)
+# na resposta o comparador pode ser em palavras e o número vir entre $...$: "o p-valor foi inferior a 1e-15",
+# "o p-valor de $1,58 \times 10^{-52}$". Palavras de limite valem como "<"
+_LIMITE = r"\binferior\s+a\b|\bmenor\s+(?:do\s+)?que\b|\babaixo\s+de\b"
+_CITA_P = re.compile(rf"{_ROTULO_P}{_ENTRE}(?:\s+(?:foi|é|ficou|era))?\s*([<≤=≈]|{_LIMITE}|\bde\b|\bigual\s+a\b)"
+                    rf"\s*\$?\s*({_NUM})(?![\d.,]*\d)", re.I)
+TOLERANCIA_P = 0.01
 
 
 def afirma_significancia(resposta: str) -> bool:
-    """Afirma ou nega significância (forma assertiva), frase a frase; frases de incapacidade não contam."""
-    return any(_AFIRMA.search(f) and not _INCAPACIDADE.search(f) for f in _FRASES.split(resposta))
+    """Afirma ou nega significância (forma assertiva), oração a oração; incapacidade na frase inteira não conta."""
+    for frase in _FRASES.split(resposta):
+        if _INCAPACIDADE.search(frase) and not _CONECTIVOS.search(frase):
+            continue
+        if any(_AFIRMA.search(o) and not _INCAPACIDADE.search(o) for o in _CONECTIVOS.split(frase)):
+            return True
+    return False
+
+
+def _valor_p(texto: str) -> tuple[float, int, bool] | None:
+    """(valor, casas decimais da mantissa, em notação científica) ou None se não for número ou estiver fora de [0, 1]."""
+    d = _decompor(texto)
+    if d is None:
+        return None
+    mantissa, expoente = d
+    valor = float(f"{mantissa}e{expoente or 0}")
+    return (valor, len(mantissa.partition(".")[2]), expoente is not None) if 0 <= valor <= 1 else None
+
+
+def valores_p(saidas: list[str]) -> list[float]:
+    achados = (_valor_p(m.group(1)) for s in saidas for m in _P_VALOR.finditer(s))
+    return [a[0] for a in achados if a]
+
+
+def tem_p_valor(saidas: list[str]) -> bool:
+    return bool(valores_p(saidas))
+
+
+def _sustentada(op: str, valor: float, casas: int, cientifica: bool, ps: list[float]) -> bool:
+    if op in "<≤":
+        return any(p < valor or (op == "≤" and p == valor) for p in ps)
+    arredondado = (lambda p: float(f"{p:.{casas}e}")) if cientifica else (lambda p: round(p, casas))
+    return any(abs(p - valor) <= TOLERANCIA_P * p or math.isclose(arredondado(p), valor, rel_tol=1e-9, abs_tol=0)
+               for p in ps)
+
+
+def sem_citacoes_de_p(resposta: str, saidas: list[str]) -> str:
+    """Tira da resposta só as citações de p que alguma saída sustenta: "p = 0,08" bate com um p de 0.0805 e
+    "p < 0,001" exige algum p menor. As demais seguem no texto e caem em numeros_nao_conferidos."""
+    ps = valores_p(saidas)
+
+    def tirar(m: re.Match) -> str:
+        v = _valor_p(m.group(2))
+        op = "<" if re.fullmatch(_LIMITE, m.group(1), re.I) else m.group(1)
+        return " " if v and _sustentada(op, *v, ps) else m.group()
+    return _CITA_P.sub(tirar, resposta)
+
+
+def conferir_numeros(resposta: str, fontes: list[str], saidas: list[str], pergunta: str) -> list[str]:
+    """Números da resposta sem fonte, já descontadas as citações de p sustentadas pelas saídas do Python."""
+    return numeros_nao_conferidos(sem_citacoes_de_p(resposta, saidas), fontes, pergunta)
 
 
 def significancia_sem_p_valor(resposta: str, saidas: list[str]) -> bool:
     return afirma_significancia(resposta) and not tem_p_valor(saidas)
-
-
-def tem_p_valor(saidas: list[str]) -> bool:
-    return any(_P_VALOR.search(s) for s in saidas)
-
-
-def sem_citacoes_de_p(resposta: str) -> str:
-    return _CITA_P.sub(" ", resposta)
