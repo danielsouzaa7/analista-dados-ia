@@ -57,7 +57,7 @@ Ordem de execução: 0 (texto aplicado; só fecha depois da 3) → 3 → 1 → 2
 | 7b | Front ligado e e2e no Chromium | feita |
 | 7c | Matriz Firefox/WebKit e medições | feita |
 | 8 | Red team do navegador e rodada 5 | pendente |
-| 9 | Imagem sem Deno e CI | pendente |
+| 9 | Imagem sem Deno e CI | feita |
 | 10 | Documentação | pendente |
 
 ---
