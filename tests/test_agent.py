@@ -874,7 +874,8 @@ def _tempo_como_dado(texto: str) -> float:
 
 
 def test_como_dado_aninhamento_fundo_e_rapido() -> None:
-    assert _tempo_como_dado("<da" * 1420 + "<dados>" + "dos>" * 1420) < 0.3
+    # 0,14 s medido; a regressão era 4,8 s. 1 s dá folga para o runner do CI sem perder a regressão.
+    assert _tempo_como_dado("<da" * 1420 + "<dados>" + "dos>" * 1420) < 1.0
 
 
 def test_como_dado_60_niveis_em_200kb_e_rapido() -> None:
