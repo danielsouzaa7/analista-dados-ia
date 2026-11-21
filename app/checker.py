@@ -91,13 +91,14 @@ _FRASES = re.compile(r"[.!?](?=\s|$)|\n+")
 _CONECTIVOS = re.compile(r"\b(?:mas|porém|contudo|entretanto|no entanto|portanto|por isso)\b", re.I)
 _ROTULO_P = r"\b(?:p[-_ ]?(?:valor|value)|valor[-_ ]?p|p)\b"
 # entre o rótulo e o comparador: só espaço ou um qualificador entre parênteses
-_ENTRE = r"(?:\s*\([^)\n]{1,20}\)\s*|\s*)"
+# (sem dígitos: um número dentro do parêntese tem de passar pela conferência)
+_ENTRE = r"(?:\s*\(\s*[^\d)\n]{1,20}\)\s*|\s*)"
 _NUM = rf"\d*[.,]?\d+(?:{_CIENTIFICA})?"
 _P_VALOR = re.compile(rf"{_ROTULO_P}{_ENTRE}[=:<≤≈]\s*-?({_NUM})(?![\d.,]*\d)", re.I)
 # na resposta o comparador pode ser em palavras e o número vir entre $...$: "o p-valor foi inferior a 1e-15",
 # "o p-valor de $1,58 \times 10^{-52}$". Palavras de limite valem como "<"
 _LIMITE = r"\binferior\s+a\b|\bmenor\s+(?:do\s+)?que\b|\babaixo\s+de\b"
-_CITA_P = re.compile(rf"{_ROTULO_P}{_ENTRE}(?:\s+(?:foi|é|ficou|era))?\s*([<≤=≈]|{_LIMITE}|\bde\b|\bigual\s+a\b)"
+_CITA_P = re.compile(rf"({_ROTULO_P}{_ENTRE})(?:\s+(?:foi|é|ficou|era))?\s*([<≤=≈]|{_LIMITE}|\bde\b|\bigual\s+a\b)"
                     rf"\s*\$?\s*({_NUM})(?![\d.,]*\d)", re.I)
 TOLERANCIA_P = 0.01
 
@@ -145,9 +146,10 @@ def sem_citacoes_de_p(resposta: str, saidas: list[str]) -> str:
     ps = valores_p(saidas)
 
     def tirar(m: re.Match) -> str:
-        v = _valor_p(m.group(2))
-        op = "<" if re.fullmatch(_LIMITE, m.group(1), re.I) else m.group(1)
-        return " " if v and _sustentada(op, *v, ps) else m.group()
+        v = _valor_p(m.group(3))
+        op = "<" if re.fullmatch(_LIMITE, m.group(2), re.I) else m.group(2)
+        # só o comparador e o número saem: rótulo e qualificador ficam no texto
+        return m.group(1) if v and _sustentada(op, *v, ps) else m.group()
     return _CITA_P.sub(tirar, resposta)
 
 

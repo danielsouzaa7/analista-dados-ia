@@ -258,3 +258,19 @@ def test_limiar_maior_que_o_menor_p_e_o_unico_que_sustenta() -> None:
     saidas = ["p_valor = 0.2"]
     assert conferir_numeros("O p-valor foi menor que 0,5.", saidas, saidas, "x") == []
     assert conferir_numeros("O p-valor foi menor que 0,05.", saidas, saidas, "x") == ["0,05"]
+
+
+@pytest.mark.parametrize("frase,intruso", [
+    ("O p-valor (n = 77.777) de 0,03.", "77.777"),
+    ("O p (Welch, n = 9999) = 0,03.", "9999"),
+    ("O p (ticket de R$ 45,90) = 0,03.", "45,90"),
+    ("p (diferença 45,9%) < 0,05", "45,9"),
+])
+def test_qualificador_com_numero_nao_escapa_da_conferencia(frase: str, intruso: str) -> None:
+    falhas = conferir_numeros(frase, ["ticket 52.01"], ["p = 0.03"], "x")
+    assert any(f.startswith(intruso) for f in falhas), falhas
+
+
+@pytest.mark.parametrize("frase", ["O p-valor (bicaudal) = 0,03.", "O p (Welch) < 0,05."])
+def test_qualificador_sem_numero_continua_aceito(frase: str) -> None:
+    assert conferir_numeros(frase, ["p = 0.03"], ["p = 0.03"], "x") == []
