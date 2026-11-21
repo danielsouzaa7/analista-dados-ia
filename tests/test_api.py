@@ -696,3 +696,90 @@ def test_surrogate_solto_no_resultado_nao_derruba_o_stream(client: TestClient) -
     modelo = main.ResultadoPythonIn(**_resultado(nonce, saida="a\ud800b", erro="x\udfffy"))
     main._sse({"evento": "ferramenta_fim", "saida": modelo.saida, "erro": modelo.erro})
     assert modelo.saida == "a?b" and modelo.erro == "x?y"
+
+
+# ---------- Python no navegador ligado (fatia 7a) ----------
+
+def test_pergunta_com_python_roda_pelo_navegador_ponta_a_ponta() -> None:
+    from app import python_navegador
+    app = create_app()
+    app.dependency_overrides[obter_llm] = lambda: LlmFalso([
+        texto("plano"), chamada("rodar_python", sql="SELECT sum(valor) AS t FROM dados", codigo="print(df.t[0])"),
+        texto("O total é 350.")])
+    c = TestClient(app, raise_server_exceptions=False)
+    sessao = _upload(c)["sessao"]
+    postados: list = []
+
+    def navegador() -> None:  # faz o que o front faz ao ver o python_pedido
+        for _ in range(500):
+            pend = python_navegador._PENDENTES.get(sessao)
+            if pend:
+                postados.append((pend.nonce, c.post("/api/python/resultado", json={
+                    "sessao": sessao, "id": pend.id, "nonce": pend.nonce, "saida": "350\n", "erro": None})))
+                return
+            threading.Event().wait(0.01)
+
+    t = threading.Thread(target=navegador)
+    t.start()
+    evs = _eventos(_perguntar(c, sessao))
+    t.join()
+    assert postados and postados[0][1].status_code == 204
+    pedido = dict(evs)["python_pedido"]
+    assert pedido["nonce"] == postados[0][0] and pedido["csv"] == "t\r\n350\r\n" and "def " in pedido["preludio"]
+    assert dict(evs)["ferramenta_fim"]["saida"] == "350\n"
+    assert dict(evs)["conferencia"]["ok"] is True and python_navegador._PENDENTES == {}
+
+
+def test_resposta_sse_fecha_o_gerador_no_fim() -> None:
+    import asyncio
+    fechado: list = []
+
+    def infinito():
+        try:
+            while True:
+                yield b"x"
+        finally:
+            fechado.append(True)
+
+    async def desconecta():
+        return {"type": "http.disconnect"}
+
+    async def send(_msg): ...
+
+    scope = {"type": "http", "asgi": {"spec_version": "2.3"}, "method": "POST", "headers": []}
+    gerador = infinito()
+    next(gerador)  # um gerador que nem começou não roda o finally ao ser fechado
+    asyncio.run(main._RespostaSSE(gerador)(scope, desconecta, send))
+    assert fechado == [True]  # o fechamento não ficou para o GC
+
+
+def test_resposta_sse_protege_close_contra_value_error_e_devolve_a_vaga() -> None:
+    import asyncio
+
+    class Executando:
+        def __iter__(self):
+            return iter([b"a"])
+
+        def close(self):
+            raise ValueError("generator already executing")
+
+    async def espera():
+        await asyncio.Event().wait()
+
+    async def send(_msg): ...
+
+    liberada: list = []
+    scope = {"type": "http", "asgi": {"spec_version": "2.3"}, "method": "POST", "headers": []}
+    asyncio.run(main._RespostaSSE(Executando(), lambda: liberada.append(True))(scope, espera, send))
+    assert liberada == [True]
+    gerador_pronto = (b for b in [b"a"])
+    list(gerador_pronto)
+    asyncio.run(main._RespostaSSE(gerador_pronto)(scope, espera, send))  # já terminado: close() é no-op
+
+
+def test_python_pedido_descartado_na_reproducao(tmp_path: Path) -> None:
+    arq = tmp_path / "g.jsonl"
+    linhas = [{"evento": "recebido"}, {"evento": "python_pedido", "nonce": "0" * 32},
+              {"evento": "python_aguardando", "id": "x"}, {"evento": "ferramenta_fim", "saida": "1"}, {"evento": "fim"}]
+    arq.write_text("\n".join(json.dumps(x) for x in linhas), encoding="utf-8")
+    assert [e["evento"] for e in main._reproduzir(arq)] == ["recebido", "ferramenta_fim", "fim"]

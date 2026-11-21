@@ -51,9 +51,9 @@ Ordem de execução: 0 (texto aplicado; só fecha depois da 3) → 3 → 1 → 2
 | 1 | Defeito 1: prelúdio estatístico, "sem scipy" e prompt congelado | feita |
 | 2 | Defeito 2: significância sem p-valor, saída como dado, regravação | feita |
 | 4 | Injeção do executor | feita |
-| 5 | Protocolo no servidor | pendente |
+| 5 | Protocolo no servidor | feita |
 | 6 | Cliente `python.js` | feita |
-| 7a | Servidor ligado e desconexão no uvicorn real | pendente |
+| 7a | Servidor ligado e desconexão no uvicorn real | feita |
 | 7b | Front ligado e e2e no Chromium | pendente |
 | 7c | Matriz Firefox/WebKit e medições | pendente |
 | 8 | Red team do navegador e rodada 5 | pendente |

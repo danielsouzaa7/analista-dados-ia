@@ -47,6 +47,7 @@ PAUSA_MAXIMA = 1.5  # segundos entre eventos
 PAUSA_RASCUNHO = 0.03
 MAX_EXECUCOES_GUARDADAS = 2000
 _ID_GRAVACAO = r"^[a-z0-9_]+$"
+_SO_AO_VIVO = {"python_pedido", "python_aguardando"}
 _SUBSTANTIVOS = {"plano", "llm", "ferramenta_inicio", "rascunho"}  # depois disso não dá mais para trocar pela gravação
 MSG_INTERNO = "Algo deu errado do nosso lado. Tente de novo."
 _VAGAS = threading.BoundedSemaphore(1)  # 1 pergunta por vez, segurada até o fim do stream
@@ -269,6 +270,8 @@ def _reproduzir(caminho: Path, pular_recebido: bool = False) -> Iterator[dict]:
             continue
         if pular_recebido and ev["evento"] == "recebido":
             continue
+        if ev["evento"] in _SO_AO_VIVO:  # protocolo do navegador: numa gravação ninguém responderia
+            continue
         ms = ev.get("ms")
         pausa = ms / 1000 * PAUSA_GRAVACAO if isinstance(ms, (int, float)) and not isinstance(ms, bool) else 0
         _dormir(min(PAUSA_MAXIMA, max(pausa, PAUSA_RASCUNHO if ev["evento"] == "rascunho" else 0)))
@@ -308,7 +311,8 @@ def _ao_vivo(corpo: PerguntaIn, sessao: sessions.Sessao, llm: agent.LlmFn, grava
     desde = time.perf_counter()
     try:
         try:
-            for ev in agent.executar(corpo.pergunta, sessao, llm, saida=saida):
+            for ev in agent.executar(corpo.pergunta, sessao, llm, saida=saida,
+                                    python=python_navegador.executor(sessao.id)):
                 nome = ev["evento"]
                 if nome == "erro" and ev["mensagem"] == agent.MSG_COTA and gravacao and not vistos & _SUBSTANTIVOS:
                     reproduzido = True  # cota do provedor esgotada: o exemplo cai na gravação
@@ -336,6 +340,7 @@ class _RespostaSSE(StreamingResponse):
 
     def __init__(self, gerador: Iterator[bytes], liberar=None) -> None:
         super().__init__(gerador, media_type="text/event-stream", headers=CABECALHOS_SSE)
+        self._gerador = gerador
         self._liberar = liberar
 
     async def __call__(self, scope, receive, send) -> None:
@@ -345,8 +350,13 @@ class _RespostaSSE(StreamingResponse):
         except TimeoutError:
             log.warning("Stream SSE encerrado pelo prazo")
         finally:
-            if self._liberar:
-                self._liberar()
+            try:  # o Starlette não fecha o gerador síncrono; o GC o fecharia numa thread qualquer, com locks presos
+                getattr(self._gerador, "close", lambda: None)()  # geradores assíncronos (testes) não têm close
+            except ValueError:  # gerador ainda em execução: a vaga volta mesmo assim
+                pass
+            finally:
+                if self._liberar:
+                    self._liberar()
 
 
 def _resposta_sse(gerador: Iterator[bytes], liberar=None) -> StreamingResponse:
