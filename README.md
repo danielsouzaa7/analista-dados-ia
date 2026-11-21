@@ -113,7 +113,7 @@ Variáveis (`.env.example`):
 | `EVAL_LLM_API_KEY` | Chave de outro projeto, só para `scripts/avaliar.py` |
 | `DEMO_TETO_DIARIO` | Teto diário de perguntas. Padrão 80 |
 
-Publicação no Hugging Face Spaces: crie um Space do tipo Docker, adicione `sdk: docker` e `app_port: 7860` ao README do Space, crie o secret `LLM_API_KEY` e envie o repositório. A chave nunca entra na imagem.
+Publicação no Render (plano gratuito): no painel, *New → Blueprint*, escolha este repositório e informe a `LLM_API_KEY` quando o Render pedir. O `render.yaml` já define o Docker, a porta 7860 e o health check. A chave nunca entra na imagem. No plano gratuito o app dorme após uns 15 minutos sem uso e leva cerca de um minuto para acordar.
 
 ## Testes
 

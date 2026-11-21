@@ -19,6 +19,6 @@ RUN python -c "import duckdb; duckdb.sql('INSTALL postgres')" \
     && deno install --entrypoint runner.ts \
     && deno run --allow-read --allow-write=./pyodide_cache,./node_modules --allow-net runner.ts --preparar
 
-# A LLM_API_KEY vem de secret do Space em runtime; nunca ENV nem COPY .env.
+# A LLM_API_KEY vem de variável secreta da hospedagem em runtime; nunca ENV nem COPY .env.
 EXPOSE 7860
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
