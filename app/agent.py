@@ -123,7 +123,7 @@ def _sem_delimitadores(texto: str) -> str:
     while achados := list(_TAG_DADOS.finditer(norm)):
         partes, fim = [], 0
         for m in achados:
-            apagar[origem[m.start()]:origem[m.end() - 1] + 1] = b"" * (origem[m.end() - 1] - origem[m.start()] + 1)
+            apagar[origem[m.start()]:origem[m.end() - 1] + 1] = b"\x01" * (origem[m.end() - 1] - origem[m.start()] + 1)
             partes.append(slice(fim, m.start()))
             fim = m.end()
         partes.append(slice(fim, None))
