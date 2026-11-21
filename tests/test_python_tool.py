@@ -96,3 +96,11 @@ print("legitimo")
 def test_js_json_stringify_trocado_nao_forja_saida() -> None:
     r = rodar(CODIGO_FORJA)
     assert r["saida"] == "legitimo\n" and not r["erro"], r
+
+
+def test_preludio_disponivel_no_sandbox() -> None:
+    r = rodar("r = teste_t_welch([1, 2, 3, 4, 5], [3, 4, 5, 6, 7])\nprint(r)\n"
+              "print(teste_correlacao([1, 2, 3, 4], [1, 3, 2, 5]).p_valor)")
+    assert not r["erro"]
+    assert "ResultadoTeste(t=-2.0, gl=8.0, p_valor=0.08" in r["saida"]
+    assert 0 < float(r["saida"].splitlines()[-1]) < 1

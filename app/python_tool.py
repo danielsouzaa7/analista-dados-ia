@@ -10,6 +10,7 @@ import time
 
 from app import config
 
+PRELUDIO = (config.SANDBOX_DIR / "preludio.py").read_text(encoding="utf-8")
 MAX_CHARS = 10_000
 MAX_STDOUT_BYTES = 1024 * 1024  # teto do que lemos do processo Deno
 SEMAFORO = threading.BoundedSemaphore(2)  # no máximo 2 sandboxes ao mesmo tempo
@@ -80,7 +81,7 @@ def rodar(codigo: str, csv: str, timeout: float = 30) -> dict:
         "--v8-flags=--max-old-space-size=512", "runner.ts",
     ]
     nonce = secrets.token_hex(16)  # o código do usuário não o conhece, então não forja a saída
-    dados = json.dumps({"codigo": codigo, "csv": csv, "nonce": nonce}).encode()
+    dados = json.dumps({"codigo": codigo, "csv": csv, "nonce": nonce, "preludio": PRELUDIO}).encode()
     if not SEMAFORO.acquire(timeout=timeout):
         return {"saida": "", "erro": "O ambiente de execução está ocupado. Tente de novo."}
     try:

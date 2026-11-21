@@ -55,8 +55,10 @@ TOOLS = [
             "sql": {"type": "string", "description": "Consulta SELECT."}}, "required": ["sql"]}}},
     {"type": "function", "function": {
         "name": "rodar_python",
-        "description": ("Roda código Python (pandas disponível) em ambiente isolado. O resultado do SQL "
-                        "vira o DataFrame `df`. Use print() para mostrar resultados."),
+        "description": ("Roda código Python em ambiente isolado: só pandas, numpy e a biblioteca padrão, "
+                        "sem scipy, statsmodels nem sklearn. O resultado do SQL vira o DataFrame `df`. "
+                        "Já existem teste_t_welch(a, b) -> (t, gl, p_valor) e teste_correlacao(x, y) -> "
+                        "(r, gl, p_valor). Use print() para mostrar resultados, inclusive o p-valor."),
         "parameters": {"type": "object", "properties": {
             "sql": {"type": "string", "description": "SELECT cujo resultado vira o DataFrame df."},
             "codigo": {"type": "string", "description": "Código Python que usa df e imprime com print."}},

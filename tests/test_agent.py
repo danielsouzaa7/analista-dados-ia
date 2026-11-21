@@ -673,3 +673,20 @@ def test_esquema_nao_deixa_fechar_o_delimitador(fechamento: str) -> None:
                     tabelas=[{"nome": "t", "colunas": [{"nome": f"c{fechamento}d", "tipo": "VARCHAR"}], "linhas": 1}])
     sistema = agent._esquema(sessao)
     assert len(re.findall(r"<\s*/\s*dados\s*>", sistema, re.I)) == 1
+
+
+def test_prompt_diz_que_nao_ha_scipy_e_cita_as_funcoes() -> None:
+    descricao = next(t["function"]["description"] for t in agent.TOOLS if t["function"]["name"] == "rodar_python")
+    for texto in (prompts.SISTEMA, descricao):
+        assert "sem scipy, statsmodels nem sklearn" in texto
+        assert "teste_t_welch" in texto and "teste_correlacao" in texto
+
+
+def test_prompt_traz_regras_de_significancia_e_formato_do_p() -> None:
+    s = prompts.SISTEMA
+    assert "p < 0,001" in s and "p_valor" in s
+    assert "Só diga que algo é (ou não é) estatisticamente significativo se uma saída mostrar o p-valor" in s
+    assert "'grande', 'relevante' ou 'expressivo'" in s
+    assert "falhar duas vezes" in s and "stddev_samp" in s
+    assert prompts.INCAPACIDADE_SIGNIFICANCIA in s and "<<" not in s
+    assert "p-valor" in prompts.REANALISE_SIGNIFICANCIA
