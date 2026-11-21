@@ -586,3 +586,51 @@ def test_pergunta_recusada_com_429_nao_marca_a_sessao(client: TestClient, monkey
     monkeypatch.setattr(main, "_uso", {"dia": date.today(), "n": main.LIMITE_DIARIO})
     assert _perguntar(client, sid).status_code == 429
     assert sessions.SESSOES[sid].perguntou is False
+
+
+# ---------- CSP do worker do Pyodide (fatia 3) ----------
+
+WORKER = "/static/python-worker.js"
+CSP_WORKER = (
+    "default-src 'none'; script-src https://cdn.jsdelivr.net/pyodide/v0.28.3/full/ 'wasm-unsafe-eval'; "
+    "connect-src https://cdn.jsdelivr.net/pyodide/v0.28.3/full/; "
+    "worker-src https://cdn.jsdelivr.net/pyodide/v0.28.3/full/; base-uri 'none'")
+
+
+def test_csp_da_pagina_libera_worker_self_e_o_caminho_do_pyodide(client: TestClient) -> None:
+    # o Chromium confere o import do worker contra o worker-src da página; Firefox e WebKit, contra o do worker
+    csp = client.get("/").headers["content-security-policy"]
+    assert "worker-src 'self' https://cdn.jsdelivr.net/pyodide/v0.28.3/full/;" in csp
+
+
+def test_csp_do_worker_so_alcanca_o_pyodide(client: TestClient) -> None:
+    r = client.get(WORKER)
+    assert r.status_code == 200
+    csp = r.headers["content-security-policy"]
+    assert csp == CSP_WORKER
+    connect = next(d for d in csp.split("; ") if d.startswith("connect-src"))
+    assert "'self'" not in connect
+
+
+def test_connect_src_do_worker_so_tem_o_caminho_do_pyodide(client: TestClient) -> None:
+    csp = client.get(WORKER).headers["content-security-policy"]
+    connect = next(d for d in csp.split("; ") if d.startswith("connect-src"))
+    assert connect == "connect-src https://cdn.jsdelivr.net/pyodide/v0.28.3/full/"
+    assert "'self'" not in csp
+
+
+def test_csp_do_worker_vale_tambem_na_resposta_304(client: TestClient) -> None:
+    etag = client.get(WORKER).headers["etag"]
+    r = client.get(WORKER, headers={"If-None-Match": etag})
+    assert r.status_code == 304
+    assert r.headers["content-security-policy"] == CSP_WORKER
+
+
+def test_versao_do_pyodide_igual_no_worker_no_runner_e_na_csp() -> None:
+    import re
+    raiz = Path(__file__).resolve().parent.parent
+    no_worker = re.findall(r"pyodide/v([\d.]+)/full", (raiz / "static/python-worker.js").read_text(encoding="utf-8"))
+    no_runner = re.findall(r"pyodide@([\d.]+)", (raiz / "sandbox/runner.ts").read_text(encoding="utf-8"))
+    na_csp = re.findall(r"pyodide/v([\d.]+)/full", main.CSP_WORKER)
+    assert no_worker and no_runner and na_csp
+    assert set(no_worker) == set(no_runner) == set(na_csp)

@@ -60,11 +60,15 @@ CABECALHOS = {
     "Content-Security-Policy": (
         "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
-        "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
+        "img-src 'self' data:; connect-src 'self'; worker-src 'self' https://cdn.jsdelivr.net/pyodide/v0.28.3/full/; object-src 'none'; base-uri 'none'; form-action 'self'; "
         "frame-ancestors 'self' https://huggingface.co https://*.hf.space"),  # sem X-Frame-Options: o HF usa iframe
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
 }
+PYODIDE_CAMINHO = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/"
+CSP_WORKER = (f"default-src 'none'; script-src {PYODIDE_CAMINHO} 'wasm-unsafe-eval'; connect-src {PYODIDE_CAMINHO}; "
+              f"worker-src {PYODIDE_CAMINHO}; base-uri 'none'")  # sem 'self': o worker não alcança nem o próprio site
+CAMINHO_WORKER = "/static/python-worker.js"  # sem CSP na resposta, o worker http(s) ficaria sem nenhuma
 CABECALHOS_SSE = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
@@ -365,6 +369,8 @@ def create_app() -> FastAPI:
                 log.error("Erro inesperado: %s", type(exc).__name__)
                 resposta = JSONResponse({"detail": MSG_INTERNO}, status_code=500)
         resposta.headers.update(CABECALHOS)
+        if request.url.path == CAMINHO_WORKER:
+            resposta.headers["Content-Security-Policy"] = CSP_WORKER
         return resposta
 
     @app.exception_handler(ErroUsuario)
