@@ -130,13 +130,25 @@ export async function copiar(texto) {
   }
 }
 
+// ---------- LaTeX simples em linha (o modelo escreve $p < 0,001$ e 10^{-52}); só texto, nunca HTML ----------
+const SUPERESCRITO = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+const COMANDOS = [[/\\times(?![a-zA-Z])/g, "×"], [/\\cdot(?![a-zA-Z])/g, "·"], [/\\leq?(?![a-zA-Z])/g, "≤"],
+  [/\\geq?(?![a-zA-Z])/g, "≥"], [/\\approx(?![a-zA-Z])/g, "≈"]];
+
+export function latexSimples(texto) {
+  let s = texto.replace(/10\^\{?(-?\d+)\}?/g, (_, e) => "10" + [...e].map((c) => SUPERESCRITO[c]).join(""));
+  for (const [re, simbolo] of COMANDOS) s = s.replace(re, simbolo);
+  // (?<!R): o cifrão de "R$ 52,01" não abre fórmula
+  return s.replace(/(?<!R)\$(?=\S)([^$\n]*\S)\$/g, (_, m) => m.replace(/[{}]/g, ""));
+}
+
 // ---------- texto da resposta (mini-Markdown seguro: parágrafos, listas, **negrito**, `código`) ----------
 function inline(pai, texto) {
   for (const parte of texto.split(/(\*\*[^*]+\*\*|`[^`]+`)/)) {
     if (!parte) continue;
-    if (parte.startsWith("**") && parte.endsWith("**") && parte.length > 4) pai.append(el("strong", parte.slice(2, -2)));
+    if (parte.startsWith("**") && parte.endsWith("**") && parte.length > 4) pai.append(el("strong", latexSimples(parte.slice(2, -2))));
     else if (parte.startsWith("`") && parte.endsWith("`") && parte.length > 2) pai.append(el("code", parte.slice(1, -1)));
-    else pai.append(document.createTextNode(parte));
+    else pai.append(document.createTextNode(latexSimples(parte)));
   }
 }
 

@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { fmtValor, ehMoeda, rotuloFalha } from "../../static/dom.js";
+import { fmtValor, ehMoeda, rotuloFalha, latexSimples } from "../../static/dom.js";
 import { marcas } from "../../static/marcas.js";
 
 // Intl usa espaço não separável entre "R$" e o número.
@@ -49,4 +49,21 @@ Deno.test("conferência: só a significância falhando não diz que números nã
   assertEquals(rotuloFalha({ ok: false, falhas: ["x"], significancia: true }), "alguns números não bateram");
   assertEquals(rotuloFalha({ ok: false, falhas: ["x"] }), "alguns números não bateram");
   assertEquals(rotuloFalha({ ok: false }), "alguns números não bateram");
+});
+
+Deno.test("LaTeX em linha: cifrões somem, comandos e expoentes viram Unicode", () => {
+  assertEquals(latexSimples("p-valor de $1,58 \\times 10^{-52}$"), "p-valor de 1,58 × 10⁻⁵²");
+  assertEquals(latexSimples("$a \\cdot b$ e $x \\le 3$, $y \\leq 4$, $z \\ge 1$, $w \\geq 2$, $u \\approx 5$"),
+    "a · b e x ≤ 3, y ≤ 4, z ≥ 1, w ≥ 2, u ≈ 5");
+  assertEquals(latexSimples("$10^-52$ e $10^{-3}$ e $10^{12}$"), "10⁻⁵² e 10⁻³ e 10¹²");
+});
+
+Deno.test("LaTeX em linha: o cifrão de R$ nunca é delimitador", () => {
+  assertEquals(latexSimples("R$ 52,01 e R$ 63,90"), "R$ 52,01 e R$ 63,90");
+  assertEquals(latexSimples("R$ 52,01, com $p < 0,001$"), "R$ 52,01, com p < 0,001");
+});
+
+Deno.test("LaTeX em linha: texto sem LaTeX não muda", () => {
+  const s = "O ticket médio foi de 52,01 (p < 0,001); 10 pedidos, x^2 e {chaves}.";
+  assertEquals(latexSimples(s), s);
 });
