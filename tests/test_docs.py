@@ -92,11 +92,30 @@ NUMEROS_README = [
     # um nome só para cada medida de horas (README e autoria)
     ("10h06 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 10h06 |"),
     ("14h12 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 14h12 |"),
+    # papel do Daniel: método, decisões e resultados
+    ("24 critérios de aceite", "docs/processo.md", "a Spec tem 24 critérios"),
+    ("3 frentes andaram em paralelo", "docs/processo.md", "3 frentes com arquivos disjuntos"),
+    ("57 dos 58 ficaram até 300 mil tokens de pico", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade (pico até 300.000)"),
+    ("57 de 58 agentes dentro da zona de qualidade", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade"),
+    ("cerca de 248 MB de um contêiner de 512 MB", "docs/decisoes.md", "cerca de 248 MB residentes num contêiner de 512 MB"),
+    ("pré-pagamento único de R$180", "docs/decisoes.md", None),
+    ("de 4/8 a 7/8", "docs/avaliacao.md", "lotes anteriores deram 4/8, 7/8"),
+    ("1.000 primeiras linhas", "docs/avaliacao.md", None),
+    ("0 erros de infraestrutura", "docs/avaliacao.md", "nenhuma rodada teve erro de infraestrutura"),
+    ("8 de 8 em todas as rodadas", "docs/avaliacao.md", None),
+    ("65h49 de relógio corrido", "docs/tempo-de-construcao.md", "| Relógio corrido | 65h49 |"),
+    ("acertou 5 de 5", "docs/avaliacao.md", "| cupom_ticket | 5/5 |"),
+    ("p < 0,001", "docs/avaliacao.md", None),
+    ("10 vetores de fuga do Worker bloqueados", "docs/como-rodar.md", "10 vetores de fuga bloqueados, testados em 3 motores"),
 ]
 NUMEROS_AUTORIA = [
     ("10h06 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 10h06 |"),
     ("58 agentes", "docs/tempo-de-construcao.md", "| Agentes | 58 |"),
     ("14h12 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 14h12 |"),
+    ("57 de 58 agentes", "docs/orquestracao.md", None),
+    ("0 erros de infraestrutura", "docs/avaliacao.md", "nenhuma rodada teve erro de infraestrutura"),
+    ("35 de 40", "docs/avaliacao.md", None),
+    ("0,1 vCPU", "docs/decisoes.md", None),
 ]
 
 # termo -> começo da explicação entre parênteses logo depois da 1ª ocorrência (fora de blocos de código)

@@ -38,7 +38,7 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 | Red team | 5 rodadas, cada achado corrigido (quase todos com teste automatizado) ou risco aceito | [segurança](docs/seguranca.md) |
 | Fugas do Worker | 10 vetores de fuga bloqueados, testados em 3 motores | [como rodar](docs/como-rodar.md) |
 | Imagem Docker sem Deno | de 617 para 433 MB | [segurança](docs/seguranca.md) |
-| Testes (coletados em 22/11/2026) | 732 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
+| Testes (coletados em 22/11/2026) | 750 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
 | Cobertura do pytest sobre `app/`, no CI | 97% (run #6, commit `bcd2420`: 657 passed, 50 skipped) | [como rodar](docs/como-rodar.md), [Actions](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) |
 | Construção | 10h06 de tempo ativo de relógio (65h49 de relógio corrido, 55h43 paradas excluídas) | [tempo de construção](docs/tempo-de-construcao.md) |
 | Agentes de IA | 58 agentes, 14h12 de trabalho somado dos agentes (em paralelo), paralelismo 1,4x, 7 sessões | [tempo de construção](docs/tempo-de-construcao.md) |
@@ -51,7 +51,49 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 
 ## Como foi construído
 
-Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu não criei esses agentes: usei agentes especializados prontos, configurados para o fluxo que defini. Eu defini o quê, o porquê e os critérios de aprovação; os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:02. Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado); o trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.
+<p><b>Arquitetei o sistema e orquestrei 58 agentes de IA para construí-lo.</b></p>
+
+Em 10h06 de tempo ativo de relógio, defini as restrições, escolhi a arquitetura, impus os portões de qualidade e dirigi um time de agentes especializados que escreveu o código, os testes, a documentação, as revisões técnicas e o red team. Nada foi aceito sem teste, revisão independente e número medido. Os agentes são prontos: escolhi cada um pelo papel e configurei todos para o fluxo que desenhei.
+
+<p><b>Como eu construo sistemas com IA</b></p>
+
+Começo pelo sistema. Antes de um agente escrever a primeira linha, o problema, as restrições e o critério de pronto já estão escritos; depois o trabalho vira fatias, e cada fatia vai para o especialista certo.
+
+1. **Restrições primeiro.** Custo zero, chave do LLM fora do alcance dos agentes, dados de delivery de comida por causa de quem vai avaliar. Só a regra de custo zero já tirou a hospedagem paga da mesa e decidiu onde o Python roda.
+2. **Spec verificável.** O pedido vira uma [Spec](Spec.md) com 24 critérios de aceite, e um agente independente revisa o plano antes de existir código. Essa revisão achou furos na regex de significância antes de haver código.
+3. **Fatias com território.** O plano corta o trabalho em fatias verticais e dá a cada agente um conjunto de arquivos próprio. Na fase de portfólio, 3 frentes andaram em paralelo, com arquivos disjuntos ([plano](.claude/plans/experiencia-portfolio.plan.md)).
+4. **Contexto curto para cada agente.** Cada agente trabalha numa janela própria e enxuta: 57 dos 58 ficaram até 300 mil tokens de pico. Quando o orquestrador passou desse limite, mudei a regra e passei a delegar mais cedo.
+5. **Modelo por tarefa.** O modelo mais forte planeja e revisa, o mais rápido implementa. Quem revisa recebe o código, sem a conclusão de quem o escreveu.
+6. **Portões em sequência.** Spec, revisão independente da spec, plano, testes primeiro, revisão por especialistas (Python, JavaScript, segurança), red team, teste em Chromium, Firefox e WebKit, minha aprovação e deploy. Um laço de revisão que passa de 3 voltas para e volta para mim.
+
+<p><b>Decisões que moldaram o sistema</b></p>
+
+As opções técnicas vieram do time; a escolha e o critério foram meus. Cada linha tem fonte.
+
+| Decisão | O que ela mudou |
+|---|---|
+| **Custo zero como restrição de engenharia** | O servidor gratuito tem 0,1 vCPU, e três chamadas seguidas ao Python passaram de 30 s. O Python da IA foi para o navegador do visitante, e o servidor deixou de executar o Python gerado pela IA (o SQL gerado roda nele, validado e só leitura) ([decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker)) |
+| **Três arquiteturas na mesa, uma escolhida** | Python no navegador, sandbox Deno aquecida no servidor ou só SQL. A sandbox aquecida ocuparia cerca de 248 MB de um contêiner de 512 MB e deixaria o estado de uma execução vazar para a seguinte. Com o navegador, o passo Python leva 4,5–5,2 s nos três motores e a imagem Docker caiu de 617 para 433 MB ([decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker), [segurança](docs/seguranca.md)) |
+| **Render grátis em vez de pagar** | Escolhi o Cloud Run, e o Google pediu um pré-pagamento único de R$180. Recusei: "acho um absurdo pagar pra expor portfólio". O app foi para o plano gratuito do Render, e LLM e hospedagem custam R$ 0 ([decisão 14](docs/decisoes.md#14-hospedagem-sem-custo-render-grátis)) |
+| **Avaliação em 5 rodadas em vez de uma** | Com o conferidor antigo, rodadas isoladas deram de 4/8 a 7/8, então uma rodada só mede ruído. Em 5 rodadas, contra o modelo real, saíram 35 de 40 respostas completas e 0 números inventados. A avaliação também pegou um bug que a suíte deixava passar, a correlação calculada só sobre as 1.000 primeiras linhas ([avaliação](docs/avaliacao.md)) |
+| **Chave de avaliação num projeto separado do da demo** | Criei um projeto Google só para avaliar. As 5 rodadas terminaram com 0 erros de infraestrutura ([avaliação](docs/avaliacao.md)) |
+| **Publicar os números reais** | A régua da Spec é 8 de 8 em todas as rodadas; publiquei o 7,0/8, com as 5 respostas incompletas explicadas. As horas saem sem tempo parado: 10h06 de tempo ativo de relógio dentro de 65h49 de relógio corrido. Cada valor de [Em números](#em-números) tem fonte, e um teste confere os pares número → arquivo |
+| **Verificação de fatos da documentação** | Um agente só de leitura confere cada afirmação do README e da autoria contra a fonte (Spec, critério 24). Uma passada corrigiu números, contagem de testes, jobs de CI e a legenda do GIF (commit `0f86d70`) |
+| **Vitrine num caso certo nas 5 rodadas** | Pus no topo a pergunta do cupom, que acertou 5 de 5 e mostra um teste t de Welch rodando no navegador, com p < 0,001 e o selo de números conferidos (commit `683505a`) |
+
+<p><b>Resultados que dá para conferir</b></p>
+
+- **97% de cobertura** do pytest sobre `app/`, medida no CI público ([run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339)).
+- **750 testes no pytest, 42 no `deno test` e 50 no e2e**, contados em 22/11/2026 ([como rodar](docs/como-rodar.md)).
+- **5 rodadas de red team** contra o código vigente, com cada achado corrigido ou publicado como risco aceito ([segurança](docs/seguranca.md)).
+- **10 vetores de fuga do Worker bloqueados**, testados em Chromium, Firefox e WebKit ([como rodar](docs/como-rodar.md)).
+- **57 de 58 agentes dentro da zona de qualidade** de contexto ([orquestração](docs/orquestracao.md)).
+- **App no ar** em [analista-dados-ia.onrender.com](https://analista-dados-ia.onrender.com), a custo zero (o plano gratuito dorme sem uso e leva cerca de um minuto para acordar).
+- **Release [v1.0.0](https://github.com/danielsouzaa7/analista-dados-ia/releases/tag/v1.0.0)** publicado no GitHub.
+
+<p><b>A construção em números</b></p>
+
+Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:02. Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado); o trabalho de apresentação feito depois (README, animações, autoria, perfil) fica de fora.
 
 | Medida | Valor |
 |---|---|
@@ -83,24 +125,9 @@ Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu n�
 - **2,03 milhões de tokens gerados** pelos agentes, 3,5x o que o orquestrador gerou.
 - **Aprendizado aplicado:** em 3 das 7 sessões o orquestrador passou de 300 mil tokens de contexto; desde então, delego mais cedo e compacto antes, para manter cada contexto na zona de qualidade. Método e o que conta como token: [orquestração](docs/orquestracao.md).
 
-Algumas das 13 decisões minhas (10 com fonte publicada; 3 só no registro local), registradas na [autoria](docs/autoria.md):
+<p><b>O time, por papel</b></p>
 
-- Dados de pedidos de delivery de comida, de propósito, por causa do público-alvo.
-- Gemini no plano gratuito; o valor da chave nunca foi mostrado aos agentes.
-- Horas publicadas sem tempo parado nem as esperas por mim.
-- Pedi "um projeto completo" (onda 2: perfil dos dados, LGPD, feedback, prompts versionados, CI).
-- Escolhi o Cloud Run; quando o Google pediu um pré-pagamento único de R$180, recusei qualquer custo: "acho um absurdo pagar pra expor portfólio". O projeto foi para o Render gratuito.
-- Python da IA no navegador do visitante, entre as opções que os agentes prepararam.
-- Chave de avaliação num projeto Google separado do da demo, criado por mim.
-
-**Meu papel: arquitetura e direção técnica.** Arquitetei a solução e o processo; um time de agentes de IA especializados implementou sob portões de qualidade que eu defini, e nada foi aceito sem teste, revisão independente e número medido.
-
-- **Restrições de engenharia que impus:** hospedagem de custo zero (o servidor gratuito tem 0,1 vCPU e estourou o Python da IA, o que levou a executá-lo no navegador); a chave do LLM nunca visível aos agentes; chave de avaliação num projeto Google separado do da demo.
-- **Portões de qualidade do processo:** spec com critérios de aceite antes do código, revisão independente da spec, plano, testes primeiro, revisão de código por especialistas (Python, JavaScript, segurança), red team, teste em 3 navegadores, verificação de fatos da documentação e a minha aprovação antes de cada publicação; laço de revisão limitado a 3 voltas.
-- **Decisões de arquitetura com trade-off, entre alternativas avaliadas:** Python no navegador, sandbox aquecida ou só SQL ([ADR 13](docs/decisoes.md)); Render grátis, HF PRO ou Cloud Run ([ADR 14](docs/decisoes.md)); avaliação em várias rodadas em vez de uma; publicar os números reais.
-- **Verificação em vez de confiança:** saída de IA só entra com prova. As revisões independentes acharam bugs reais (p-valor inventado passando como conferido, aba congelando com saída gigante, worker de cerca de 250 MB vazando), todos corrigidos com teste ([segurança](docs/seguranca.md), 5.16 a 5.18).
-
-Fluxo de trabalho de 9 etapas, definido por mim: pedido → especificação → revisão da especificação → plano → implementação com testes primeiro → revisão independente do código → testes → minha aprovação → deploy. Resumo: spec com critérios de aceite antes do código, revisão independente da spec, plano em fatias, testes primeiro, revisão por especialistas e red team, teste em 3 navegadores, verificação de fatos e minha aprovação antes de cada deploy; agentes em paralelo, com um conjunto de arquivos cada, e o modelo escolhido por tarefa. Tudo com fonte em [como o projeto foi construído por dentro](docs/processo.md). Cada papel do time, o que fez neste projeto e um exemplo com fonte:
+Cada papel, o que fez neste projeto e um exemplo com fonte. O processo inteiro, com commits: [como o projeto foi construído por dentro](docs/processo.md).
 
 | Papel | O que fez aqui | Exemplo |
 |---|---|---|
@@ -116,7 +143,7 @@ Fluxo de trabalho de 9 etapas, definido por mim: pedido → especificação → 
 
 Por categoria (58 agentes, 14h12 somadas): implementação 27, revisão 19, spec/plano 5, documentação 3, testes 2, outros 2 ([tempo de construção](docs/tempo-de-construcao.md)).
 
-Atuei como dono do produto e diretor técnico: defini o problema, o fluxo de trabalho e os critérios de qualidade, tomei as decisões de custo e de arquitetura e dirigi um time de agentes de IA que implementou, testou e revisou cada parte (o código, os testes, as revisões técnicas e o red team são dos agentes). Quem decidiu o quê, com fonte: [autoria](docs/autoria.md).
+Quem decidiu o quê, decisão por decisão e com fonte (13 decisões minhas; 10 com fonte publicada, 3 só no registro local): [autoria](docs/autoria.md).
 
 <details>
 <summary>Sumário</summary>
@@ -432,7 +459,7 @@ Capturas de 19/11/2026 (prompt `2026-11-19.2`), anteriores ao Python no navegado
 | e2e, à mão | `test_fluxo.py`: fluxo no navegador com o app no ar | 1 | `tests/e2e/`; só com `E2E_URL`, não roda no CI |
 | Postgres real | `ATTACH` só leitura num `postgres:16` | 1 teste, só com `PG_TEST_URL` | `tests/test_sql_tool.py`; job `postgres-real` |
 
-Contagem em 22/11/2026: 732 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
+Contagem em 22/11/2026: 750 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
 
 O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pytest com cobertura), `postgres-real` e `e2e-navegador`, que depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`). O CI não usa segredo nem chama o LLM.
 

@@ -1,14 +1,15 @@
 # Autoria
 
-Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu não criei esses agentes: usei agentes especializados prontos, configurados para o fluxo que defini. Os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Eu defini o quê, o porquê e os critérios de aprovação (custo zero, projeto completo, "fugir do óbvio"); os critérios de aceite da Spec foram redigidos pelos agentes e aprovados por mim. Escolhi entre as opções que os agentes prepararam e aprovei cada publicação.
+**Arquitetei este sistema e orquestrei 58 agentes de IA para construí-lo.** Em 10h06 de tempo ativo de relógio, defini as restrições, escolhi a arquitetura, impus os portões de qualidade e dirigi o time; nada foi aceito sem teste, revisão independente e número medido. Fui o dono do produto: decidi o quê, o porquê e o critério de aprovação (custo zero, projeto completo, "fugir do óbvio"), escolhi entre as opções que os agentes prepararam e aprovei cada publicação.
 
-## Meu papel: arquitetura e direção técnica
+Eu não criei esses agentes: escolhi agentes especializados prontos e os configurei para o fluxo que desenhei. Eles escreveram o código, os testes, a documentação, as revisões técnicas e o red team; os critérios de aceite da Spec foram redigidos por eles e aprovados por mim.
 
-Arquitetei a solução e o processo; um time de agentes de IA especializados implementou sob portões de qualidade que eu defini, e nada foi aceito sem teste, revisão independente e número medido.
+## Meu papel: arquitetura e orquestração
 
-- **Restrições de engenharia que impus:** hospedagem de custo zero (o servidor gratuito tem 0,1 vCPU e estourou o Python da IA, o que levou a executá-lo no navegador); a chave do LLM nunca visível aos agentes; chave de avaliação num projeto Google separado do da demo.
-- **Portões de qualidade do processo:** spec com critérios de aceite antes do código, revisão independente da spec, plano, testes primeiro, revisão de código por especialistas (Python, JavaScript, segurança), red team, teste em 3 navegadores, verificação de fatos da documentação e a minha aprovação antes de cada publicação; laço de revisão limitado a 3 voltas.
-- **Decisões de arquitetura com trade-off, entre alternativas avaliadas:** Python no navegador, sandbox aquecida ou só SQL ([ADR 13](decisoes.md)); Render grátis, HF PRO ou Cloud Run ([ADR 14](decisoes.md)); avaliação em várias rodadas em vez de uma; publicar os números reais.
+- **Restrições que impus:** hospedagem de custo zero (o servidor gratuito tem 0,1 vCPU e estourou o Python da IA, que passou a rodar no navegador); a chave do LLM fora do alcance dos agentes; chave de avaliação num projeto Google separado do da demo, e as 5 rodadas de avaliação terminaram com 0 erros de infraestrutura.
+- **Como distribuí o trabalho:** plano em fatias, cada agente com um conjunto de arquivos próprio, o modelo escolhido por tarefa e um contexto curto para cada um; 57 de 58 agentes ficaram até 300 mil tokens de pico ([orquestração](orquestracao.md)).
+- **Portões de qualidade:** spec com critérios de aceite antes do código, revisão independente da spec, plano, testes primeiro, revisão de código por especialistas (Python, JavaScript, segurança), red team, teste em 3 navegadores, verificação de fatos da documentação e a minha aprovação antes de cada publicação; laço de revisão limitado a 3 voltas.
+- **Arquitetura com trade-off, entre alternativas que o time preparou:** Python no navegador, sandbox aquecida ou só SQL ([ADR 13](decisoes.md)); Render grátis, HF PRO ou Cloud Run ([ADR 14](decisoes.md)); avaliação em 5 rodadas em vez de uma, que deu 35 de 40 respostas completas e 0 números inventados ([avaliação](avaliacao.md)); publicar os números reais.
 - **Verificação em vez de confiança:** saída de IA só entra com prova. As revisões independentes acharam bugs reais (p-valor inventado passando como conferido, aba congelando com saída gigante, worker de cerca de 250 MB vazando), todos corrigidos com teste ([segurança](seguranca.md), 5.16 a 5.18).
 
 ## O fluxo de trabalho
