@@ -874,8 +874,9 @@ def _tempo_como_dado(texto: str) -> float:
 
 
 def test_como_dado_aninhamento_fundo_e_rapido() -> None:
-    # 0,14 s medido; a regressão era 4,8 s. 1 s dá folga para o runner do CI sem perder a regressão.
-    assert _tempo_como_dado("<da" * 1420 + "<dados>" + "dos>" * 1420) < 1.0
+    # 0,14 s medido; a regressão era 4,8 s. O runner do CI é ~2x mais lento (levou 1,198 s);
+    # 3 s ainda pega a regressão de 4,8 s.
+    assert _tempo_como_dado("<da" * 1420 + "<dados>" + "dos>" * 1420) < 3.0
 
 
 def test_como_dado_60_niveis_em_200kb_e_rapido() -> None:
@@ -883,4 +884,4 @@ def test_como_dado_60_niveis_em_200kb_e_rapido() -> None:
     miolo = "x" * 1600
     texto = ("<da" + miolo) * n + "<dados>" + ("dos>" + miolo) * n
     assert len(texto) > 190_000
-    assert _tempo_como_dado(texto) < 1.0
+    assert _tempo_como_dado(texto) < 3.0  # mesma folga de CI do teste acima
