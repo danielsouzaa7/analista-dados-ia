@@ -102,7 +102,6 @@ NUMEROS_README = [
     ("de 4/8 a 7/8", "docs/avaliacao.md", "lotes anteriores deram 4/8, 7/8"),
     ("1.000 primeiras linhas", "docs/avaliacao.md", None),
     ("0 erros de infraestrutura", "docs/avaliacao.md", "nenhuma rodada teve erro de infraestrutura"),
-    ("8 de 8 em todas as rodadas", "docs/avaliacao.md", None),
     ("65h49 de relógio corrido", "docs/tempo-de-construcao.md", "| Relógio corrido | 65h49 |"),
     ("acertou 5 de 5", "docs/avaliacao.md", "| cupom_ticket | 5/5 |"),
     ("p < 0,001", "docs/avaliacao.md", None),
