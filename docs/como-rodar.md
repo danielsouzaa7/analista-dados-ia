@@ -97,3 +97,5 @@ O GIF do README é uma gravação de tela do app real rodando localmente, com um
 3. Converter o vídeo com ffmpeg (`fps=10`, `scale=800:-1`, paleta própria) e cortar a espera do carregamento inicial.
 
 Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no commit `1f8cafe`. Pergunta: "O tempo de entrega afeta a nota do cliente?". É a tomada única (de até 3 permitidas) (a primeira já serviu, sem selo de gravação nem erro). A espera do carregamento inicial do Python foi cortada; o GIF não está acelerado.
+
+Tempo da pergunta na tomada: cerca de 14 s (mediana de `/api/metricas` com 1 pergunta, 13,8 s); custo do LLM: R$ 0 (plano gratuito).

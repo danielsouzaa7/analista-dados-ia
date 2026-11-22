@@ -53,7 +53,7 @@ NUMEROS_AUTORIA = [
 JARGAO = ["pass^", "cassete", "prelúdio", "prelude", "grounding"]
 
 ICONES = ["navegador", "ao-vivo", "avaliacao", "seguranca"]
-MARCADORES = ["heroi", "fluxo"] + [f"icone-{i}" for i in ICONES]
+MARCADORES = ["heroi"]
 
 IMG = DOCS / "img"
 MAX_BYTES_SVG = 30 * 1024
@@ -227,3 +227,8 @@ def test_demo_animada_existe_e_pesa_menos_de_5_mb():
     assert gif.exists() and gif.stat().st_size < 5 * 1024 * 1024
     assert gif.read_bytes()[:6] in (b"GIF87a", b"GIF89a")
     assert "docs/img/demo.gif" in README.read_text(encoding="utf-8")
+
+
+def test_tempo_do_heroi_tem_fonte_em_como_rodar():
+    assert "14 s" in _ler(IMG / "heroi.svg")
+    assert "mediana de `/api/metricas` com 1 pergunta, 13,8 s" in _doc("docs/como-rodar.md")

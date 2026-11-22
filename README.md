@@ -11,15 +11,18 @@
 <p align="center"><a href="https://analista-dados-ia.onrender.com"><b>Experimente ao vivo →</b></a> · <a href="docs/arquitetura.md">Como funciona</a> · <a href="docs/avaliacao.md">Avaliação</a> · <a href="docs/autoria.md">Como foi construído</a><br>
 <img src="https://github.com/danielsouzaa7/analista-dados-ia/actions/workflows/ci.yml/badge.svg" alt="CI"></p>
 
-<!-- icone-navegador --> **O Python da IA roda no seu navegador**, num Worker sem rede além do caminho fixo do Pyodide; o servidor de 0,1 vCPU não o executa. [Decisão 13](docs/decisoes.md), [segurança](docs/seguranca.md)
+<img src="docs/img/icone-navegador.svg" width="24" height="24" align="absmiddle" alt=""> **O Python da IA roda no seu navegador**, num Worker sem rede além do caminho fixo do Pyodide; o servidor de 0,1 vCPU não o executa. [Decisão 13](docs/decisoes.md), [segurança](docs/seguranca.md)
 
-<!-- icone-ao-vivo --> **Cada passo aparece ao vivo**, com tempo e tokens, e cada número da resposta é conferido em código. [Arquitetura](docs/arquitetura.md)
+<img src="docs/img/icone-ao-vivo.svg" width="24" height="24" align="absmiddle" alt=""> **Cada passo aparece ao vivo**, com tempo e tokens, e cada número da resposta é conferido em código. [Arquitetura](docs/arquitetura.md)
 
-<!-- icone-avaliacao --> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 6/8 em todas; a meta de 8/8 não foi batida. [Avaliação](docs/avaliacao.md)
+<img src="docs/img/icone-avaliacao.svg" width="24" height="24" align="absmiddle" alt=""> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 6/8 em todas; a meta de 8/8 não foi batida. [Avaliação](docs/avaliacao.md)
 
-<!-- icone-seguranca --> **5 rodadas de red team**: cada achado reproduzido, fechado e coberto por teste. [Segurança](docs/seguranca.md)
+<img src="docs/img/icone-seguranca.svg" width="24" height="24" align="absmiddle" alt=""> **5 rodadas de red team**: cada achado reproduzido, fechado e coberto por teste. [Segurança](docs/seguranca.md)
 
-<!-- fluxo -->
+<picture>
+  <source media="(max-width: 600px)" srcset="docs/img/fluxo-celular.svg">
+  <img src="docs/img/fluxo.svg" width="100%" alt="Diagrama animado: o servidor pede ao navegador do visitante que rode o código Python da IA. A página repassa só o código e os dados a um Worker isolado, que não tem rede além do caminho fixo do Pyodide, e devolve o resultado ao servidor com um código de uso único, aceito uma vez. Antes de responder, o agente confere cada número.">
+</picture>
 <p align="center"><sub>O servidor nunca executa o Python da IA (o SQL roda nele, só leitura).</sub></p>
 
 <p align="center"><img src="docs/img/demo.gif" width="100%" alt="Gravação de tela do app: o CSV de exemplo é carregado, a pergunta sobre o tempo de entrega e a nota do cliente é digitada, o agente planeja, consulta, roda o Python no navegador e termina com um gráfico de dispersão e a resposta conferida."><br><sub>Pergunta real, rodando localmente no commit 1f8cafe; tomada única (de até 3 permitidas); espera do carregamento inicial cortada.</sub></p>
