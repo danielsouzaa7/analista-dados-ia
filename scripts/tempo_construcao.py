@@ -1,6 +1,7 @@
 """Mede as horas reais de construção a partir dos registros locais do Claude Code.
 
 Uso: python scripts/tempo_construcao.py [--dir PASTA] [--saida docs/tempo-de-construcao.md]
+    [--ate AAAA-MM-DDTHH:MM (horário de São Paulo)]
 Lê só timestamps, tipos e metadados; nunca copia texto de mensagens.
 """
 import argparse
@@ -38,14 +39,16 @@ def categoria(agent_type: str | None) -> str:
     return POR_NOME.get(nome, OUTROS)
 
 
-def _ler(caminho: Path) -> list[dict]:
-    """Eventos com timestamp válido; linhas quebradas ou sem timestamp são puladas."""
+def _ler(caminho: Path, ate: datetime | None = None) -> list[dict]:
+    """Eventos com timestamp válido (até o corte, se houver); linhas quebradas ou sem timestamp são puladas."""
     eventos = []
     for linha in caminho.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
             d = json.loads(linha)
             if isinstance(d, dict) and d.get("timestamp"):
-                eventos.append({**d, "_ts": datetime.fromisoformat(d["timestamp"])})
+                ts = datetime.fromisoformat(d["timestamp"])
+                if ate is None or ts <= ate:
+                    eventos.append({**d, "_ts": ts})
         except (ValueError, TypeError):
             continue
     return eventos
@@ -122,23 +125,27 @@ def _meta(caminho: Path) -> str | None:
         return None
 
 
-def medir(pasta: Path) -> dict:
+def medir(pasta: Path, ate: datetime | None = None) -> dict:
     todos, segmentos, sessoes = [], [], sorted(pasta.glob("*.jsonl"))
     por_categoria = {c: [0, timedelta(0)] for c in ORDEM_CATEGORIAS}
     agentes = timedelta(0)
     n_agentes = 0
     por_sessao = []
     for s in sessoes:
-        eventos = _ler(s)
+        eventos = _ler(s, ate)
         da_sessao = [e["_ts"] for e in eventos]
         for a in sorted((s.parent / s.stem / "subagents").glob("agent-*.jsonl")):
-            instantes = [e["_ts"] for e in _ler(a)]
+            instantes = [e["_ts"] for e in _ler(a, ate)]
+            if not instantes:  # começou depois do corte
+                continue
             tempo = _ativo(instantes)
             da_sessao += instantes
             agentes += tempo
             n_agentes += 1
             por_categoria[categoria(_meta(a))][0] += 1
             por_categoria[categoria(_meta(a))][1] += tempo
+        if not da_sessao:
+            continue
         todos += da_sessao
         segs = _segmentos(da_sessao, _esperas(eventos))
         segmentos += segs
@@ -146,11 +153,15 @@ def medir(pasta: Path) -> dict:
     ativo = _soma(segmentos)
     corrido = max(todos) - min(todos) if todos else timedelta(0)
     return {
-        "ativo": ativo, "corrido": corrido, "parado": corrido - ativo, "agentes": agentes,
-        "paralelismo": agentes / ativo if ativo else 0, "n_sessoes": len(sessoes), "n_agentes": n_agentes,
+        "ate": ate, "ativo": ativo, "corrido": corrido, "parado": corrido - ativo, "agentes": agentes,
+        "paralelismo": agentes / ativo if ativo else 0, "n_sessoes": len(por_sessao), "n_agentes": n_agentes,
         "categorias": por_categoria, "por_sessao": por_sessao,
         "inicio": min(todos) if todos else None, "fim": max(todos) if todos else None,
     }
+
+
+CORTE_AVISO = ("Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado). "
+               "O trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.")
 
 
 def hm(td: timedelta) -> str:
@@ -168,8 +179,9 @@ def _data(d: datetime | None) -> str:
 
 def markdown(r: dict, hoje: datetime | None = None) -> str:
     hoje = hoje or datetime.now(FUSO)
+    corte = [CORTE_AVISO, ""] if r.get("ate") else []
     linhas = [
-        "# Tempo de construção", "",
+        "# Tempo de construção", "", *corte,
         f"Período (horário de São Paulo): {_data(r['inicio'])} a {_data(r['fim'])}.", "",
         "| Medida | Valor |", "|---|---|",
         f"| Tempo ativo de relógio | {hm(r['ativo'])} |",
@@ -210,8 +222,10 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--dir", type=Path, default=PASTA_PADRAO)
     p.add_argument("--saida", type=Path, default=SAIDA_PADRAO)
+    p.add_argument("--ate", type=lambda t: datetime.fromisoformat(t).replace(tzinfo=FUSO),
+                   help="corte: eventos depois deste instante (horário de São Paulo) são ignorados")
     args = p.parse_args()
-    r = medir(args.dir)
+    r = medir(args.dir, args.ate)
     args.saida.parent.mkdir(parents=True, exist_ok=True)
     args.saida.write_text(markdown(r), encoding="utf-8")
     print(f"Ativo {hm(r['ativo'])} | corrido {hm(r['corrido'])} | parado {hm(r['parado'])} | "

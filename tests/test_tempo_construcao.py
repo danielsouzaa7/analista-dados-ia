@@ -159,3 +159,24 @@ def test_agente_trabalhando_cobre_a_espera_da_conversa_principal(tmp_path):
     subagente(tmp_path, "s1", "a1", "ecc:planner", [assistente(2), assistente(4), assistente(6)])
     # pendentes=1: nao ha espera; a notificacao nao muda nada e todo o intervalo (0-9) e continuo
     assert tc.medir(tmp_path)["ativo"] == timedelta(minutes=9)
+
+
+def test_eventos_depois_do_corte_sao_ignorados(tmp_path):
+    escrever(tmp_path / "s1.jsonl", [humano(0), assistente(2), assistente(4), assistente(6)])
+    subagente(tmp_path, "s1", "a", "tdd-guide", [assistente(1), assistente(3)])
+    r = tc.medir(tmp_path, ate=T0 + timedelta(minutes=3))
+    assert r["ativo"] == timedelta(minutes=3)
+    assert r["corrido"] == timedelta(minutes=3)
+    assert r["agentes"] == timedelta(minutes=2)
+
+
+def test_agente_que_comecou_depois_do_corte_nao_conta(tmp_path):
+    escrever(tmp_path / "s1.jsonl", [humano(0), assistente(2)])
+    escrever(tmp_path / "s2.jsonl", [humano(10), assistente(11)])
+    subagente(tmp_path, "s1", "a", "tdd-guide", [assistente(1), assistente(2)])
+    subagente(tmp_path, "s1", "b", "planner", [assistente(10), assistente(11)])
+    r = tc.medir(tmp_path, ate=T0 + timedelta(minutes=5))
+    assert r["n_agentes"] == 1
+    assert r["n_sessoes"] == 1
+    assert r["categorias"][tc.SPEC][0] == 0
+    assert r["ativo"] == timedelta(minutes=2)
