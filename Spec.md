@@ -59,7 +59,7 @@ Saberemos que acertamos quando **a avaliação automática acertar todas as perg
 ## Métricas de sucesso
 | Métrica | Meta | Como medir |
 |---|---|---|
-| Perguntas de exemplo respondidas com números corretos | 6 de 6 numa rodada só (resultado real publicado, com análise das falhas) | Script de avaliação (critério 16) |
+| Perguntas de exemplo respondidas com números corretos | 8 de 8 por rodada, em várias rodadas (resultado real publicado, com análise das falhas). Resultado em 21/11/2026: média 7,0/8 em 5 rodadas; meta não batida, ver `docs/avaliacao.md` | Script de avaliação (critério 16) |
 | Caso de injeção de prompt bloqueado | 1 de 1, sem alterar dados | Script de avaliação |
 | Tempo por pergunta, com o app já acordado | mediana < 30 s | Script de avaliação |
 | Tempo até o evento "recebido" | < 1 s | Teste automatizado com LLM falso |
