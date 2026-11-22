@@ -2,8 +2,8 @@
 
 <!-- heroi -->
 <picture>
-  <source media="(max-width: 600px)" srcset="docs/img/heroi-celular.svg">
-  <img src="docs/img/heroi.svg" width="100%" alt="Animação: alguém digita &quot;O tempo de entrega afeta a nota do cliente?&quot;. No servidor, o agente faz um plano e escreve o SQL; o código e os dados passam para o navegador, onde o Python calcula r = -0,506 em 5.501 pedidos. Um gráfico de dispersão mostra a nota caindo com o tempo de entrega, aparece o selo números conferidos e a resposta: quanto maior o tempo de entrega, menor a nota. Cerca de 14 segundos, custo zero.">
+  <source media="(max-width: 600px)" srcset="https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/heroi-celular.svg">
+  <img src="docs/img/heroi.svg" width="100%" alt="Ilustração do fluxo: alguém digita &quot;O tempo de entrega afeta a nota do cliente?&quot;. No servidor, o agente faz um plano e escreve o SQL; o código e os dados passam para o navegador, onde o Python calcula r = -0,506 em 5.501 pedidos. Um gráfico de dispersão mostra a nota caindo com o tempo de entrega, aparece o selo números conferidos e a resposta: quanto maior o tempo de entrega, menor a nota. Cerca de 14 segundos, custo zero.">
 </picture>
 
 <p align="center"><b>Pergunte em português. O agente planeja no servidor, roda o Python no seu navegador e mostra cada passo ao vivo.</b></p>
@@ -11,19 +11,18 @@
 <p align="center"><a href="https://analista-dados-ia.onrender.com"><b>Experimente ao vivo →</b></a> · <a href="docs/arquitetura.md">Como funciona</a> · <a href="docs/avaliacao.md">Avaliação</a> · <a href="docs/autoria.md">Como foi construído</a><br>
 <img src="https://github.com/danielsouzaa7/analista-dados-ia/actions/workflows/ci.yml/badge.svg" alt="CI"></p>
 
-<img src="docs/img/icone-navegador.svg" width="24" height="24" align="absmiddle" alt=""> **O Python da IA roda no seu navegador**, num Worker sem rede além do caminho fixo do Pyodide; o servidor de 0,1 vCPU não o executa. [Decisão 13](docs/decisoes.md), [segurança](docs/seguranca.md)
+<a href="docs/decisoes.md"><img src="docs/img/icone-navegador.svg" width="24" height="24" align="absmiddle" alt=""></a> **O Python da IA roda no seu navegador**, num Worker sem rede além do caminho fixo do Pyodide; o servidor de 0,1 vCPU não o executa. [Decisão 13](docs/decisoes.md), [segurança](docs/seguranca.md)
 
-<img src="docs/img/icone-ao-vivo.svg" width="24" height="24" align="absmiddle" alt=""> **Cada passo aparece ao vivo**, com tempo e tokens, e cada número da resposta é conferido em código. [Arquitetura](docs/arquitetura.md)
+<a href="docs/arquitetura.md"><img src="docs/img/icone-ao-vivo.svg" width="24" height="24" align="absmiddle" alt=""></a> **Cada passo aparece ao vivo**, com tempo e tokens, e cada número da resposta é conferido em código. [Arquitetura](docs/arquitetura.md)
 
-<img src="docs/img/icone-avaliacao.svg" width="24" height="24" align="absmiddle" alt=""> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 6/8 em todas; a meta de 8/8 não foi batida. [Avaliação](docs/avaliacao.md)
+<a href="docs/avaliacao.md"><img src="docs/img/icone-avaliacao.svg" width="24" height="24" align="absmiddle" alt=""></a> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 6 dos 8 casos certos em todas as rodadas; a meta de 8/8 não foi batida. [Avaliação](docs/avaliacao.md)
 
-<img src="docs/img/icone-seguranca.svg" width="24" height="24" align="absmiddle" alt=""> **5 rodadas de red team**: cada achado reproduzido, fechado e coberto por teste. [Segurança](docs/seguranca.md)
+<a href="docs/seguranca.md"><img src="docs/img/icone-seguranca.svg" width="24" height="24" align="absmiddle" alt=""></a> **5 rodadas de red team**: cada achado corrigido com teste ou publicado como risco aceito. [Segurança](docs/seguranca.md)
 
 <picture>
-  <source media="(max-width: 600px)" srcset="docs/img/fluxo-celular.svg">
+  <source media="(max-width: 600px)" srcset="https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/fluxo-celular.svg">
   <img src="docs/img/fluxo.svg" width="100%" alt="Diagrama animado: o servidor pede ao navegador do visitante que rode o código Python da IA. A página repassa só o código e os dados a um Worker isolado, que não tem rede além do caminho fixo do Pyodide, e devolve o resultado ao servidor com um código de uso único, aceito uma vez. Antes de responder, o agente confere cada número.">
 </picture>
-<p align="center"><sub>O servidor nunca executa o Python da IA (o SQL roda nele, só leitura).</sub></p>
 
 <p align="center"><picture>
 <source media="(max-width: 600px)" srcset="https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/demo-celular.gif">

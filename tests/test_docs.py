@@ -37,8 +37,8 @@ SENTINELAS = [
 NUMEROS_README = [
     ("7,0/8", "docs/avaliacao.md", None),
     ("faixa 6–8", "docs/avaliacao.md", None),
-    ("6/8", "docs/avaliacao.md", None),
-    ("5 rodadas", "docs/avaliacao.md", None),
+    ("6 dos 8 casos certos em todas as rodadas", "docs/avaliacao.md", "6/8"),
+    ("Avaliado contra o modelo real em 5 rodadas", "docs/avaliacao.md", "as 5 rodadas acima deram"),
     ("0,1 vCPU", "docs/decisoes.md", None),
     ("5 rodadas de red team", "docs/seguranca.md", "### Rodada 5"),
     ("10h05", "docs/tempo-de-construcao.md", None),
@@ -57,7 +57,8 @@ MARCADORES = ["heroi"]
 
 IMG = DOCS / "img"
 MAX_BYTES_SVG = 30 * 1024
-SVGS_ANIMADOS = sorted([*IMG.glob("heroi*.svg"), *IMG.glob("fluxo*.svg")])  # fluxo chega em outra fatia
+SVGS_ANIMADOS = sorted([*IMG.glob("heroi*.svg"), *IMG.glob("fluxo*.svg")])
+RAW = "https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/"
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
 
@@ -87,7 +88,7 @@ def test_links_e_imagens_relativos_existem():
     for arquivo in [README, *sorted(DOCS.glob("*.md"))]:
         texto = _sem_blocos_de_codigo(_ler(arquivo))
         alvos = re.findall(r"\]\(([^)\s]+)", texto)
-        alvos += re.findall(r'(?:src|srcset)="([^"]+)"', texto)
+        alvos += re.findall(r'(?:src|srcset|href)="([^"]+)"', texto)
         for alvo in alvos:
             if alvo.startswith(("http://", "https://", "mailto:", "#")):
                 continue
@@ -132,11 +133,53 @@ def test_readme_marca_onde_entram_as_imagens_futuras():
 
 def test_readme_mostra_o_heroi_com_variante_de_celular():
     texto = _ler(README)
-    assert '<source media="(max-width: 600px)" srcset="docs/img/heroi-celular.svg">' in texto
-    assert '<img src="docs/img/heroi.svg" width="100%" alt="' in texto
+    assert f'<source media="(max-width: 600px)" srcset="{RAW}heroi-celular.svg">' in texto
+    assert '<img src="docs/img/heroi.svg" width="100%" alt="Ilustração do fluxo: ' in texto
     assert "docs/img/conversa.png" not in texto  # o herói provisório saiu
     for nome in ("heroi.svg", "heroi-celular.svg"):
         assert (IMG / nome).exists(), nome
+
+
+def test_ha_quatro_svgs_animados():
+    assert len(SVGS_ANIMADOS) == 4
+
+
+def test_readme_diagrama_com_srcset_absoluto_e_sem_legenda_duplicada():
+    texto = _ler(README)
+    assert f'srcset="{RAW}fluxo-celular.svg"' in texto
+    assert '<img src="docs/img/fluxo.svg"' in texto
+    assert "O servidor nunca executa o Python da IA" not in texto
+
+
+def test_readme_textos_do_resultado_sem_exagero():
+    texto = _ler(README)
+    assert "6 dos 8 casos certos em todas as rodadas" in texto and "6/8" not in texto
+    assert "cada achado corrigido com teste ou publicado como risco aceito" in texto
+    assert "reproduzido, fechado" not in texto
+
+
+def test_cada_icone_do_readme_esta_dentro_do_link_do_seu_diferencial():
+    texto = _ler(README)
+    for nome in ICONES:
+        assert re.search(rf'<a href="docs/[^"]+\.md"><img src="docs/img/icone-{nome}\.svg"[^>]*></a>', texto), nome
+
+
+def test_svgs_sem_codigo_de_escape_no_texto():
+    for svg in sorted(IMG.glob("*.svg")):
+        raiz = ET.fromstring(_ler(svg))
+        for el in [*raiz.iter(f"{SVG_NS}text"), *raiz.iter(f"{SVG_NS}tspan")]:
+            conteudo = "".join(el.itertext())
+            for ruim in ("00a0", "\\u"):
+                assert ruim not in conteudo, f"{svg.name}: {ruim} em {conteudo!r}"
+        assert "&amp;#" not in _ler(svg), svg.name
+
+
+@pytest.mark.parametrize("svg", SVGS_ANIMADOS, ids=lambda p: p.name)
+def test_reduced_motion_mostra_o_quadro_final(svg):
+    texto = _ler(svg)
+    bloco = texto[texto.index("@media (prefers-reduced-motion") : texto.index("</style>")]
+    resto = bloco.replace("*{animation:none!important}", "")
+    assert "animation:none" in bloco and "opacity:1" in resto, svg.name
 
 
 @pytest.mark.parametrize("svg", SVGS_ANIMADOS, ids=lambda p: p.name)
