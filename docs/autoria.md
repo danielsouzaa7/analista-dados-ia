@@ -1,6 +1,6 @@
 # Autoria
 
-Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code com o framework ECC). Os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Eu defini o quê, o porquê e os critérios, escolhi entre as opções que os agentes prepararam e aprovei cada publicação.
+Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code com o framework ECC). Os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Eu defini o quê, o porquê e os critérios de aprovação (custo zero, projeto completo, "fugir do óbvio"); os critérios de aceite da Spec foram redigidos pelos agentes e aprovados por mim. Escolhi entre as opções que os agentes prepararam e aprovei cada publicação.
 
 ## O fluxo de trabalho
 
@@ -15,15 +15,15 @@ Datas em horário de Brasília. "Registro local da conversa" é a transcrição 
 | 19/11 | Pediu um agente que responde em português sobre CSV ou banco, com SQL, Python e gráficos, e passou o diagrama de referência do fluxo (o arquivo não está no repositório) | - | [Spec](../Spec.md), "Fluxo do agente"; registro local da conversa |
 | 19/11 | Dataset de pedidos de delivery de comida, de propósito, por causa do público-alvo (confirmado por ele em 21/11) | - | [Spec](../Spec.md), "Usuários" e critério 11; registro local da conversa |
 | 19/11 | ECC como framework principal e o fluxo de 9 etapas | Superpowers (desativado) | registro local da conversa |
-| 19/11 | LLM Gemini no plano gratuito; o valor da chave nunca é mostrado aos agentes; aviso de dados sensíveis na tela | Modelo local ou API paga (descartados na [decisão 1](decisoes.md)) | [Spec](../Spec.md), critérios 9 e 10 |
-| 19/11 | Horas publicadas sem tempo parado nem as esperas por ele | - | [tempo de construção](tempo-de-construcao.md), "Como foi medido" |
-| 19/11 | Pediu um projeto completo, não só um MVP (onda 2, critérios 18 a 22) | MVP | [plano](../.claude/plans/experiencia-portfolio.plan.md), "Onda 2" |
+| 19/11 | LLM Gemini no plano gratuito; o valor da chave nunca é mostrado aos agentes; aviso de dados sensíveis na tela | Chave paga de outro provedor | [Spec](../Spec.md), critérios 9 e 10; registro local da conversa (chave) |
+| 19/11 | Horas publicadas sem tempo parado nem as esperas por ele | - | [tempo de construção](tempo-de-construcao.md), "Como foi medido"; registro local da conversa |
+| 19/11 | Pediu "um projeto completo" (onda 2, critérios 18 a 22) | - | [plano](../.claude/plans/experiencia-portfolio.plan.md), "Onda 2" |
 | 19/11 | Aprovação da etapa 8 condicionada a ter "fugido do óbvio" aos olhos de quem avalia IA generativa | - | registro local da conversa |
 | 19/11 | Commit a cada lote de testes verde; push e deploy só depois da aprovação | - | registro local da conversa |
 | 21/11 | Publicar no Render gratuito | Railway, HF PRO, sem publicar | [ADR 14](decisoes.md); [Spec](../Spec.md), "Onde publicar?" |
-| 21/11 | Escolheu o Cloud Run; ao saber do pré-pagamento de R$180, recusou qualquer custo (história abaixo) | HF PRO, Render Starter, Cloud Run | [ADR 14](decisoes.md) |
-| 21/11 | Python da IA no navegador do visitante, entre as opções que os agentes prepararam | Deno no servidor (por chamada ou de longa duração), hospedagem paga | [ADR 13](decisoes.md); [Spec](../Spec.md), "Perguntas em aberto" |
-| 21/11 | Chave de avaliação num projeto Google próprio, criado por ele | - | [avaliação](avaliacao.md) |
+| 21/11 | Escolheu o Cloud Run; ao saber do pré-pagamento de R$180, recusou qualquer custo (história abaixo) | HF PRO (~US$9/mês), Render Starter (US$7/mês), pagar os R$180 | [ADR 14](decisoes.md) |
+| 21/11 | Python da IA no navegador do visitante, entre as opções que os agentes prepararam | Deno no servidor (por chamada ou de longa duração), hospedagem paga, só SQL | [ADR 13](decisoes.md); [Spec](../Spec.md), "Perguntas em aberto" |
+| 21/11 | Chave de avaliação num projeto Google separado do da demo, criado por ele | - | [avaliação](avaliacao.md) |
 | 21/11 | Autorizou cortar as 2 respostas não usadas do cassete de `cupom_ticket` | Regravar no dia seguinte (registro local) | [avaliação](avaliacao.md) |
 
 ### Hospedagem: a história completa

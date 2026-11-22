@@ -1,6 +1,6 @@
 # Plano: README de uma tela, animado, e docs/autoria.md
 
-Origem: avaliação independente (8/10 "foge do óbvio", 7/10 "profundidade") e pedido do Daniel em 21/11/2026: "faz os 3 pontos que faltam pelo ECC, por tanto que me valorize"; depois reduzido a README e autoria (a avaliação de 25–30 casos virou trabalho futuro); "o readme tem que ser fora da curva e animado, tem que ser bonito e atrativo".
+Origem: avaliação independente (8/10 e 7/10) e pedido do Daniel em 21/11/2026 por um README de uma tela, animado, e um documento de autoria; a avaliação de 25 a 30 casos virou trabalho futuro.
 
 ## Decisões do Daniel para este plano (21/11/2026)
 
@@ -153,23 +153,23 @@ Tabela de decisões (horário de Brasília; "T" = transcrição local, não publ
 
 | Data | Decisão do Daniel | Alternativas / contexto | Fonte pública | Fonte local |
 |---|---|---|---|---|
-| 19/11 ~02h | Pedido inicial do produto (CSV ou banco, perguntas em português, SQL, Python, gráficos) e o diagrama de referência do fluxo | — | `Spec.md` "Fluxo do agente (do diagrama de referência)"; `referência.png` (conferir se está no git) | registro local da conversa |
+| 19/11 | Pedido inicial do produto (CSV ou banco, perguntas em português, SQL, Python, gráficos) e o diagrama de referência do fluxo | — | `Spec.md` "Fluxo do agente (do diagrama de referência)"; `referência.png` (conferir se está no git) | registro local da conversa |
 | 19/11 | Dataset de pedidos de delivery, de propósito, pelo público-alvo (confirmado pelo Daniel em 21/11) | — | `Spec.md` "Usuários" | confirmação do Daniel |
 | 19/11 | ECC como framework e o fluxo de 9 etapas; modelo por tarefa | Superpowers (desativado) | o próprio `autoria.md` | regras globais dele |
-| 19/11 02h35 | LLM grátis (Gemini) em vez de chave paga; a chave nunca é lida pelos agentes; `.env.example`; aviso de dados sensíveis na tela | Chave paga de outro provedor | Spec crit. 9 ("decisão do Daniel em 19/11/2026"); crit. 10 (acrescentar atribuição) | registro local da conversa |
-| 19/11 ~06h | Horas publicadas sem tempo parado nem esperas por ele | — | `docs/tempo-de-construcao.md` (acrescentar "medido a pedido do Daniel") | memória |
-| 19/11 06h04 | "Projeto completo, não MVP" e "fugir do óbvio" → onda 2 (critérios 18–22) | MVP | `.claude/plans/experiencia-portfolio.plan.md` (conferir se está no git) | registro local da conversa |
-| 19/11 11h07 | Commit a cada lote verde; push e deploy só depois da etapa 8 | — | — | memória |
-| 19/11 16h38 | Aprovação da etapa 8 condicionada a "ter fugido do óbvio" aos olhos de quem avalia GenAI | — | — | registro local da conversa |
-| 21/11 01h56 | Render grátis | Railway (~US$5/mês), HF PRO (~US$9/mês), sem deploy | Spec; commit do `render.yaml` | registro local da conversa |
-| 21/11 02h16–02h32 | Escolheu o Cloud Run; quando o Google pediu pré-pagamento único de R$180, recusou qualquer custo: "acho um absurdo pagar pra expor portfólio" | HF PRO ~US$9/mês, Render Starter US$7/mês, Cloud Run R$180 | **criar ADR 14** | registro local da conversa |
-| 21/11 02h36 | Python da IA no navegador, entre 3 opções preparadas pelos agentes | Sandbox aquecida no servidor; só SQL | Spec; ADR 13 | registro local da conversa |
-| 21/11 02h36–02h41 | Público-alvo explícito (time de tecnologia do iFood); "sempre fugindo do óbvio" como critério | — | Spec "Usuários" | memória |
-| 21/11 noite | Chave de avaliação num projeto Google próprio (criada por ele) | Cortar o cassete; regravar no dia seguinte | `docs/avaliacao.md` (acrescentar atribuição) | registro local da conversa |
-| 21/11 noite | Autorizou cortar as 2 respostas não usadas do cassete do `cupom_ticket` | Regravar no dia seguinte | `docs/avaliacao.md` (acrescentar "autorizado pelo Daniel") | registro local da conversa |
-| 21/11 19h50 | Push e publicação depois da etapa 8; horas "tirando a inatividade e a minha demora"; pediu para conferir se fugiu do óbvio | — | `docs/tempo-de-construcao.md` | registro local da conversa |
-| 21/11 19h57 | Pediu uma avaliação independente (8/10 fugir do óbvio, 7/10 profundidade) | — | — | registro local da conversa |
-| 21/11 20h36 | Pediu as 3 melhorias; cortou a avaliação de 25–30 casos para trabalho futuro; exigiu README "fora da curva, animado" | — | emenda da Spec | — |
+| 19/11 | LLM grátis (Gemini) em vez de chave paga; a chave nunca é lida pelos agentes; `.env.example`; aviso de dados sensíveis na tela | Chave paga de outro provedor | Spec crit. 9 ("decisão do Daniel em 19/11/2026"); crit. 10 (acrescentar atribuição) | registro local da conversa |
+| 19/11 | Horas publicadas sem tempo parado nem esperas por ele | — | `docs/tempo-de-construcao.md` (acrescentar "medido a pedido do Daniel") | memória |
+| 19/11 | "Projeto completo, não MVP" e "fugir do óbvio" → onda 2 (critérios 18–22) | MVP | `.claude/plans/experiencia-portfolio.plan.md` (conferir se está no git) | registro local da conversa |
+| 19/11 | Commit a cada lote verde; push e deploy só depois da etapa 8 | — | — | memória |
+| 19/11 | Aprovação da etapa 8 condicionada a "ter fugido do óbvio" aos olhos de quem avalia GenAI | — | — | registro local da conversa |
+| 21/11 | Render grátis | Railway (~US$5/mês), HF PRO (~US$9/mês), sem deploy | Spec; commit do `render.yaml` | registro local da conversa |
+| 21/11 | Escolheu o Cloud Run; quando o Google pediu pré-pagamento único de R$180, recusou qualquer custo: "acho um absurdo pagar pra expor portfólio" | HF PRO ~US$9/mês, Render Starter US$7/mês, Cloud Run R$180 | **criar ADR 14** | registro local da conversa |
+| 21/11 | Python da IA no navegador, entre 3 opções preparadas pelos agentes | Sandbox aquecida no servidor; só SQL | Spec; ADR 13 | registro local da conversa |
+| 21/11 | Público-alvo explícito (time de tecnologia do iFood); "sempre fugindo do óbvio" como critério | — | Spec "Usuários" | memória |
+| 21/11 | Chave de avaliação num projeto Google próprio (criada por ele) | Cortar o cassete; regravar no dia seguinte | `docs/avaliacao.md` (acrescentar atribuição) | registro local da conversa |
+| 21/11 | Autorizou cortar as 2 respostas não usadas do cassete do `cupom_ticket` | Regravar no dia seguinte | `docs/avaliacao.md` (acrescentar "autorizado pelo Daniel") | registro local da conversa |
+| 21/11 | Push e publicação depois da etapa 8; horas sem tempo parado nem esperas por ele; pediu para conferir se fugiu do óbvio | — | `docs/tempo-de-construcao.md` | registro local da conversa |
+| 21/11 | Pediu uma avaliação independente (8/10 fugir do óbvio, 7/10 profundidade) | — | — | registro local da conversa |
+| 21/11 | Pediu as 3 melhorias; cortou a avaliação de 25–30 casos para trabalho futuro; pediu README animado | — | emenda da Spec | — |
 
 Tornar fontes públicas: **ADR 14** "Hospedagem sem custo: Render grátis" (alternativas e preços "como apresentados em 21/11/2026; os ~US$ eram estimativas dos agentes; os R$180, a tela do Google"); "(pedido do Daniel em 19/11/2026)" no crit. 10 da Spec; atribuições em `docs/avaliacao.md`; "medido a pedido do Daniel" em `docs/tempo-de-construcao.md` (é gerado por `scripts/tempo_construcao.py`: se for texto do script, mexer no script).
 
@@ -244,7 +244,7 @@ Os itens abaixo **prevalecem sobre o texto acima**.
 | L14 | `<h3>` na frase de valor | `<p align="center"><b>…</b></p>` |
 | L15 | `<details>` | Linha em branco depois de `<summary>` e antes de `</details>` |
 | L16 | Spec | Alinhar o marco 5 (README com arquitetura e avaliação), que fica redundante, e o critério 11, que fala em "6 perguntas" quando a avaliação tem 8 casos |
-| L17 | Tabela da autoria | Cortar as linhas de 19h50, 19h57 e 20h36 de 21/11 (falam do próprio trabalho de README; "7/10" é opinião de agente). Manter a citação dos R$180 |
+| L17 | Tabela da autoria | Cortar as três últimas linhas de 21/11 (falam do próprio trabalho de README; "7/10" é opinião de agente). Manter a citação dos R$180 |
 | L18 | Testes de docs | O limite de linhas é completado pela captura de tela na verificação. As sentinelas foram conferidas e existem no README atual |
 
 ### Nova ordem das fatias
