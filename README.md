@@ -40,8 +40,8 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 | Imagem Docker sem Deno | de 617 para 433 MB | [segurança](docs/seguranca.md) |
 | Testes (coletados em 21/11/2026) | 701 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
 | Cobertura do pytest sobre `app/`, no CI | 97% (run #6, commit `bcd2420`: 657 passed, 50 skipped) | [como rodar](docs/como-rodar.md), [Actions](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) |
-| Construção | 13h07 de tempo ativo de relógio (69h27 de relógio corrido, 56h21 paradas excluídas) | [tempo de construção](docs/tempo-de-construcao.md) |
-| Agentes de IA | 77 agentes, 17h44 de trabalho somado dos agentes (em paralelo), paralelismo 1,4x, 8 sessões | [tempo de construção](docs/tempo-de-construcao.md) |
+| Construção | 10h06 de tempo ativo de relógio (65h49 de relógio corrido, 55h43 paradas excluídas) | [tempo de construção](docs/tempo-de-construcao.md) |
+| Agentes de IA | 58 agentes, 14h12 de trabalho somado dos agentes (em paralelo), paralelismo 1,4x, 7 sessões | [tempo de construção](docs/tempo-de-construcao.md) |
 | Decisões registradas | 14 decisões de arquitetura; 13 decisões minhas (10 com fonte publicada; 3 só no registro local) | [decisões](docs/decisoes.md), [autoria](docs/autoria.md) |
 
 <p align="center"><picture>
@@ -51,25 +51,25 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 
 ## Como foi construído
 
-Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code com o framework ECC). Eu defini o quê, o porquê e os critérios de aprovação; os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 23:41.
+Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code com o framework ECC). Eu defini o quê, o porquê e os critérios de aprovação; os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:02. Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado); o trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.
 
 | Medida | Valor |
 |---|---|
-| Tempo ativo de relógio | 13h07 |
-| Relógio corrido | 69h27 |
-| Horas paradas excluídas | 56h21 |
-| Tempo somado dos agentes | 17h44 |
+| Tempo ativo de relógio | 10h06 |
+| Relógio corrido | 65h49 |
+| Horas paradas excluídas | 55h43 |
+| Tempo somado dos agentes | 14h12 |
 | Paralelismo médio | 1,4x |
-| Sessões | 8 |
-| Agentes | 77 |
+| Sessões | 7 |
+| Agentes | 58 |
 
 | Categoria de agente | Agentes | Tempo somado |
 |---|---|---|
-| Revisão | 21 | 4h51 |
-| Implementação | 37 | 10h32 |
-| Spec/plano | 8 | 1h03 |
-| Documentação | 6 | 0h21 |
-| Testes | 3 | 0h46 |
+| Revisão | 19 | 4h37 |
+| Implementação | 27 | 8h15 |
+| Spec/plano | 5 | 0h35 |
+| Documentação | 3 | 0h18 |
+| Testes | 2 | 0h16 |
 | Outros | 2 | 0h10 |
 
 **Como foi medido.** Todos os eventos (conversa principal e subagentes) entram numa linha do tempo única; só contam intervalos de até 5 minutos, e a espera por mim não conta. O tempo dos agentes é o de cada um na própria linha do tempo, somado; paralelismo = tempo somado ÷ tempo ativo. Regras completas e limites: [tempo de construção](docs/tempo-de-construcao.md).
@@ -400,7 +400,7 @@ Capturas de 19/11/2026 (prompt `2026-11-19.2`), anteriores ao Python no navegado
 | e2e, à mão | `test_fluxo.py`: fluxo no navegador com o app no ar | 1 | `tests/e2e/`; só com `E2E_URL`, não roda no CI |
 | Postgres real | `ATTACH` só leitura num `postgres:16` | 1 teste, só com `PG_TEST_URL` | `tests/test_sql_tool.py`; job `postgres-real` |
 
-Contagem em 21/11/2026: 713 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
+Contagem em 21/11/2026: 715 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
 
 O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pytest com cobertura), `postgres-real` e `e2e-navegador`, que depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`). O CI não usa segredo nem chama o LLM.
 

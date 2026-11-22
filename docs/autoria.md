@@ -32,7 +32,7 @@ Eu escolhi o Cloud Run. O Google pediu um pré-pagamento único de R$180, e eu r
 
 ## O que foi delegado
 
-77 agentes, com 17h44 de trabalho somado dos agentes (em paralelo), em 13h07 de tempo ativo de relógio (números de [tempo de construção](tempo-de-construcao.md), até 21/11/2026). Por categoria: implementação 37 agentes (10h32), revisão 21 (4h51), especificação e plano 8 (1h03), documentação 6 (0h21), testes 3 (0h46), outros 2 (0h10). Ficaram com eles o texto da Spec e dos planos, o código, os testes, as ADRs técnicas, o red team, a avaliação e a medição das horas.
+58 agentes, com 14h12 de trabalho somado dos agentes (em paralelo), em 10h06 de tempo ativo de relógio (números de [tempo de construção](tempo-de-construcao.md), até 21/11/2026, commit `cec40ed`; o trabalho de apresentação feito depois não está incluído). Por categoria: implementação 27 agentes (8h15), revisão 19 (4h37), especificação e plano 5 (0h35), documentação 3 (0h18), testes 2 (0h16), outros 2 (0h10). Ficaram com eles o texto da Spec e dos planos, o código, os testes, as ADRs técnicas, o red team, a avaliação e a medição das horas.
 
 ## O que este documento não diz
 

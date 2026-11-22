@@ -1,33 +1,34 @@
 # Tempo de construção
 
-Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 23:41.
+Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado). O trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.
+
+Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:02.
 
 | Medida | Valor |
 |---|---|
-| Tempo ativo de relógio | 13h07 |
-| Relógio corrido | 69h27 |
-| Horas paradas excluídas | 56h21 |
-| Tempo somado dos agentes | 17h44 |
+| Tempo ativo de relógio | 10h06 |
+| Relógio corrido | 65h49 |
+| Horas paradas excluídas | 55h43 |
+| Tempo somado dos agentes | 14h12 |
 | Paralelismo médio | 1,4x |
-| Sessões | 8 |
-| Agentes | 77 |
+| Sessões | 7 |
+| Agentes | 58 |
 
 | Categoria de agente | Agentes | Tempo somado |
 |---|---|---|
-| Revisão | 21 | 4h51 |
-| Implementação | 37 | 10h32 |
-| Spec/plano | 8 | 1h03 |
-| Documentação | 6 | 0h21 |
-| Testes | 3 | 0h46 |
+| Revisão | 19 | 4h37 |
+| Implementação | 27 | 8h15 |
+| Spec/plano | 5 | 0h35 |
+| Documentação | 3 | 0h18 |
+| Testes | 2 | 0h16 |
 | Outros | 2 | 0h10 |
 
 | Sessão | Ativo |
 |---|---|
 | 340e7bb2 | 2h58 |
 | 418eb7c4 | 0h03 |
-| 42a1924b | 0h03 |
 | 488ee353 | 0h01 |
-| 617cf462 | 8h27 |
+| 617cf462 | 5h26 |
 | 7111805b | 0h01 |
 | 8ace5006 | 1h40 |
 | 8dc7fd4f | 0h00 |
@@ -44,4 +45,4 @@ Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 23:41.
 
 Limites: o tempo que o Daniel gastou pensando fora da tela não é medido; o horário vem dos registros locais do Claude Code; os números exatos dependem do limite de ociosidade (5 minutos).
 
-Gerado em 21/11/2026.
+Gerado em 22/11/2026.
