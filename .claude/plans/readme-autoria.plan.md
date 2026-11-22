@@ -214,7 +214,11 @@ Tornar fontes públicas: **ADR 14** "Hospedagem sem custo: Render grátis" (alte
 | Fatia | Status |
 |---|---|
 | 0 | em andamento |
-| 1–11 | pendentes |
+| 1 | feita (tests/test_docs.py, 37 testes verdes) |
+| 2 | feita (docs/como-rodar.md, docs/limitacoes.md, seções novas em arquitetura e avaliação) |
+| 3 | feita (README de 48 linhas, marcadores de imagem; herói provisório conversa.png) |
+| 4 | feita (docs/autoria.md, ADR 14, atribuições em avaliacao.md); falta a conferência por agente independente |
+| 5–11 | pendentes |
 
 ---
 

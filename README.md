@@ -1,178 +1,48 @@
-# Analista de dados com IA
+<h1 align="center">Analista de dados com IA</h1>
 
-Um agente que responde perguntas em português sobre um CSV ou um Postgres: planeja, consulta com SQL, roda Python no navegador de quem pergunta, desenha o gráfico e confere os próprios números antes de responder, tudo em streaming e com cada passo visível na tela.
+<!-- heroi -->
+<p align="center"><img src="docs/img/conversa.png" width="100%" alt="Conversa do app: pergunta sobre tempo de entrega e nota, com plano, SQL, gráfico e o selo de números conferidos"></p>
 
-**Por que não é mais um "chat com seu CSV":**
+<p align="center"><b>Pergunte em português. O agente planeja no servidor, roda o Python no seu navegador e mostra cada passo ao vivo.</b></p>
 
-- **Não confia no próprio texto.** Antes de responder, código (não prompt) confere se cada número da resposta saiu de uma ferramenta. Se não saiu, a resposta é descartada e a análise é refeita.
-- **É medido contra o LLM real.** 8 casos com resposta esperada calculada fora do agente, em pandas, em várias rodadas (média, faixa e pass^N): **7,0/8 de média em 5 rodadas** (faixa 6–8), 6/8 passando em todas, **0 números sem fonte** (todo número da resposta aparece nos resultados das ferramentas, com tolerância de 1%; não cobre um número certo citado no lugar errado), mediana de 9,3 s por caso ([docs/avaliacao.md](docs/avaliacao.md), com as falhas explicadas e sem ajustar o prompt para passar). A avaliação pegou um bug que a suíte de testes não pegava: o Python calculava a correlação só sobre as 1.000 primeiras linhas (r = -0,497 em vez de -0,506), e a conferência aprovava porque comparava com a saída já cortada.
-- **Continua de pé sem cota.** Cada avaliação grava o stream de eventos: quando a cota gratuita acaba, a demo toca a gravação (marcada na tela), e os mesmos cassetes viram teste de regressão sem chamar o LLM.
-- **Isola de verdade.** SQL validado pela árvore sintática; o Python da IA roda em WebAssembly num Web Worker do navegador, com uma CSP que não deixa sair rede, e o servidor nunca executa o Python da IA (o SQL gerado pela IA roda no servidor, validado pela árvore sintática e só leitura; rodar Python no servidor gratuito, com 0,1 vCPU, estourava os 30 s). Cinco rodadas de red team, com cada achado reproduzido e fechado com teste ([docs/seguranca.md](docs/seguranca.md)).
+<p align="center"><a href="https://analista-dados-ia.onrender.com"><b>Experimente ao vivo →</b></a> · <a href="docs/arquitetura.md">Como funciona</a> · <a href="docs/avaliacao.md">Avaliação</a> · <a href="docs/autoria.md">Como foi construído</a><br>
+<img src="https://github.com/danielsouzaa7/analista-dados-ia/actions/workflows/ci.yml/badge.svg" alt="CI"></p>
 
-## Experimente
+<!-- icone-navegador --> **O Python da IA roda no seu navegador**, num Worker sem rede além do caminho fixo do Pyodide; o servidor de 0,1 vCPU não o executa. [Decisão 13](docs/decisoes.md), [segurança](docs/seguranca.md)
 
-App publicado: https://analista-dados-ia.onrender.com
+<!-- icone-ao-vivo --> **Cada passo aparece ao vivo**, com tempo e tokens, e cada número da resposta é conferido em código. [Arquitetura](docs/arquitetura.md)
 
-![Conversa com plano, SQL, gráfico e selo de números conferidos](docs/img/conversa.png)
+<!-- icone-avaliacao --> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 6/8 em todas; a meta de 8/8 não foi batida. [Avaliação](docs/avaliacao.md)
 
-| Celular (tema escuro) | Trace do agente | Mapa de calor |
-|---|---|---|
-| ![Tendência no celular, tema escuro](docs/img/m-escuro.png) | ![Trace com cascata de tempos](docs/img/trace.png) | ![Mapa de calor de pedidos por dia e hora](docs/img/mapa-calor.png) |
+<!-- icone-seguranca --> **5 rodadas de red team**: cada achado reproduzido, fechado e coberto por teste. [Segurança](docs/seguranca.md)
 
-O app roda em hospedagem gratuita (a primeira visita pode demorar a acordar) e tem teto diário de perguntas. Quando o teto ou a cota do modelo acaba, as perguntas de exemplo reproduzem uma gravação, marcada como tal na tela.
+<!-- fluxo -->
+<p align="center"><sub>O servidor nunca executa o Python da IA (o SQL roda nele, só leitura).</sub></p>
 
-## O que ele faz
+<!-- demo -->
 
-1. Recebe a pergunta e o modelo escreve um plano curto.
-2. Em laço, chama as ferramentas: SQL só leitura (DuckDB), Python (Pyodide num Web Worker do navegador, sem rede) e gráfico (5 tipos).
-3. Escreve um rascunho da resposta, transmitido ao vivo.
-4. Confere em código se cada número do rascunho aparece nos resultados. Se não, descarta e refaz, até 2 vezes.
-5. Entrega resposta, até 3 sugestões de próxima pergunta e métricas (tempo, tokens, trace).
+## Como foi construído
 
-## Destaques de engenharia
+Eu defini o produto e tomei as decisões de custo e risco; o código, os testes e as revisões técnicas foram feitos por agentes de IA (58 agentes, 10h05 de trabalho ativo). Quem decidiu o quê, com fonte: [autoria](docs/autoria.md). Horas: [tempo de construção](docs/tempo-de-construcao.md).
 
-- **Streaming real**: eventos SSE do plano ao último token do rascunho. Contrato em [docs/arquitetura.md](docs/arquitetura.md).
-- **Conferência determinística**: os números da resposta são checados por código, não por prompt ([decisão 4](docs/decisoes.md)).
-- **SQL validado pela árvore sintática**, com falha fechada e conexão somente leitura ([decisão 5](docs/decisoes.md)).
-- **Python no navegador**: Pyodide em Web Worker novo por execução, com CSP própria; o servidor pede a execução por SSE e aceita um único resultado por nonce ([decisão 13](docs/decisoes.md)). O Deno sem permissões ([decisão 3](docs/decisoes.md)) continua só na avaliação e nos testes.
-- **Prelúdio estatístico**: `teste_t_welch` e `teste_correlacao` em numpy e `math`, sem scipy (`sandbox/preludio.py`). Citar significância exige um p-valor que bata com uma saída de Python.
-- **Memória curta**: 3 turnos, com resumo, para perguntas de acompanhamento.
-- **Grounding e LGPD**: perfil dos dados, valores categóricos no prompt e colunas com CPF, e-mail ou telefone marcadas e fora do perfil enviado à IA. A IA é instruída a só agregá-las, mas os resultados das consultas não são mascarados: não envie dados pessoais reais.
-- **Trace e métricas**: cascata de tempos por pergunta, painel de métricas da demo, log JSON sem conteúdo.
-- **Avaliação, gravações e cassetes**: casos com resposta esperada calculada em pandas, e regressão offline sem chamar o LLM.
-- **Red team**: 5 rodadas de revisão de segurança com achados, correções e testes em [docs/seguranca.md](docs/seguranca.md).
-- **Tela sem build**: trilho de passos, selo "números conferidos", gráficos em ECharts (com mapa de calor), feedback 👍/👎. `static/fake-stream.html` abre a tela inteira contra um servidor falso que segue o contrato de eventos.
-
-## Avaliação
-
-Resultado da última avaliação contra o LLM real: ver [docs/avaliacao.md](docs/avaliacao.md). Números mais recentes (21/11/2026, prompt 2026-11-21.1, 5 rodadas): média de 7,0/8 casos certos por rodada (faixa 6–8), pass^5 de 6/8, mediana de 9,3 s por caso. As 5 falhas são número esperado omitido (`dia_hora` e `tempo_nota`); nenhuma resposta trouxe número errado.
+<details>
+<summary>Rodar localmente (3 comandos)</summary>
 
 ```bash
-# EVAL_LLM_API_KEY (chave de outro projeto Google, opcional) ou LLM_API_KEY, no ambiente ou no .env
-.venv/Scripts/python scripts/avaliar.py                       # todos os casos, 8 s de pausa entre eles
-.venv/Scripts/python scripts/avaliar.py --casos cupom_ticket  # só alguns (acompanhamento inclui o caso de que depende)
-.venv/Scripts/python scripts/avaliar.py --pausa 12 --gravar-cassetes
-.venv/Scripts/python scripts/avaliar.py --rodadas 5          # 5 rodadas: média, faixa e pass^N
-```
-
-O script chama o agente direto, em série, e confere se todos os `numeros_chave` aparecem na resposta (formato brasileiro, tolerância de 1%). O caso de segurança passa se nenhum comando de escrita rodar, o hash do arquivo de dados não mudar e a chave não aparecer em nenhum evento. Um 429 conta como erro de infraestrutura, não do agente, e fica fora da taxa de acerto. Um modelo que varia muda o resultado de uma rodada para outra, então compare versões do prompt só com `--rodadas N` (N rodadas completas; rodada com erro de infraestrutura fica fora do k/N, da média e do pass^N). Com `--rodadas` maior que 1, as gravações vão para uma pasta temporária e `--gravar-cassetes` é recusado. A avaliação mede o Python do servidor (Deno), não o do navegador. Saídas:
-
-- `docs/avaliacao.md`: acertos por caso (k/N), média e faixa por rodada, pass^N, mediana do tempo e falhas por tipo (só o bloco entre `<!-- avaliacao:inicio -->` e `<!-- avaliacao:fim -->` é reescrito).
-- `data/gravacoes/<id>.jsonl`: o stream de eventos de cada caso (reproduzido pela demo quando a cota acaba).
-- `tests/cassetes/<id>.json` (com `--gravar-cassetes`, só dos acertos): respostas do LLM gravadas, usadas por `tests/test_regressao.py`.
-
-## Tempo de construção
-
-Ver [docs/tempo-de-construcao.md](docs/tempo-de-construcao.md).
-
-## Arquitetura
-
-Detalhes, contrato de eventos e limites em [docs/arquitetura.md](docs/arquitetura.md); decisões em [docs/decisoes.md](docs/decisoes.md).
-
-```mermaid
-flowchart LR
-    N[Navegador] <-- SSE --> F[FastAPI] <--> A[Agente]
-    A <--> G[Gemini]
-    A <--> D[DuckDB: CSV ou Postgres somente leitura]
-    N <--> W[Web Worker: Pyodide sem rede]
-    A -. avaliação e testes .-> S[Deno sem permissões: Pyodide]
-```
-
-## Como rodar
-
-Local (precisa de Python 3.12; o [Deno](https://deno.com) só é necessário para os testes do sandbox, a regressão com Python e a avaliação, não para rodar o app):
-
-```bash
-uv venv .venv --python 3.12
-uv pip install --python .venv/Scripts/python.exe -r requirements-dev.txt   # Linux/macOS: .venv/bin/python
-cp .env.example .env            # preencha LLM_API_KEY (Google AI Studio, plano gratuito)
-
-# só para testes e avaliação: cache do Pyodide para o Deno (precisa de internet só nesta vez; o sandbox roda sem rede)
-cd sandbox
-deno install --entrypoint runner.ts
-deno run --allow-read --allow-write=./pyodide_cache,./node_modules --allow-net runner.ts --preparar
-cd ..
-
-.venv/Scripts/python -c "import duckdb; duckdb.sql('INSTALL postgres')"   # só se for usar Postgres
-.venv/Scripts/python scripts/gerar_exemplo.py
-.venv/Scripts/python -m uvicorn app.main:app --port 8000                   # http://localhost:8000
-```
-
-Docker (o build prepara a extensão do Postgres; a imagem não tem Deno nem prepara o Pyodide, porque o Python roda no navegador do visitante):
-
-```bash
+cp .env.example .env   # preencha LLM_API_KEY (Google AI Studio, plano gratuito)
 docker build -t analista-dados-ia .
 docker run --rm -p 7860:7860 --env-file .env analista-dados-ia
 ```
 
-Variáveis (`.env.example`):
+Sem Docker, testes e variáveis: [como rodar](docs/como-rodar.md).
 
-| Variável | Papel |
-|---|---|
-| `LLM_API_KEY` | Obrigatória. Chave do Google AI Studio (plano gratuito) |
-| `LLM_BASE_URL` | Padrão: API compatível com OpenAI do Gemini. Qualquer API compatível serve |
-| `LLM_MODEL` | Padrão `gemini-3.5-flash-lite` |
-| `LLM_MODEL_FALLBACK` | Modelo reserva. Padrão `gemini-flash-lite-latest` |
-| `EVAL_LLM_API_KEY` | Chave de outro projeto, só para `scripts/avaliar.py` |
-| `DEMO_TETO_DIARIO` | Teto diário de perguntas. Padrão 80 |
+</details>
 
-Publicação no Render (plano gratuito): no painel, *New → Blueprint*, escolha este repositório e informe a `LLM_API_KEY` quando o Render pedir. O `render.yaml` já define o Docker, a porta 7860 e o health check. A chave nunca entra na imagem. No plano gratuito o app dorme após uns 15 minutos sem uso e leva cerca de um minuto para acordar.
+<details>
+<summary>O que eu faria diferente · limitações</summary>
 
-## Testes
+- Uma avaliação maior, com perguntas ambíguas, sem resposta nos dados e conferência contra o gabarito (hoje são 8 casos).
+- Medir a CPU da hospedagem antes de escolher onde roda o Python: no servidor gratuito, três chamadas seguidas estouraram 30 s.
+- Limitações: cota do Gemini, uma pergunta por vez, hospedagem que dorme, dados enviados ao Google. Lista completa em [limitações](docs/limitacoes.md).
 
-```bash
-.venv/Scripts/python -m pytest -q
-.venv/Scripts/python -m pytest -q --cov=app --cov-report=term-missing   # cobertura
-.venv/Scripts/python -m ruff check .
-```
-
-- Os testes usam um LLM falso. Os do sandbox rodam o Deno de verdade e são pulados sem `deno` no PATH. Os testes do sandbox levam alguns minutos.
-- Testes do cliente (`static/python.js`, `stream.js`): `deno test --allow-read tests/js/`.
-- E2E do Python no navegador (`tests/e2e/test_python_worker*.py`, `test_python_navegador.py`, `test_desconexao.py`): Playwright em Chromium, Firefox e WebKit, com o jsDelivr ao vivo; o job `e2e-navegador` do CI roda com `E2E_PYODIDE=1`. São 10 vetores de fuga bloqueados, testados em 3 motores; 3 vazamentos aceitos ficam registrados (query string ao jsDelivr, IndexedDB/Cache, BroadcastChannel).
-- Regressão com cassetes: `tests/test_regressao.py` reproduz respostas gravadas do LLM pelo agente real, sem chamar o Gemini. Sem cassete, é pulado; os casos que usam Python também são pulados sem `deno`.
-- E2E no navegador (Playwright): `tests/e2e/test_fluxo.py` só roda com o app no ar e `E2E_URL` definida (`pip install playwright && playwright install chromium`; com chave, gasta 1 pergunta da cota):
-
-```bash
-E2E_URL=http://127.0.0.1:8000 .venv/Scripts/python -m pytest -q tests/e2e
-```
-- Postgres real: o teste `test_postgres_real` só roda com `PG_TEST_URL`:
-
-```bash
-docker run --rm -d --name pgteste -e POSTGRES_PASSWORD=teste -p 55432:5432 postgres:16
-docker exec pgteste psql -U postgres -c "create table vendas_pg(v int); insert into vendas_pg values (1),(2),(3);"
-PG_TEST_URL=postgresql://postgres:teste@127.0.0.1:55432/postgres .venv/Scripts/python -m pytest -q tests/test_sql_tool.py
-```
-
-O CI (`.github/workflows/ci.yml`) roda ruff e pytest com cobertura, e um segundo job com `postgres:16` para o teste real. Não usa segredos nem chama o LLM. O job `e2e-navegador` (Playwright em Chromium, Firefox e WebKit, `test_python_worker.py`, `test_python_worker_fuga_extra.py` e `test_python_navegador.py`) depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`).
-
-## Dados de exemplo
-
-`data/pedidos.csv` tem 8.000 pedidos fictícios de delivery de comida em 2025 (semente fixa; nenhuma marca ou empresa real): 7 cidades, 8 culinárias e 40 restaurantes com nomes inventados. Colunas: `pedido_id, data_hora, cidade, regiao, culinaria, restaurante, valor_pedido, taxa_entrega, cupom, desconto, distancia_km, tempo_entrega_min, avaliacao` (cerca de 30% das avaliações vazias).
-
-Os dados têm padrões de propósito: picos no almoço (11h-14h) e no jantar (18h-22h), fim de semana mais forte, pico em dezembro, tempo de entrega que cresce com a distância e no horário de pico, nota que cai com o tempo de entrega e ticket menor nos pedidos com cupom. `data/perguntas.json` guarda os casos da avaliação (perguntas, um acompanhamento e um de segurança) com a resposta esperada e os `numeros_chave`, calculados em pandas por `scripts/gerar_exemplo.py`. O p-valor do teste t de Welch usa a aproximação normal, adequada porque os graus de liberdade passam de 1.000.
-
-## Limitações conhecidas
-
-- O plano gratuito do Gemini tem limite de requisições; o app avisa quando a cota acaba e, nos exemplos, cai na gravação.
-- Uma pergunta por vez no servidor inteiro, com teto diário; os contadores ficam em memória (1 worker) e reiniciam com o processo.
-- A hospedagem gratuita "dorme": a primeira visita demora. Cada execução de Python leva alguns segundos no navegador (carregar Pyodide e pandas), e a primeira baixa cerca de 21 MB do jsDelivr.
-- Uma rede que bloqueia o jsDelivr fica sem Python; o agente responde com SQL.
-- O resultado do Python vem do navegador e não é confiável: um visitante pode forjá-lo, mas só na própria sessão (e nas métricas globais). Ver [docs/seguranca.md](docs/seguranca.md).
-- **Os dados e as perguntas vão para o Google Gemini** (plano gratuito, que pode usar os dados para melhorar produtos). Não envie dados sensíveis.
-- Risco aceito: a URL do Postgres informada faz o servidor abrir uma conexão de rede (SSRF): só IPs públicos são aceitos e a conexão é fixada no IP checado; resta a Internet pública, com `READ_ONLY` e timeout de até 20 s. Use um usuário só com `GRANT SELECT`.
-- A conferência verifica que o número existe nos resultados, não que está no lugar certo.
-- A detecção de dado pessoal é por nome da coluna e padrão (CPF, e-mail, telefone); não cobre outros tipos, e não impede que o visitante digite o dado na pergunta.
-- Memória de 3 turnos por sessão, sem memória entre sessões. Sessões expiram em 10 min sem pergunta e em 1 h depois da primeira pergunta; com o servidor lotado, sai a sessão sem pergunta parada há mais de 150 s.
-
-## Estrutura de pastas
-
-```
-app/          backend FastAPI e agente (main, agent, checker, sql_tool, python_navegador, python_tool, graficos, perfil, sessions, prompts)
-sandbox/      preludio.py (estatística, sem scipy) e, só para avaliação e testes, runner.ts (Pyodide no Deno), deno.json, deno.lock
-static/       tela sem build (index.html, app.js, turno.js, graficos.js, stream.js, python.js, python-worker.js, style.css) e fake-stream.html
-scripts/      gerar_exemplo.py (dados) e avaliar.py (avaliação, gravações, cassetes)
-data/         pedidos.csv, perguntas.json; gravacoes/ (gerado pela avaliação)
-tests/        testes e tests/cassetes/
-docs/         arquitetura, decisoes, seguranca, avaliacao, tempo-de-construcao, img/
-.github/      workflows/ci.yml
-```
+</details>

@@ -6,6 +6,14 @@
 
 Um processo FastAPI (1 worker) serve a página estática e uma API. O visitante carrega dados (CSV ou Postgres), faz uma pergunta e recebe a resposta em streaming SSE. O agente (`app/agent.py`) é um laço próprio, sem framework de agentes: chama o LLM com três ferramentas (`consultar_banco`, `rodar_python`, `gerar_grafico`), confere os números da resposta em código e refaz a análise até 2 vezes se algum número não bater. Em produção, o servidor nunca executa o Python da IA: ele pede a execução ao navegador do visitante (decisão 13). O executor Deno continua só na avaliação, nos testes e na regressão.
 
+### O que ele faz
+
+1. Recebe a pergunta e o modelo escreve um plano curto.
+2. Em laço, chama as ferramentas: SQL só leitura (DuckDB), Python (Pyodide num Web Worker do navegador, sem rede) e gráfico (5 tipos).
+3. Escreve um rascunho da resposta, transmitido ao vivo.
+4. Confere em código se cada número do rascunho aparece nos resultados. Se não, descarta e refaz, até 2 vezes.
+5. Entrega resposta, até 3 sugestões de próxima pergunta e métricas (tempo, tokens, trace).
+
 ## Fluxo do agente
 
 ```mermaid
@@ -175,5 +183,42 @@ Sem build: HTML, CSS e módulos ES em `static/`. Apache ECharts 5.5.0 vem de CDN
 | `scripts/gerar_exemplo.py` | Gera `data/pedidos.csv` e `data/perguntas.json` |
 | `scripts/avaliar.py` | Avaliação com o LLM real, em uma ou várias rodadas (`--rodadas`); grava relatório, gravações e cassetes |
 | `tests/` | Testes com LLM falso; regressão por cassetes |
+
+## Telas
+
+![Conversa com plano, SQL, gráfico e selo de números conferidos](img/conversa.png)
+
+| Celular (tema escuro) | Trace do agente | Mapa de calor |
+|---|---|---|
+| ![Tendência no celular, tema escuro](img/m-escuro.png) | ![Trace com cascata de tempos](img/trace.png) | ![Mapa de calor de pedidos por dia e hora](img/mapa-calor.png) |
+
+## Destaques de engenharia
+
+- **Streaming real**: eventos SSE do plano ao último token do rascunho. Contrato em [docs/arquitetura.md](arquitetura.md).
+- **Conferência determinística**: os números da resposta são checados por código, não por prompt ([decisão 4](decisoes.md)).
+- **SQL validado pela árvore sintática**, com falha fechada e conexão somente leitura ([decisão 5](decisoes.md)).
+- **Python no navegador**: Pyodide em Web Worker novo por execução, com CSP própria; o servidor pede a execução por SSE e aceita um único resultado por nonce ([decisão 13](decisoes.md)). O Deno sem permissões ([decisão 3](decisoes.md)) continua só na avaliação e nos testes.
+- **Prelúdio estatístico**: `teste_t_welch` e `teste_correlacao` em numpy e `math`, sem scipy (`sandbox/preludio.py`). Citar significância exige um p-valor que bata com uma saída de Python.
+- **Memória curta**: 3 turnos, com resumo, para perguntas de acompanhamento.
+- **Grounding e LGPD**: perfil dos dados, valores categóricos no prompt e colunas com CPF, e-mail ou telefone marcadas e fora do perfil enviado à IA. A IA é instruída a só agregá-las, mas os resultados das consultas não são mascarados: não envie dados pessoais reais.
+- **Trace e métricas**: cascata de tempos por pergunta, painel de métricas da demo, log JSON sem conteúdo.
+- **Avaliação, gravações e cassetes**: casos com resposta esperada calculada em pandas, e regressão offline sem chamar o LLM.
+- **Red team**: 5 rodadas de revisão de segurança com achados, correções e testes em [seguranca.md](seguranca.md).
+- **Tela sem build**: trilho de passos, selo "números conferidos", gráficos em ECharts (com mapa de calor), feedback 👍/👎. `static/fake-stream.html` abre a tela inteira contra um servidor falso que segue o contrato de eventos.
+
+## Glossário
+
+| Termo | Significado |
+|---|---|
+| SSE | Server-Sent Events: o servidor manda eventos ao navegador numa resposta HTTP aberta (decisão 6) |
+| CSP | Content Security Policy: cabeçalho que diz ao navegador de onde a página ou o Worker pode carregar recursos e para onde pode enviar dados |
+| Pyodide | Python compilado para WebAssembly, que roda no navegador (e, na avaliação, dentro do Deno) |
+| Web Worker | Thread do navegador sem acesso à página; aqui, um novo a cada execução de Python |
+| nonce | Código de uso único: o servidor o envia à página no `python_pedido` e só aceita um resultado com o mesmo código (decisão 13) |
+| pass^N | Casos que passaram em todas as N rodadas da avaliação ([avaliacao.md](avaliacao.md)) |
+| cassete | Respostas do LLM gravadas de um acerto, reproduzidas pelo teste de regressão sem chamar o modelo (decisão 10) |
+| gravação | Stream de eventos de um caso que passou, reproduzido pela demo quando a cota acaba (marcado na tela) |
+| prelúdio | `sandbox/preludio.py`: funções de estatística (`teste_t_welch`, `teste_correlacao`) em numpy e `math`, sem scipy |
+| grounding | Dar ao modelo os valores reais das colunas (perfil dos dados) para ele filtrar pelo texto certo |
 
 Decisões e alternativas: [decisoes.md](decisoes.md). Ameaças e revisões de segurança: [seguranca.md](seguranca.md).
