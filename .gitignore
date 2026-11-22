@@ -5,6 +5,7 @@ referencia.png
 # segredos
 .env
 .env.*
+*.env
 !.env.example
 
 # python
@@ -25,4 +26,4 @@ data/sessions/
 
 # saidas locais do playwright
 .playwright-mcp/
-.claude/ecc/
+.claude/
