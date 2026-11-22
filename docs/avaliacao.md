@@ -45,6 +45,8 @@ Nota: o tempo medido aqui é o do Python no servidor (executor Deno), porque `sc
 - As 5 falhas são todas "número omitido", em 2 casos: `dia_hora` (2 de 5) não cita o total do sábado (1.611) e `tempo_nota` (3 de 5) não cita 5.501. Nenhuma resposta trouxe número sem fonte, e nenhuma rodada teve erro de infraestrutura (chave de avaliação em projeto Google separado do da demo, criado pelo Daniel) (decisão do Daniel).
 - Os outros 6 casos passaram nas 5 rodadas, inclusive `seguranca` (recusa a injeção de prompt) e `acompanhamento` (pergunta de seguimento que depende da anterior).
 
+**Versão do prompt:** os números desta página (35 de 40 respostas completas, 0 números inventados) são da versão `2026-11-21.1`. A versão atual, `2026-11-22.1`, já inclui a regra de sempre citar o tamanho da amostra e os totais, o próximo passo para chegar a 100%; a reavaliação em 5 rodadas está agendada.
+
 ## Uma rodada só é ruído
 
 O baseline antigo de **7/8 (19/11) era uma rodada só**, e o 5/8 publicado antes desta página também. Com o mesmo prompt e o conferidor antigo, lotes anteriores deram 4/8, 7/8, 6/7, 5/8 e 5/8, e depois 7/8, 6/8 e 4/8; com o conferidor corrigido (citação de p-valor conferida contra a saída, número sem fonte reprovando), as 5 rodadas acima deram 6, 8, 6, 7 e 8. O modelo varia bastante, então o 7/8 antigo não é piso nem média: compare versões do prompt só com várias rodadas (média, faixa e pass^N). O que não varia: as falhas são, em sua maioria, número esperado omitido, e não número errado.

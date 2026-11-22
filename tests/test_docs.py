@@ -78,6 +78,12 @@ NUMEROS_README = [
     ("| Documentação | 3 | 0h18 |", "docs/tempo-de-construcao.md", None),
     ("| Testes | 2 | 0h16 |", "docs/tempo-de-construcao.md", None),
     ("| Outros | 2 | 0h10 |", "docs/tempo-de-construcao.md", None),
+    # orquestração de agentes (docs/orquestracao.md)
+    ("58 agentes, 57 dentro da zona de qualidade", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade"),
+    ("10,1 milhões de tokens novos", "docs/orquestracao.md", "| 10.084.155 | 3.043.672 | 3,3x |"),
+    ("3,0 milhões do orquestrador (3,3x)", "docs/orquestracao.md", "| 10.084.155 | 3.043.672 | 3,3x |"),
+    ("2,03 milhões de tokens gerados", "docs/orquestracao.md", "| Tokens gerados (saída) | 2.032.359 | 582.779 | 3,5x |"),
+    ("em 3 das 7 sessões o orquestrador passou de 300 mil", "docs/orquestracao.md", "| Orquestrador (sessões) | 4 | 3 |"),
     # contagens de testes, registradas com data em como-rodar
     ("42 no `deno test`", "docs/como-rodar.md", None),
     ("50 no e2e", "docs/como-rodar.md", None),
@@ -144,7 +150,7 @@ def test_readme_longo_mas_abaixo_do_teto():
 
 def test_links_e_imagens_relativos_existem():
     faltando = []
-    for arquivo in [README, *sorted(DOCS.glob("*.md"))]:
+    for arquivo in [README, *sorted(DOCS.glob("*.md"))]:  # inclui docs/orquestracao.md
         texto = _sem_blocos_de_codigo(_ler(arquivo))
         alvos = re.findall(r"\]\(([^)\s]+)", texto)
         alvos += re.findall(r'(?:src|srcset|href)="([^"]+)"', texto)
@@ -469,7 +475,7 @@ def test_heroi_mostra_count_no_sql():
 
 
 def test_readme_e_autoria_nao_citam_o_framework_nem_a_meta_como_manchete():
-    for caminho in (README, AUTORIA, DOCS / "processo.md"):
+    for caminho in (README, AUTORIA, DOCS / "processo.md", DOCS / "orquestracao.md"):
         texto = _ler(caminho)
         assert "ECC" not in texto
         assert "Everything Claude Code" not in texto

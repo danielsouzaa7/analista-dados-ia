@@ -54,6 +54,7 @@ Por categoria (58 agentes, 14h12 somadas, em 10h06 de relógio ativo): implement
 - Modelo escolhido por tarefa: o mais forte para planejar e revisar, o mais rápido para implementar (regra do meu fluxo; o registro da conversa não está publicado).
 - Planos como contrato de passagem entre agentes (`.claude/plans/`).
 - Revisões independentes: o revisor recebe o código, não a conclusão de quem o escreveu.
+- **Em números:** 58 agentes, 57 deles dentro da zona de qualidade (pico de contexto até 300 mil tokens). Os agentes processaram 10,1 milhões de tokens novos contra 3,0 milhões do orquestrador (3,3x) e geraram 2,03 milhões de tokens (3,5x o orquestrador). Em 3 das 7 sessões o orquestrador passou de 300 mil; a lição aplicada é delegar mais e compactar. Gráfico: [orquestração](img/orquestracao.svg). Metodologia, incluindo o que conta como token: [orquestração](orquestracao.md).
 
 ## 5. Guardrails
 
@@ -72,4 +73,4 @@ Por categoria (58 agentes, 14h12 somadas, em 10h06 de relógio ativo): implement
 
 ## 7. Números do processo
 
-58 agentes em 7 sessões; 10h06 de tempo ativo de relógio; 14h12 somadas; paralelismo médio de 1,4x ([tempo de construção](tempo-de-construcao.md)). Avaliação final: 35 de 40 respostas completas e 0 números sem fonte ([avaliação](avaliacao.md)). O red team teve 5 rodadas, com cada achado corrigido ou publicado como risco aceito ([segurança](seguranca.md)).
+58 agentes em 7 sessões; 10h06 de tempo ativo de relógio; 14h12 somadas; paralelismo médio de 1,4x ([tempo de construção](tempo-de-construcao.md)). Agentes: 10,1 milhões de tokens novos contra 3,0 milhões do orquestrador (3,3x) e 2,03 milhões de tokens gerados (3,5x); em 3 das 7 sessões o orquestrador passou de 300 mil tokens de contexto ([gráfico](img/orquestracao.svg), [metodologia](orquestracao.md)). Avaliação final: 35 de 40 respostas completas e 0 números sem fonte ([avaliação](avaliacao.md)). O red team teve 5 rodadas, com cada achado corrigido ou publicado como risco aceito ([segurança](seguranca.md)).

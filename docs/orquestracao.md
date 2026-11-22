@@ -2,7 +2,7 @@
 
 Mede só a construção do agente, até o commit `cec40ed` (mesmo corte das horas de construção).
 
-**58 agentes geraram 2.032.359 tokens de saída; o orquestrador (conversa principal de 7 sessões) gerou 582.779** (3,5x). O pico de contexto do orquestrador foi 505.062 tokens; 57 de 58 agentes ficaram na zona de genialidade (pico até 300.000) e 1 passou(aram) dela.
+**58 agentes geraram 2.032.359 tokens de saída; o orquestrador (conversa principal de 7 sessões) gerou 582.779** (3,5x). O pico de contexto do orquestrador foi 505.062 tokens; 57 de 58 agentes ficaram na zona de genialidade (pico até 300.000) e 1 passou dela.
 
 ## Totais
 
@@ -46,7 +46,7 @@ Mede só a construção do agente, até o commit `cec40ed` (mesmo corte das hora
 | 6 | 505.062 | 0 | — |
 | 7 | 82.411 | 0 | — |
 
-**Honestidade:** 3 sessão(ões) do orquestrador passaram de 300.000 tokens de pico; o contexto foi compactado 3 vez(es) (maior contexto antes de compactar: 398.417).
+**Honestidade:** 3 sessões do orquestrador passaram de 300.000 tokens de pico; o contexto foi compactado 3 vezes (maior contexto antes de compactar: 398.417).
 
 ## Como foi medido
 

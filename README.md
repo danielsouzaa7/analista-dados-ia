@@ -38,7 +38,7 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 | Red team | 5 rodadas, cada achado corrigido (quase todos com teste automatizado) ou risco aceito | [segurança](docs/seguranca.md) |
 | Fugas do Worker | 10 vetores de fuga bloqueados, testados em 3 motores | [como rodar](docs/como-rodar.md) |
 | Imagem Docker sem Deno | de 617 para 433 MB | [segurança](docs/seguranca.md) |
-| Testes (coletados em 21/11/2026) | 719 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
+| Testes (coletados em 22/11/2026) | 732 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
 | Cobertura do pytest sobre `app/`, no CI | 97% (run #6, commit `bcd2420`: 657 passed, 50 skipped) | [como rodar](docs/como-rodar.md), [Actions](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) |
 | Construção | 10h06 de tempo ativo de relógio (65h49 de relógio corrido, 55h43 paradas excluídas) | [tempo de construção](docs/tempo-de-construcao.md) |
 | Agentes de IA | 58 agentes, 14h12 de trabalho somado dos agentes (em paralelo), paralelismo 1,4x, 7 sessões | [tempo de construção](docs/tempo-de-construcao.md) |
@@ -73,6 +73,15 @@ Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu n�
 | Outros | 2 | 0h10 |
 
 **Como foi medido.** Todos os eventos (conversa principal e subagentes) entram numa linha do tempo única; só contam intervalos de até 5 minutos, e a espera por mim não conta. O tempo dos agentes é o de cada um na própria linha do tempo, somado; paralelismo = tempo somado ÷ tempo ativo. Regras completas e limites: [tempo de construção](docs/tempo-de-construcao.md).
+
+<p><b>Orquestração em números</b></p>
+
+<img src="docs/img/orquestracao.svg" width="100%" alt="Gráfico de barras comparando os tokens dos 58 agentes com os do orquestrador: tokens novos, tokens gerados e pico de contexto em relação ao limite de 300 mil tokens.">
+
+- **58 agentes, 57 dentro da zona de qualidade** (pico de contexto até 300 mil tokens): cada agente trabalha num contexto curto e próprio, e contextos curtos mantêm a qualidade da resposta.
+- **10,1 milhões de tokens novos** processados pelos agentes contra 3,0 milhões do orquestrador (3,3x).
+- **2,03 milhões de tokens gerados** pelos agentes, 3,5x o que o orquestrador gerou.
+- **Onde falhei:** em 3 das 7 sessões o orquestrador passou de 300 mil tokens de contexto. A lição aplicada: delegar mais e compactar antes. Método e o que conta como token: [orquestração](docs/orquestracao.md).
 
 Algumas das 13 decisões minhas (10 com fonte publicada; 3 só no registro local), registradas na [autoria](docs/autoria.md):
 
@@ -364,6 +373,8 @@ Notas honestas:
 - **Uma rodada só é ruído:** o 7/8 de 19/11 era uma rodada só. Com o mesmo prompt e o conferidor antigo, lotes anteriores deram 4/8, 7/8, 6/7 (lote com 7 casos), 5/8 e 5/8, e depois 7/8, 6/8 e 4/8. Compare versões do prompt só com várias rodadas.
 - **Régua da Spec:** a régua interna da Spec é exigente: 100% de respostas completas em todas as rodadas (8 de 8). Hoje são 87,5% (35 de 40): dois casos às vezes deixam de citar um número do gabarito, sem nunca errar um número. `dia_hora` acertou 3 de 5 e omitiu 2 vezes o total do sábado (1.611), embora diga que sábado é o pico; `tempo_nota` acertou 2 de 5 e omitiu 3 vezes os 5.501 pedidos avaliados, embora dê a correlação certa (-0,506). Causa provável: a variação do modelo gratuito (`gemini-3.5-flash-lite`) e o prompt não exigir o tamanho da amostra nem o total. O próximo passo é o prompt pedir sempre o "n" de cada análise, o que exigiria regravar a avaliação (ainda não feito).
 
+**Versão do prompt:** os números desta página (35 de 40 respostas completas, 0 números inventados) são da versão `2026-11-21.1`. A versão atual, `2026-11-22.1`, já inclui a regra de sempre citar o tamanho da amostra e os totais, o próximo passo para chegar a 100%; a reavaliação em 5 rodadas está agendada.
+
 Relatório e mudança do gabarito de `cupom_ticket`: [avaliação](docs/avaliacao.md).
 
 ## Segurança
@@ -421,7 +432,7 @@ Capturas de 19/11/2026 (prompt `2026-11-19.2`), anteriores ao Python no navegado
 | e2e, à mão | `test_fluxo.py`: fluxo no navegador com o app no ar | 1 | `tests/e2e/`; só com `E2E_URL`, não roda no CI |
 | Postgres real | `ATTACH` só leitura num `postgres:16` | 1 teste, só com `PG_TEST_URL` | `tests/test_sql_tool.py`; job `postgres-real` |
 
-Contagem em 21/11/2026: 719 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
+Contagem em 22/11/2026: 732 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
 
 O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pytest com cobertura), `postgres-real` e `e2e-navegador`, que depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`). O CI não usa segredo nem chama o LLM.
 

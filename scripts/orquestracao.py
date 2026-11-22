@@ -124,7 +124,7 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
         f"principal de {o['n_sessoes']} sessões) gerou {n(o['saida'])}** ({razao(t['saida'], o['saida'])}). "
         f"O pico de contexto do orquestrador foi {n(o['pico'])} tokens; "
         f"{r['dentro_zona']} de {r['n_agentes']} agentes ficaram na zona de genialidade "
-        f"(pico até {n(LIMITE_ZONA)}) e {r['fora_zona']} passou(aram) dela.", "",
+        f"(pico até {n(LIMITE_ZONA)}) e {r['fora_zona']} {'passou' if r['fora_zona'] == 1 else 'passaram'} dela.", "",
         "## Totais", "",
         "| Medida | Agentes | Orquestrador | Razão agentes ÷ orquestrador |", "|---|---:|---:|---:|",
         _linha("Tokens gerados (saída)", t["saida"], o["saida"]),
@@ -151,9 +151,9 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
         "",
     ]
     if o["sessoes_acima"]:
-        linhas += [f"**Honestidade:** {o['sessoes_acima']} sessão(ões) do orquestrador passaram de "
+        linhas += [f"**Honestidade:** {o['sessoes_acima']} {'sessão do orquestrador passou' if o['sessoes_acima'] == 1 else 'sessões do orquestrador passaram'} de "
                    f"{n(LIMITE_ZONA)} tokens de pico; o contexto foi compactado {o['compactacoes']} "
-                   f"vez(es) (maior contexto antes de compactar: {n(o['pre_compactacao_max'])}).", ""]
+                   f"{'vez' if o['compactacoes'] == 1 else 'vezes'} (maior contexto antes de compactar: {n(o['pre_compactacao_max'])}).", ""]
     linhas += [
         "## Como foi medido", "",
         "1. Lê o `usage` de cada mensagem do assistente na conversa principal (orquestrador) e em cada "
