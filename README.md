@@ -60,7 +60,7 @@ Em 10h06 de tempo ativo de relógio, defini as restrições, escolhi a arquitetu
 Começo pelo sistema. Antes de um agente escrever a primeira linha, o problema, as restrições e o critério de pronto já estão escritos; depois o trabalho vira fatias, e cada fatia vai para o especialista certo.
 
 1. **Restrições primeiro.** Custo zero, chave do LLM fora do alcance dos agentes, dados de delivery de comida por causa de quem vai avaliar. Só a regra de custo zero já tirou a hospedagem paga da mesa e decidiu onde o Python roda.
-2. **Spec verificável.** O pedido vira uma [Spec](Spec.md) com 24 critérios de aceite, e um agente independente revisa o plano antes de existir código. Essa revisão achou furos na regex de significância antes de haver código.
+2. **Spec verificável.** O pedido vira uma [Spec](Spec.md) com 24 critérios de aceite, e um agente independente revisa o plano. Essa revisão achou furos na regex de significância antes de haver código.
 3. **Fatias com território.** O plano corta o trabalho em fatias verticais e dá a cada agente um conjunto de arquivos próprio. Na fase de portfólio, 3 frentes andaram em paralelo, com arquivos disjuntos ([plano](.claude/plans/experiencia-portfolio.plan.md)).
 4. **Contexto curto para cada agente.** Cada agente trabalha numa janela própria e enxuta: 57 dos 58 ficaram até 300 mil tokens de pico. Quando o orquestrador passou desse limite, mudei a regra e passei a delegar mais cedo.
 5. **Modelo por tarefa.** O modelo mais forte planeja e revisa, o mais rápido implementa. Quem revisa recebe o código, sem a conclusão de quem o escreveu.
