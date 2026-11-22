@@ -81,7 +81,7 @@ Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu n�
 - **58 agentes, 57 dentro da zona de qualidade** (pico de contexto até 300 mil tokens): cada agente trabalha num contexto curto e próprio, e contextos curtos mantêm a qualidade da resposta.
 - **10,1 milhões de tokens novos** processados pelos agentes contra 3,0 milhões do orquestrador (3,3x).
 - **2,03 milhões de tokens gerados** pelos agentes, 3,5x o que o orquestrador gerou.
-- **Onde falhei:** em 3 das 7 sessões o orquestrador passou de 300 mil tokens de contexto. A lição aplicada: delegar mais e compactar antes. Método e o que conta como token: [orquestração](docs/orquestracao.md).
+- **Aprendizado aplicado:** em 3 das 7 sessões o orquestrador passou de 300 mil tokens de contexto; desde então, delego mais cedo e compacto antes, para manter cada contexto na zona de qualidade. Método e o que conta como token: [orquestração](docs/orquestracao.md).
 
 Algumas das 13 decisões minhas (10 com fonte publicada; 3 só no registro local), registradas na [autoria](docs/autoria.md):
 
