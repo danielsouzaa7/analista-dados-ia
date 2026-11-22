@@ -5,7 +5,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 RAIZ = Path(__file__).resolve().parent.parent
-load_dotenv(RAIZ / ".env")
+if os.environ.get("APP_SEM_DOTENV") != "1":  # a avaliação define isto para não carregar a chave da demo
+    load_dotenv(RAIZ / ".env")
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_BASE_URL = os.environ.get(

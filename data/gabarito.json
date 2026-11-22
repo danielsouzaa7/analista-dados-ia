@@ -1,0 +1,52 @@
+{
+ "receita_culinaria": [
+  126533.33,
+  86115.04,
+  69648.16
+ ],
+ "pedidos_mes": [
+  940.0,
+  494.0
+ ],
+ "dia_hora": [
+  1611.0,
+  226.0
+ ],
+ "tempo_nota": [
+  -0.5063,
+  5501.0
+ ],
+ "participacao_cidade": [
+  29.2214,
+  21.3187
+ ],
+ "cupom_ticket": [
+  52.0087,
+  63.8974
+ ],
+ "acompanhamento": [
+  46633.26,
+  27126.18
+ ],
+ "ticket_medio_geral": [
+  61.49
+ ],
+ "cidade_melhor_nota": [
+  4.7138
+ ],
+ "restaurante_mais_pedidos": [
+  594.0
+ ],
+ "pct_pedidos_cupom": [
+  20.25
+ ],
+ "regiao_maior_tempo": [
+  34.3638
+ ],
+ "ext_sem_avaliacao": [
+  2499.0
+ ],
+ "ext_pedido_unico": [
+  24.78
+ ]
+}

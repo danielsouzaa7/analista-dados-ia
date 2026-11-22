@@ -206,7 +206,7 @@ def test_gravador_registra_os_pedacos_e_o_cassete_reproduz(tmp_path) -> None:
     llm = avaliar.gravar_llm(lambda m, t, r: iter(next(fila)), cassete)
     vistos = [list(llm([], None, 1)), list(llm([], None, 1))]
     assert vistos == respostas and cassete == [[list(p) for p in r] for r in respostas]
-    avaliar.salvar_cassete(CASO, "modelo-x", cassete, tmp_path)
+    avaliar.salvar_cassete(CASO, "modelo-x", cassete, tmp_path, CHAVE)
     corpo = json.loads((tmp_path / "total.json").read_text(encoding="utf-8"))
     replay = avaliar.LlmCassete(corpo["respostas"])
     assert list(replay([], None, 1)) == respostas[0] and list(replay([], None, 1)) == respostas[1]

@@ -1,8 +1,10 @@
+import os
 from pathlib import Path
 
 import pytest
 
-from app import config, sessions
+os.environ.setdefault("APP_SEM_DOTENV", "1")  # suíte hermética: o .env de quem roda não entra nos testes
+from app import config, sessions  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
