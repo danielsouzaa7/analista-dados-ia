@@ -50,6 +50,8 @@ Publicação no Render (plano gratuito): no painel, *New → Blueprint*, escolha
 .venv/Scripts/python -m ruff check .
 ```
 
+Contagem em 21/11/2026 (só coletados, `--collect-only`): 701 testes no pytest (sem `tests/e2e`), 42 no `deno test` (`tests/js/`) e 50 no e2e (`tests/e2e`, coletados com `E2E_PYODIDE=1`; os de navegador rodam em 3 motores). Cobertura: 97% de `app/` (`TOTAL 1511 45 97%`), medida em 21/11/2026 no CI, [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`: 657 passed, 50 skipped). Os 50 pulados ali são os 49 testes de navegador de `tests/e2e` (sem `E2E_PYODIDE` nem `E2E_URL`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos outros dois jobs.
+
 - Os testes usam um LLM falso. Os do sandbox rodam o Deno de verdade e são pulados sem `deno` no PATH. Os testes do sandbox levam alguns minutos.
 - Testes do cliente (`static/python.js`, `stream.js`): `deno test --allow-read tests/js/`.
 - E2E do Python no navegador (`tests/e2e/test_python_worker*.py`, `test_python_navegador.py`, `test_desconexao.py`): Playwright em Chromium, Firefox e WebKit, com o jsDelivr ao vivo; o job `e2e-navegador` do CI roda com `E2E_PYODIDE=1`. São 10 vetores de fuga bloqueados, testados em 3 motores; 3 vazamentos aceitos ficam registrados (query string ao jsDelivr, IndexedDB/Cache, BroadcastChannel).
@@ -84,7 +86,7 @@ static/       tela sem build (index.html, app.js, turno.js, graficos.js, stream.
 scripts/      gerar_exemplo.py (dados) e avaliar.py (avaliação, gravações, cassetes)
 data/         pedidos.csv, perguntas.json; gravacoes/ (gerado pela avaliação)
 tests/        testes e tests/cassetes/
-docs/         arquitetura, decisoes, seguranca, avaliacao, tempo-de-construcao, img/
+docs/         arquitetura, decisoes, seguranca, avaliacao, autoria, como-rodar, limitacoes, tempo-de-construcao, img/
 .github/      workflows/ci.yml
 ```
 
@@ -93,9 +95,9 @@ docs/         arquitetura, decisoes, seguranca, avaliacao, tempo-de-construcao, 
 O GIF do README é uma gravação de tela do app real rodando localmente, com uma pergunta digitada (não um botão de exemplo, para nunca cair numa gravação de resposta). Método:
 
 1. Subir o `uvicorn` local com a chave do LLM no ambiente e `SESSIONS_DIR` temporário.
-2. Playwright em Chromium, janela de 1024×640, tema claro, com `record_video_dir`: "Usar CSV de exemplo", esperar o esquema, digitar a pergunta "O tempo de entrega afeta a nota do cliente?" e esperar a resposta final.
-3. Converter o vídeo com ffmpeg (`fps=10`, `scale=800:-1`, paleta própria) e cortar a espera do carregamento inicial.
+2. Playwright em Chromium, janela de 1024×640 (480×800 no celular), tema escuro, com `record_video_dir`: "Usar CSV de exemplo", esperar o esquema, digitar a pergunta "O tempo de entrega afeta a nota do cliente?" e esperar a resposta final.
+3. Converter o vídeo com ffmpeg (`scale=800:-1`, paleta própria) e cortar a espera do carregamento inicial. O GIF de computador tem quadros de 120–130 ms (cerca de 8 por segundo); o de celular, de 160–170 ms (cerca de 6).
 
-Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no commit `8350309`, em tema escuro. Pergunta: "O tempo de entrega afeta a nota do cliente?". Duas tomadas, uma por GIF, cada uma já aproveitada (sem selo de gravação nem erro; nenhuma foi escolhida entre várias): `demo.gif` (1024×640, 18 s, a resposta levou cerca de 11 s) e `demo-celular.gif` (janela de 480×800, 26 s, a resposta levou cerca de 20 s, com 1 reanálise). Uma terceira tomada foi perdida por erro de script (tema claro), sem uso. Os tempos diferem porque cada tomada é uma chamada nova ao modelo. A espera do carregamento inicial do Python foi cortada; os GIFs não foram acelerados (o celular tem 6 quadros por segundo, 440 px de largura, para caber em 2,7 MB). Os dois terminam na resposta escrita com o selo "números conferidos".
+Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no commit `8350309`, em tema escuro. Pergunta: "O tempo de entrega afeta a nota do cliente?". Duas tomadas, uma por GIF, cada uma já aproveitada (sem selo de gravação nem erro final; nenhuma foi escolhida entre várias): `demo.gif` (janela de 1024×640, GIF de 800×500, 18 s, quadros de 120–130 ms, a resposta levou cerca de 11 s) e `demo-celular.gif` (janela de 480×800, GIF de 440×733, 26 s, quadros de 160–170 ms, a resposta levou cerca de 20 s, com 1 reanálise; uma execução do Python falhou no meio com `NameError` e o agente refez o passo, o que aparece no GIF). Uma terceira tomada foi perdida por erro de script (tema claro), sem uso. Os tempos diferem porque cada tomada é uma chamada nova ao modelo. A espera do carregamento inicial do Python foi cortada; os GIFs não foram acelerados (o celular tem 6 quadros por segundo, 440 px de largura, para caber em 2,7 MB). Os dois terminam na resposta escrita com o selo "números conferidos".
 
 Tempo da pergunta na tomada: cerca de 14 s (mediana de `/api/metricas` com 1 pergunta, 13,8 s); custo do LLM: R$ 0 (plano gratuito).

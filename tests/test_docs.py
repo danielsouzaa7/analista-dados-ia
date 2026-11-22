@@ -1,5 +1,6 @@
-"""Testes da documentação: README de uma tela, links, números e autoria (Spec, critérios 23 e 24)."""
+"""Testes da documentação: README longo, links, números e autoria (Spec, critérios 23 e 24)."""
 
+import json
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -11,7 +12,8 @@ README = RAIZ / "README.md"
 DOCS = RAIZ / "docs"
 AUTORIA = DOCS / "autoria.md"
 
-MAX_LINHAS_README = 80
+MIN_LINHAS_README = 350
+MAX_LINHAS_README = 800
 MAX_LINHAS_AUTORIA = 85  # "até cerca de 80 linhas"
 
 URL_APP = "https://analista-dados-ia.onrender.com"
@@ -43,14 +45,64 @@ NUMEROS_README = [
     ("5 rodadas de red team", "docs/seguranca.md", "### Rodada 5"),
     ("11h42", "docs/tempo-de-construcao.md", None),
     ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
+    # Em números e Como foi construído
+    ("mediana de 9,3 s", "docs/avaliacao.md", "mediana 9,3 s"),
+    ("13,8 s", "docs/como-rodar.md", "mediana de `/api/metricas` com 1 pergunta, 13,8 s"),
+    ("21,4 MB", "docs/decisoes.md", "cerca de 21,4 MB decodificados"),
+    ("56.229 bytes", "docs/decisoes.md", None),
+    ("10 vetores de fuga", "docs/como-rodar.md", None),
+    ("617 para 433 MB", "docs/seguranca.md", None),
+    ("4,5–5,2 s", "docs/decisoes.md", "Chromium 5,0 s na 1ª execução e 4,5 s na 2ª; Firefox 5,1 s e 5,0 s; WebKit 5,2 s e 4,6 s"),
+    ("cerca de 5 s e 248 MB por chamada", "docs/decisoes.md", None),
+    ("0,1 vCPU e 512 MB", "docs/decisoes.md", "(0,1 vCPU, 512 MB)"),
+    ("três chamadas seguidas estouraram o limite de 30 s", "docs/decisoes.md", None),
+    ("r = -0,497 em vez de -0,506", "docs/avaliacao.md", None),
+    ("6, 8, 6, 7 e 8", "docs/avaliacao.md", None),
+    ("8.000 pedidos fictícios", "docs/como-rodar.md", None),
+    ("R$ 0", "docs/arquitetura.md", "R$ 0 (plano gratuito)"),
+    ("14 decisões de arquitetura", "docs/decisoes.md", "## 14. Hospedagem"),
+    ("19/11/2026 02:13", "docs/tempo-de-construcao.md", None),
+    ("| Tempo ativo de relógio | 11h42 |", "docs/tempo-de-construcao.md", None),
+    ("| Relógio corrido | 67h55 |", "docs/tempo-de-construcao.md", None),
+    ("| Horas paradas excluídas | 56h13 |", "docs/tempo-de-construcao.md", None),
+    ("| Tempo somado dos agentes | 16h01 |", "docs/tempo-de-construcao.md", None),
+    ("| Paralelismo médio | 1.4x |", "docs/tempo-de-construcao.md", None),
+    ("| Sessões | 7 |", "docs/tempo-de-construcao.md", None),
+    ("| Agentes | 71 |", "docs/tempo-de-construcao.md", None),
+    ("| Revisão | 20 | 4h44 |", "docs/tempo-de-construcao.md", None),
+    ("| Implementação | 33 | 9h20 |", "docs/tempo-de-construcao.md", None),
+    ("| Spec/plano | 7 | 0h54 |", "docs/tempo-de-construcao.md", None),
+    ("| Documentação | 6 | 0h21 |", "docs/tempo-de-construcao.md", None),
+    ("| Testes | 3 | 0h32 |", "docs/tempo-de-construcao.md", None),
+    ("| Outros | 2 | 0h10 |", "docs/tempo-de-construcao.md", None),
+    # contagens de testes, registradas com data em como-rodar
+    ("701 testes no pytest", "docs/como-rodar.md", None),
+    ("42 no `deno test`", "docs/como-rodar.md", None),
+    ("50 no e2e", "docs/como-rodar.md", None),
+    ("97% (run #6", "docs/como-rodar.md", "97% de `app/`"),
+    ("657 passed, 50 skipped", "docs/como-rodar.md", None),
+    # um nome só para cada medida de horas (README e autoria)
+    ("11h42 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 11h42 |"),
+    ("16h01 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 16h01 |"),
 ]
 NUMEROS_AUTORIA = [
-    ("11h42", "docs/tempo-de-construcao.md", None),
+    ("11h42 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 11h42 |"),
     ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
-    ("16h01", "docs/tempo-de-construcao.md", None),
+    ("16h01 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 16h01 |"),
 ]
 
-JARGAO = ["pass^", "cassete", "prelúdio", "prelude", "grounding"]
+# termo -> começo da explicação entre parênteses logo depois da 1ª ocorrência (fora de blocos de código)
+JARGAO = {
+    "pass^": "casos que passaram em todas as",
+    "cassete": "respostas do llm gravadas",
+    "prelúdio": "funções de estatística",
+    "grounding": "valores reais das colunas",
+    "nonce": "código de uso único",
+}
+JANELA_JARGAO = 80
+
+GRAVACAO_EXEMPLO = RAIZ / "data" / "gravacoes" / "cupom_ticket.jsonl"
+PERGUNTAS = RAIZ / "data" / "perguntas.json"
 
 ICONES = ["navegador", "ao-vivo", "avaliacao", "seguranca"]
 MARCADORES = ["heroi"]
@@ -78,9 +130,9 @@ def _sem_blocos_de_codigo(texto: str) -> str:
     return re.sub(r"```.*?```", "", texto, flags=re.S)
 
 
-def test_readme_cabe_em_uma_tela():
+def test_readme_longo_mas_abaixo_do_teto():
     linhas = _ler(README).splitlines()
-    assert len(linhas) <= MAX_LINHAS_README
+    assert MIN_LINHAS_README <= len(linhas) <= MAX_LINHAS_README, len(linhas)
 
 
 def test_links_e_imagens_relativos_existem():
@@ -103,13 +155,14 @@ def test_conteudo_do_readme_antigo_continua_em_docs(frase):
     assert frase in _todo_docs()
 
 
-def test_readme_sem_jargao_solto():
-    texto = _ler(README).lower()
-    for termo in JARGAO:
-        assert termo not in texto, termo
-    for achado in re.finditer(r"nonce", texto):
-        depois = texto[achado.end() : achado.end() + 30]
-        assert depois.startswith(" (código de uso único)"), "nonce sem explicação"
+@pytest.mark.parametrize("termo", JARGAO)
+def test_jargao_explicado_na_primeira_ocorrencia(termo):
+    texto = _sem_blocos_de_codigo(_ler(README)).lower()
+    i = texto.find(termo)
+    if i < 0:
+        return  # termo ausente: nada a explicar
+    depois = texto[i : i + len(termo) + JANELA_JARGAO]
+    assert f"({JARGAO[termo]}" in depois, f"{termo} sem explicação logo depois: {depois!r}"
 
 
 def test_readme_linka_app_autoria_e_avaliacao():
@@ -275,3 +328,65 @@ def test_demo_animada_existe_e_pesa_menos_de_5_mb():
 def test_tempo_do_heroi_tem_fonte_em_como_rodar():
     assert "14 s" in _ler(IMG / "heroi.svg")
     assert "mediana de `/api/metricas` com 1 pergunta, 13,8 s" in _doc("docs/como-rodar.md")
+
+
+def _normalizar(texto: str) -> str:
+    return "\n".join(linha.rstrip() for linha in texto.splitlines())
+
+
+def _bloco_do_exemplo() -> str:
+    texto = _ler(README)
+    inicio, fim = "<!-- exemplo:inicio -->", "<!-- exemplo:fim -->"
+    assert inicio in texto and fim in texto
+    return _normalizar(texto[texto.index(inicio) : texto.index(fim)])
+
+
+def test_exemplo_real_e_texto_exato_da_gravacao():
+    eventos = [json.loads(linha) for linha in _ler(GRAVACAO_EXEMPLO).splitlines() if linha.strip()]
+    pergunta = next(c["pergunta"] for c in json.loads(_ler(PERGUNTAS)) if c["id"] == "cupom_ticket")
+    ultimo = {e["evento"]: e for e in eventos}  # o último de cada tipo: a tentativa aprovada
+    python = [e for e in eventos if e["evento"] == "ferramenta_inicio" and e["tipo"] == "python"][-1]
+    saida = next(e["saida"] for e in eventos if e["evento"] == "ferramenta_fim" and e["id"] == python["id"])
+    sql = next(e["sql"] for e in eventos if e["evento"] == "ferramenta_inicio" and e["tipo"] == "sql")
+    grafico = next(e["grafico"] for e in eventos if e["evento"] == "ferramenta_fim" and "grafico" in e)
+    m = ultimo["metricas"]
+    trechos = [
+        pergunta,
+        ultimo["plano"]["texto"],
+        sql,
+        python["codigo"],
+        saida,
+        grafico["resumo"],
+        ultimo["resposta"]["texto"],
+        m["trace_id"],
+        m["versao_prompt"],
+        f"{m['chamadas_llm']} chamadas ao LLM",
+        f"{m['chamadas_ferramenta']} chamadas de ferramenta",
+        f"{m['tokens_entrada']:,}".replace(",", "."),
+        f"{m['tokens_saida']:,}".replace(",", "."),
+    ]
+    bloco = _bloco_do_exemplo()
+    for trecho in trechos:
+        assert _normalizar(trecho) in bloco, trecho[:60]
+    assert ultimo["resposta"]["reanalises"] == 2 and "2 reanálises" in bloco
+    assert "executor Deno" in bloco  # onde o Python da gravação rodou
+
+
+def test_readme_conta_as_decisoes_da_autoria():
+    linhas = [ln for ln in _ler(AUTORIA).splitlines() if re.match(r"\| \d\d/\d\d ", ln)]
+    assert f"{len(linhas)} decisões do Daniel" in _ler(README)
+
+
+def test_tabela_da_avaliacao_por_caso_bate_com_o_relatorio():
+    linhas_readme = _ler(README).splitlines()
+    casos = re.findall(r"^\| (\w+) \| (\d/5) \|$", _doc("docs/avaliacao.md"), flags=re.M)
+    assert len(casos) == 8
+    for caso, k in casos:
+        assert any(f"`{caso}`" in ln and f"| {k} |" in ln for ln in linhas_readme), caso
+
+
+def test_readme_nao_publica_a_tabela_por_sessao():
+    texto = _ler(README)
+    assert "| Sessão | Ativo |" not in texto
+    for sessao in re.findall(r"^\| ([0-9a-f]{8}) \|", _doc("docs/tempo-de-construcao.md"), flags=re.M):
+        assert sessao not in texto, sessao
