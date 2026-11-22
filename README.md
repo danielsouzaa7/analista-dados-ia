@@ -25,7 +25,10 @@
 </picture>
 <p align="center"><sub>O servidor nunca executa o Python da IA (o SQL roda nele, só leitura).</sub></p>
 
-<p align="center"><img src="docs/img/demo.gif" width="100%" alt="Gravação de tela do app: o CSV de exemplo é carregado, a pergunta sobre o tempo de entrega e a nota do cliente é digitada, o agente planeja, consulta, roda o Python no navegador e termina com um gráfico de dispersão e a resposta conferida."><br><sub>Pergunta real, rodando localmente no commit 1f8cafe; tomada única (de até 3 permitidas); espera do carregamento inicial cortada.</sub></p>
+<p align="center"><picture>
+<source media="(max-width: 600px)" srcset="https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/demo-celular.gif">
+<img src="docs/img/demo.gif" width="100%" alt="Gravação de tela do app em tema escuro: o CSV de exemplo é carregado, a pergunta sobre o tempo de entrega e a nota do cliente é digitada, o agente planeja, consulta, roda o Python no navegador, desenha um gráfico de dispersão e termina com a resposta escrita, com o selo números conferidos.">
+</picture><br><sub>Pergunta real, tema escuro, rodando localmente no commit 8350309; tomada única de cada versão (de até 3 permitidas); espera do carregamento inicial cortada.</sub></p>
 
 ## Como foi construído
 
