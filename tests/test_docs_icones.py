@@ -6,7 +6,7 @@ import pytest
 
 IMG = Path(__file__).resolve().parent.parent / "docs" / "img"
 NOMES = ["navegador", "ao-vivo", "avaliacao", "seguranca"]
-FUNDOS = {"branco": "#ffffff", "escuro": "#0d1117"}
+PALETA = {"#58A6FF", "#39C5CF", "#A371F7", "#3FB950"}
 
 
 def _luminancia(hexcor: str) -> float:
@@ -34,8 +34,12 @@ def test_icone_leve_acessivel_e_sem_recurso_externo(nome):
     assert not re.search(r"<script|foreignObject|@import|url\(|href=\"?https?:", svg)
 
 
-@pytest.mark.parametrize("fundo", FUNDOS)
 @pytest.mark.parametrize("nome", NOMES)
-def test_icone_tem_contraste_minimo_de_3_para_1(nome, fundo):
-    cor = re.search(r"stroke:\s*(#[0-9a-fA-F]{6})", _svg(nome)).group(1)
-    assert _contraste(cor, FUNDOS[fundo]) >= 3.0
+def test_icone_tem_cartao_escuro_proprio_da_paleta_com_contraste_minimo_de_3_para_1(nome):
+    """O ícone leva o próprio fundo (#131C2E), então o traço é medido contra ele, não contra a página do GitHub."""
+    svg = _svg(nome)
+    fundo = re.search(r'<rect width="48" height="48"[^>]*fill="(#[0-9a-fA-F]{6})"', svg).group(1)
+    assert fundo.upper() == "#131C2E"
+    cor = re.search(r"stroke:\s*(#[0-9a-fA-F]{6})", svg).group(1)
+    assert cor.upper() in PALETA
+    assert _contraste(cor, fundo) >= 3.0
