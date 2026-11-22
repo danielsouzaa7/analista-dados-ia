@@ -18,12 +18,9 @@ EXCECOES: set[str] = set()  # nenhuma: toda exceção aqui esconderia uma regres
 # Exceções por padrão e arquivo (cada uma com o motivo); valem só para o arquivo citado.
 EXCECOES_PADRAO = {
     "pasta_pessoal": {
-        "app/sql_tool.py": "comentário que ilustra o corte do nome de pasta com um prefixo curto, sem dado real",
         "tests/test_tempo_construcao.py": "caminhos sintéticos (Fulano, Ana Maria) que testam a conversão de pasta",
     },
-    "nome_por_extenso": {
-        "tests/test_docs.py": "o teste que afirma que o nome não aparece nos docs precisa citá-lo",
-    },
+    "nome_por_extenso": {},
 }
 
 

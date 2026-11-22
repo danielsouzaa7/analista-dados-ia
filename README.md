@@ -35,11 +35,11 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 | Download do Python na 1ª execução | 21,4 MB em 10 requisições ao jsDelivr | [decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker) |
 | Servidor | 0,1 vCPU e 512 MB (Render, plano gratuito) | [decisões 13 e 14](docs/decisoes.md) |
 | Custo do LLM e da hospedagem | R$ 0 | [decisão 14](docs/decisoes.md), [arquitetura](docs/arquitetura.md) |
-| Red team | 5 rodadas, cada achado corrigido (quase todos com teste automatizado) ou risco aceito | [segurança](docs/seguranca.md) |
+| Red team | 6 rodadas, cada achado corrigido (quase todos com teste automatizado) ou risco aceito | [segurança](docs/seguranca.md) |
 | Fugas do Worker | 10 vetores de fuga bloqueados, testados em 3 motores | [como rodar](docs/como-rodar.md) |
 | Imagem Docker sem Deno | de 617 para 433 MB | [segurança](docs/seguranca.md) |
 | Testes (coletados em 22/11/2026) | 916 testes no pytest, 46 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
-| Cobertura do pytest sobre `app/`, no CI | 97% (run #6, commit `bcd2420`: 657 passed, 50 skipped) | [como rodar](docs/como-rodar.md), [Actions](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) |
+| Cobertura do pytest sobre `app/`, no CI | 97% (run #13, commit `ad15650`: 893 passed, 73 skipped) | [como rodar](docs/como-rodar.md), [Actions](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/45059923857) |
 | Construção | 10h06 de tempo ativo de relógio (65h49 de relógio corrido, 55h43 paradas excluídas) | [tempo de construção](docs/tempo-de-construcao.md) |
 | Agentes de IA | 58 agentes, 14h12 de trabalho somado dos agentes (em paralelo), paralelismo 1,4x, 7 sessões | [tempo de construção](docs/tempo-de-construcao.md) |
 | Decisões registradas | 15 decisões de arquitetura; 13 decisões minhas (10 com fonte publicada; 3 só no registro local) | [decisões](docs/decisoes.md), [autoria](docs/autoria.md) |
@@ -53,7 +53,7 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 
 <p><b>Arquitetei o sistema e orquestrei 58 agentes de IA para construí-lo.</b></p>
 
-Em 10h06 de tempo ativo de relógio, defini as restrições, escolhi a arquitetura, impus os portões de qualidade e dirigi um time de agentes especializados que escreveu o código, os testes, a documentação, as revisões técnicas e o red team. Nada foi aceito sem teste, revisão independente e número medido. Os agentes são prontos: escolhi cada um pelo papel e configurei todos para o fluxo que desenhei.
+Em 10h06 de tempo ativo de relógio, defini as restrições, escolhi a arquitetura, impus os portões de qualidade e dirigi um time de agentes especializados que escreveu o código, os testes, a documentação, as revisões técnicas e o red team. Cada lote passou por teste e por revisão de um agente especialista antes de entrar. Os agentes são prontos: escolhi cada um pelo papel e configurei todos para o fluxo que desenhei.
 
 <p><b>Como eu construo sistemas com IA</b></p>
 
@@ -83,13 +83,13 @@ As opções técnicas vieram do time; a escolha e o critério foram meus. Cada l
 
 <p><b>Resultados que dá para conferir</b></p>
 
-- **97% de cobertura** do pytest sobre `app/`, medida no CI público ([run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339)).
+- **97% de cobertura** do pytest sobre `app/`, medida no CI público ([run #13](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/45059923857)).
 - **916 testes no pytest, 46 no `deno test` e 50 no e2e**, contados em 22/11/2026 ([como rodar](docs/como-rodar.md)).
 - **6 rodadas de red team** (a 6ª, de injeção indireta, em testes automatizados com LLM falso) contra o código vigente, com cada achado corrigido ou publicado como risco aceito ([segurança](docs/seguranca.md)).
 - **10 vetores de fuga do Worker bloqueados**, testados em Chromium, Firefox e WebKit ([como rodar](docs/como-rodar.md)).
 - **57 de 58 agentes dentro da zona de genialidade** de contexto ([orquestração](docs/orquestracao.md)).
 - **App no ar** em [analista-dados-ia.onrender.com](https://analista-dados-ia.onrender.com), a custo zero (o plano gratuito dorme sem uso e leva cerca de um minuto para acordar).
-- **Release [v1.0.0](https://github.com/danielsouzaa7/analista-dados-ia/releases/tag/v1.0.0)** publicado no GitHub.
+- **Releases no GitHub:** [v1.1.0](https://github.com/danielsouzaa7/analista-dados-ia/releases/tag/v1.1.0), a atual (avaliação com 29 casos, confiabilidade, rodada 6 de red team, árvore sem configuração local), e [v1.0.0](https://github.com/danielsouzaa7/analista-dados-ia/releases/tag/v1.0.0), a primeira publicação.
 
 <p><b>A construção em números</b></p>
 
@@ -123,7 +123,7 @@ Período (horário de São Paulo): 19/11 a 21/11/2026. Mede só a construção d
   <img src="https://raw.githubusercontent.com/danielsouzaa7/analista-dados-ia/main/docs/img/orquestracao.svg" width="100%" alt="Barras com o pico de contexto de cada sessão do orquestrador e de cada agente, agrupados por papel, com a linha da zona de genialidade em 300.000 tokens. 58 agentes geraram 2.027.193 tokens de saída; o orquestrador gerou 582.779 (razão 3,5x). 57 agentes ficaram na zona de genialidade e 1 passou dela. Pico do orquestrador: 505.062 tokens. No máximo 5 agentes simultâneos (estimado).">
 </picture>
 
-- **58 agentes, 57 dentro da zona de genialidade** (pico de contexto até 300 mil tokens, valor configurável): cada agente trabalha num contexto curto e próprio, e (premissa do método: contexto curto preserva a qualidade; não medido neste projeto).
+- **58 agentes, 57 dentro da zona de genialidade** (pico de contexto até 300 mil tokens, valor configurável): cada agente trabalha num contexto curto e próprio (premissa do método: contexto curto preserva a qualidade; não medido neste projeto).
 - **9,9 milhões de tokens novos** processados pelos agentes contra 3,0 milhões do orquestrador (3,2x).
 - **2,03 milhões de tokens gerados** pelos agentes, 3,5x o que o orquestrador gerou.
 - **Total bruto de 1,1x:** somando também o cache lido, a razão cai para 1,1x, porque o cache lido é o mesmo contexto relido a cada chamada e infla o total sem ser trabalho novo.
@@ -493,9 +493,9 @@ Capturas de 19/11/2026 (prompt `2026-11-19.2`), anteriores ao Python no navegado
 | e2e, job `e2e-navegador` | Playwright em Chromium, Firefox e WebKit: fugas do Worker e fluxo completo do Python no navegador | 48 (3 arquivos, coletados com `E2E_PYODIDE=1`) | `tests/e2e/test_python_worker.py`, `test_python_worker_fuga_extra.py`, `test_python_navegador.py` |
 | e2e, aba fechada | `test_desconexao.py`: uvicorn real e httpx, sem Playwright | 1 | `tests/e2e/`; roda no job `testes` |
 | e2e, à mão | `test_fluxo.py`: fluxo no navegador com o app no ar | 1 | `tests/e2e/`; só com `E2E_URL`, não roda no CI |
-| Postgres real | `ATTACH` só leitura num `postgres:16` | 1 teste, só com `PG_TEST_URL` | `tests/test_sql_tool.py`; job `postgres-real` |
+| Postgres real | `ATTACH` só leitura num `postgres:16` | 1 teste, só com `PG_TEST_URL` (o job `postgres-real` roda o arquivo inteiro) | `tests/test_sql_tool.py`; job `postgres-real` |
 
-Contagem em 22/11/2026: 916 testes no pytest, 46 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
+Contagem em 22/11/2026: 916 testes no pytest, 46 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #13](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/45059923857) (commit `ad15650`, job `testes`) terminou com 893 passed, 73 skipped e 97% de cobertura de `app/`. Os 73 pulados: 49 de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`, só à mão com `E2E_URL`), o do Postgres real (sem `PG_TEST_URL`; roda no job `postgres-real`), 21 da regressão offline, um por caso novo da avaliação, que ainda não têm cassete (o cassete é gravado na rodada com o modelo real, ainda não executada), e 2 que só rodam no Windows. O job `testes` também coleta `tests/e2e`; por isso 893 + 73 = 966 é a soma de 916 do pytest e 50 do e2e.
 
 O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pytest com cobertura), `postgres-real` e `e2e-navegador`, que depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`). O CI não usa segredo nem chama o LLM.
 
@@ -598,7 +598,7 @@ As 15 decisões, com contexto, alternativas descartadas e consequências, estão
 ## Leitura adicional
 
 - [Arquitetura](docs/arquitetura.md): diagramas, contrato SSE, rotas, limites, módulos e glossário.
-- [Decisões](docs/decisoes.md): os 14 registros de decisão (ADRs), com as medições do Python no navegador.
+- [Decisões](docs/decisoes.md): os 15 registros de decisão (ADRs), com as medições do Python no navegador.
 - [Segurança](docs/seguranca.md): modelo de ameaça, guardrails por camada, as 6 rodadas de red team e os riscos aceitos.
 - [Avaliação](docs/avaliacao.md): resultado por caso, falhas e como reproduzir.
 - [Como rodar](docs/como-rodar.md), [limitações](docs/limitacoes.md), [autoria](docs/autoria.md), [tempo de construção](docs/tempo-de-construcao.md) e a [Spec](Spec.md).

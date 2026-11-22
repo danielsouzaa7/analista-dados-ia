@@ -203,7 +203,7 @@ Sem build: HTML, CSS e módulos ES em `static/`. Apache ECharts 5.5.0 vem de CDN
 - **Grounding e LGPD**: perfil dos dados, valores categóricos no prompt e colunas com CPF, e-mail ou telefone marcadas e fora do perfil enviado à IA. A IA é instruída a só agregá-las, mas os resultados das consultas não são mascarados: não envie dados pessoais reais.
 - **Trace e métricas**: cascata de tempos por pergunta, painel de métricas da demo, log JSON sem conteúdo.
 - **Avaliação, gravações e cassetes**: casos com resposta esperada calculada em pandas, e regressão offline sem chamar o LLM.
-- **Red team**: 5 rodadas de revisão de segurança com achados, correções e testes em [seguranca.md](seguranca.md).
+- **Red team**: 6 rodadas de red team com achados, correções e testes em [seguranca.md](seguranca.md).
 - **Tela sem build**: trilho de passos, selo "números conferidos", gráficos em ECharts (com mapa de calor), feedback 👍/👎. `static/fake-stream.html` abre a tela inteira contra um servidor falso que segue o contrato de eventos.
 
 ## Glossário

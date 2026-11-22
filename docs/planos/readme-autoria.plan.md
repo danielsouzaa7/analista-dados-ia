@@ -155,7 +155,7 @@ Tabela de decisões (horário de Brasília; "T" = transcrição local, não publ
 |---|---|---|---|---|
 | 19/11 | Pedido inicial do produto (CSV ou banco, perguntas em português, SQL, Python, gráficos) e o diagrama de referência do fluxo | — | `Spec.md` "Fluxo do agente (do diagrama de referência)"; `referência.png` (conferir se está no git) | registro local da conversa |
 | 19/11 | Dataset de pedidos de delivery, de propósito, pelo público-alvo (confirmado pelo Daniel em 21/11) | — | `Spec.md` "Usuários" | confirmação do Daniel |
-| 19/11 | O fluxo de 9 etapas montado sobre um framework de agentes de terceiros; modelo por tarefa | Superpowers (desativado) | o próprio `autoria.md` | regras globais dele |
+| 19/11 | O fluxo de 9 etapas montado sobre um framework de agentes de terceiros; modelo por tarefa | framework anterior (desativado) | o próprio `autoria.md` | registro local |
 | 19/11 | LLM grátis (Gemini) em vez de chave paga; a chave nunca é lida pelos agentes; `.env.example`; aviso de dados sensíveis na tela | Chave paga de outro provedor | Spec crit. 9 ("decisão do Daniel em 19/11/2026"); crit. 10 (acrescentar atribuição) | registro local da conversa |
 | 19/11 | Horas publicadas sem tempo parado nem esperas por ele | — | `docs/tempo-de-construcao.md` (acrescentar "medido a pedido do Daniel") | memória |
 | 19/11 | "Projeto completo, não MVP" e "fugir do óbvio" → onda 2 (critérios 18–22) | MVP | `docs/planos/experiencia-portfolio.plan.md` | registro local da conversa |

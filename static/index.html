@@ -167,7 +167,7 @@
           <h3>O que protege os dados e o serviço</h3>
           <dl class="lista-def">
             <div><dt>SQL só leitura</dt><dd>Um único SELECT por chamada. Escrita, vários comandos e leitura de arquivos são recusados antes de rodar. Limite de 30 s.</dd></div>
-            <div><dt>Python isolado</dt><dd>Roda no seu navegador, em WebAssembly, num Worker sem rede e sem acesso à página. Limite de 30 s.</dd></div>
+            <div><dt>Python isolado</dt><dd>Roda no seu navegador, em WebAssembly, num Worker sem acesso à página e com rede só para o caminho fixo do Pyodide. Limite de 30 s.</dd></div>
             <div><dt>Números conferidos</dt><dd>Cada número da resposta precisa bater com os resultados das ferramentas, com margem de 1%. Se não bater, o agente refaz a análise até 2 vezes.</dd></div>
             <div><dt>Limites</dt><dd>No máximo 8 ferramentas, 12 chamadas ao modelo e 120 s por pergunta. Uma pergunta por vez, com teto diário.</dd></div>
             <div><dt>Memória curta</dt><dd>Lembra as 3 últimas perguntas da sessão, para entender "e só em São Paulo?". Nova conversa apaga tudo.</dd></div>

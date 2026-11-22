@@ -87,8 +87,8 @@ NUMEROS_README = [
     # contagens de testes, registradas com data em como-rodar
     ("46 no `deno test`", "docs/como-rodar.md", None),
     ("50 no e2e", "docs/como-rodar.md", None),
-    ("97% (run #6", "docs/como-rodar.md", "97% de `app/`"),
-    ("657 passed, 50 skipped", "docs/como-rodar.md", None),
+    ("97% (run #13", "docs/como-rodar.md", "97% de `app/`"),
+    ("893 passed, 73 skipped", "docs/como-rodar.md", None),
     # um nome só para cada medida de horas (README e autoria)
     ("10h06 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 10h06 |"),
     ("14h12 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 14h12 |"),
@@ -498,6 +498,6 @@ def test_readme_e_autoria_nao_citam_o_framework_nem_a_meta_como_manchete():
     for caminho in (README, AUTORIA, DOCS / "processo.md", DOCS / "orquestracao.md"):
         texto = _ler(caminho)
         assert "E" + "CC" not in texto
-        assert "Everything Claude Code" not in texto
+        assert "Everything" + " Claude Code" not in texto
     assert "não batida" not in _ler(README)
     assert "Papel | O que fez aqui | Exemplo" in _ler(README)

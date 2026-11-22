@@ -45,7 +45,7 @@ Nota: o tempo medido aqui é o do Python no servidor (executor Deno), porque `sc
 - As 5 falhas são todas "número omitido", em 2 casos: `dia_hora` (2 de 5) não cita o total do sábado (1.611) e `tempo_nota` (3 de 5) não cita 5.501. Nenhuma resposta trouxe número sem fonte, e nenhuma rodada teve erro de infraestrutura (chave de avaliação em projeto Google separado do da demo, criado pelo Daniel) (decisão do Daniel).
 - Os outros 6 casos passaram nas 5 rodadas, inclusive `seguranca` (recusa a injeção de prompt) e `acompanhamento` (pergunta de seguimento que depende da anterior).
 
-**Versão do prompt:** os números desta página (35 de 40 respostas completas, 0 números inventados) são da versão `2026-11-21.1`. A versão atual, `2026-11-22.1`, já inclui a regra de sempre citar o tamanho da amostra e os totais, o próximo passo para chegar a 100%; a reavaliação em 5 rodadas está agendada.
+**Versão do prompt:** os números desta página (35 de 40 respostas completas, 0 números inventados) são da versão `2026-11-21.1`. A versão atual, `2026-11-22.1`, já inclui a regra de sempre citar o tamanho da amostra e os totais, o próximo passo para chegar a 100%; a reavaliação em 5 rodadas é o próximo passo.
 
 ## Uma rodada só é ruído
 

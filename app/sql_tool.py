@@ -90,7 +90,7 @@ def _caminhos_do_servidor() -> list[str]:
 
 
 def redigir(texto: str, sessao: Sessao) -> str:
-    for forma in _caminhos_do_servidor():  # só até o fim de um nome de pasta: "C:\Users\Dan" não come "Daniel2" nem "Daniel.old"
+    for forma in _caminhos_do_servidor():  # só até o fim de um nome de pasta: "/home/ana" não come "/home/ana2" nem "/home/ana.old"
         texto = re.sub(re.escape(forma) + r"(?![\w-]|\.\w)", ".", texto)
     if sessao.pg_url:
         senha = urlsplit(sessao.pg_url).password or ""
