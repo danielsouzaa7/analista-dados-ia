@@ -168,8 +168,12 @@ def test_funcoes_que_escondem_sql_recusadas(sql: str) -> None:
 
 
 def test_limites_de_memoria_do_duckdb(s: Sessao) -> None:
-    r = executar(s, "SELECT current_setting('memory_limit'), current_setting('threads')")
-    assert r.linhas[0][0].startswith("488") and r.linhas[0][1] == 2
+    con = sql_tool.abrir(s)  # current_setting é recusada por validar_sql: o limite se confere na conexão
+    try:
+        linha = con.execute("SELECT current_setting('memory_limit'), current_setting('threads')").fetchone()
+    finally:
+        con.close()
+    assert linha[0].startswith("488") and linha[1] == 2
 
 
 def test_redigir_remove_senha_decodificada() -> None:
@@ -256,6 +260,33 @@ def test_funcoes_proibidas_recusadas(sql: str) -> None:
         validar_sql(sql)
 
 
+# Resultado também vaza: estas funções devolvem pastas do servidor (pessoal, raiz do app, data/sessions/<id>).
+@pytest.mark.parametrize("sql", [
+    "SELECT current_setting('secret_directory')",
+    "SELECT CURRENT_SETTING('temp_directory')",
+    "SELECT pg_catalog.current_setting('extension_directory')",
+    "SELECT * FROM duckdb_databases()",
+    "SELECT * FROM main.duckdb_settings()",
+    "SELECT * FROM DUCKDB_SETTINGS() WHERE name = 'allowed_directories'",
+    "SELECT * FROM system.main.duckdb_extensions()",
+    "SELECT * FROM duckdb_temporary_files()",
+    "SELECT * FROM duckdb_external_file_cache()",
+    "SELECT * FROM duckdb_secrets()",
+    "SELECT * FROM which_secret('s3://b/f', 's3')",
+    "SELECT * FROM duckdb_logs()",
+    "WITH x AS (SELECT * FROM duckdb_databases()) SELECT path FROM x",
+    "SELECT (SELECT current_setting('home_directory'))",
+])
+def test_funcoes_que_devolvem_caminhos_do_servidor_recusadas(sql: str) -> None:
+    with pytest.raises(ErroUsuario, match="caminhos do servidor"):
+        validar_sql(sql)
+
+
+@pytest.mark.parametrize("sql", ["SELECT * FROM duckdb_tables()", "SELECT column_name FROM duckdb_columns()"])
+def test_catalogo_sem_caminhos_continua_permitido(sql: str) -> None:
+    assert validar_sql(sql) == sql
+
+
 def _dns(monkeypatch: pytest.MonkeyPatch, *ips: str) -> None:
     resposta = [(socket.AF_INET6 if ":" in ip else socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0)) for ip in ips]
     monkeypatch.setattr(sql_tool.socket, "getaddrinfo", lambda *a, **k: resposta)
@@ -310,3 +341,48 @@ def test_attach_fixa_o_ip_e_mantem_o_host_no_secret(monkeypatch) -> None:
     sql_tool.abrir(Sessao(id="1", tipo="postgres", pg_url="postgresql://u:p@db.exemplo.com:5432/d"))
     assert any(p and p[0] == "db.exemplo.com" for _, p in chamadas)  # SNI/TLS seguem o nome
     assert any("hostaddr=93.184.216.34" in sql for sql, _ in chamadas)
+
+
+def _com_home(monkeypatch: pytest.MonkeyPatch, home, sessoes) -> None:
+    monkeypatch.setattr(sql_tool.Path, "home", staticmethod(lambda: home))
+    monkeypatch.setattr(config, "SESSIONS_DIR", sessoes)
+
+
+def test_redigir_troca_a_pasta_pessoal_e_so_ela(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    home = tmp_path / "Dan"
+    _com_home(monkeypatch, home, tmp_path / "sessoes")
+    sessao = Sessao(id="x", tipo="csv")
+    assert redigir(f'Cannot access "{home}{os.sep}.duckdb{os.sep}x"', sessao) == f'Cannot access ".{os.sep}.duckdb{os.sep}x"'
+    parecida = f"{tmp_path / 'Daniel2'}{os.sep}x"  # outra pasta que só começa com o mesmo texto
+    assert redigir(parecida, sessao) == parecida
+
+
+def test_redigir_troca_o_caminho_mais_longo_primeiro(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    home = tmp_path / "u"
+    _com_home(monkeypatch, home, home / "sessoes")
+    assert redigir(f"{home / 'sessoes'}{os.sep}abc{os.sep}dados.duckdb", Sessao(id="x", tipo="csv")) == \
+        f".{os.sep}abc{os.sep}dados.duckdb"
+
+
+def test_redigir_sem_pasta_pessoal_no_container(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    def sem_home() -> None:
+        raise RuntimeError("Could not determine home directory.")
+
+    monkeypatch.setattr(sql_tool.Path, "home", staticmethod(sem_home))
+    monkeypatch.setattr(config, "SESSIONS_DIR", tmp_path / "sessoes")
+    assert redigir(f"erro em {tmp_path / 'sessoes'}{os.sep}a", Sessao(id="x", tipo="csv")) == f"erro em .{os.sep}a"
+
+
+@pytest.mark.parametrize("depois", [".", ">", "|", "!", "?", "(", "}", "`", "*", ""])
+def test_redigir_troca_a_pasta_seguida_de_pontuacao(monkeypatch: pytest.MonkeyPatch, tmp_path, depois: str) -> None:
+    home = tmp_path / "Dan"
+    _com_home(monkeypatch, home, tmp_path / "sessoes")
+    assert redigir(f"em {home}{depois}", Sessao(id="x", tipo="csv")) == f"em .{depois}"
+
+
+@pytest.mark.parametrize("sufixo", ["2", "-x", "_y", ".old", ".v2"])
+def test_redigir_nao_mexe_em_pasta_irma_com_o_mesmo_comeco(monkeypatch: pytest.MonkeyPatch, tmp_path, sufixo: str) -> None:
+    home = tmp_path / "Dan"
+    _com_home(monkeypatch, home, tmp_path / "sessoes")
+    irma = f"{home}{sufixo}{os.sep}x"
+    assert redigir(irma, Sessao(id="x", tipo="csv")) == irma

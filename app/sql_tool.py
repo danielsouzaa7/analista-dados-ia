@@ -7,6 +7,7 @@ import re
 import socket
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
@@ -33,6 +34,9 @@ class Resultado:
 
 
 _FUNCOES_PROIBIDAS = {"query", "query_table", "json_execute_serialized_sql", "json_deserialize_sql", "json_serialize_plan"}
+# Devolvem pastas do servidor (pessoal, raiz do app, data/sessions/<id>) no RESULTADO, que `redigir` não toca.
+_FUNCOES_DE_CAMINHOS = {"current_setting", "duckdb_databases", "duckdb_settings", "duckdb_extensions", "duckdb_secrets",
+                        "duckdb_temporary_files", "duckdb_external_file_cache", "duckdb_logs", "which_secret"}
 
 
 def _funcoes_na_arvore(no: object) -> set[str]:
@@ -55,8 +59,11 @@ def _checar_arvore(sql: str) -> None:
         con.close()
     if arvore.get("error"):
         raise ErroUsuario("Não consegui analisar esse SQL. Escreva uma única consulta SELECT simples.")
-    if any(f in _FUNCOES_PROIBIDAS or f.startswith("postgres_") for f in _funcoes_na_arvore(arvore)):
+    achadas = _funcoes_na_arvore(arvore)  # o nome vem sem esquema e em minúsculas: main.X() e X() caem no mesmo
+    if any(f in _FUNCOES_PROIBIDAS or f.startswith("postgres_") for f in achadas):
         raise ErroUsuario("Funções que executam SQL escondido (postgres_*, query) não são permitidas.")
+    if achadas & _FUNCOES_DE_CAMINHOS:
+        raise ErroUsuario("Funções que revelam configuração e caminhos do servidor não são permitidas.")
 
 
 def validar_sql(sql: str) -> str:
@@ -72,9 +79,19 @@ def validar_sql(sql: str) -> str:
     return sql
 
 
+def _caminhos_do_servidor() -> list[str]:
+    """Pastas que o erro do DuckDB pode citar, do caminho mais longo ao mais curto (a pasta pessoal contém as outras)."""
+    try:
+        casa: Path | None = Path.home()
+    except (RuntimeError, KeyError):  # contêiner sem HOME
+        casa = None
+    pastas = [c for c in (config.SESSIONS_DIR, config.RAIZ, casa) if c is not None and len(c.parts) >= 2]  # "/" apagaria tudo
+    return sorted({f for c in pastas for f in (str(c), c.as_posix())}, key=len, reverse=True)
+
+
 def redigir(texto: str, sessao: Sessao) -> str:
-    for caminho in (config.SESSIONS_DIR, config.RAIZ):  # não revela caminhos do servidor
-        texto = texto.replace(str(caminho), ".").replace(caminho.as_posix(), ".")
+    for forma in _caminhos_do_servidor():  # só até o fim de um nome de pasta: "C:\Users\Dan" não come "Daniel2" nem "Daniel.old"
+        texto = re.sub(re.escape(forma) + r"(?![\w-]|\.\w)", ".", texto)
     if sessao.pg_url:
         senha = urlsplit(sessao.pg_url).password or ""
         for segredo in sorted(filter(None, [sessao.pg_url, senha, unquote(senha)]), key=len, reverse=True):

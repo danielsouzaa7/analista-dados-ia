@@ -322,3 +322,47 @@ Deno.test("responderPython não posta nada depois do abort", async () => {
   });
   assertEquals(posts, 0);
 });
+
+Deno.test("jsDelivr fora do ar: o import do worker falha (onerror) e o erro em português chega à execução", async () => {
+  ambiente();
+  const f = fabrica({ inicio: null });
+  const p = executarPython(pedido, { criar: f.criar, cargaMs: 1000, execucaoMs: 1000 });
+  f.workers[0].onerror(new Event("error")); // o navegador não achou o módulo da CDN
+  const r = await p;
+  assertEquals(r.saida, "");
+  assertEquals(r.erro, "Não consegui carregar o Python no seu navegador.");
+  assert(f.workers[0].encerrado);
+});
+
+Deno.test("jsDelivr fora do ar: a reserva que falhou no onerror não é reaproveitada", async () => {
+  ambiente({ deviceMemory: 8 });
+  const ruim = fabrica({ inicio: null });
+  preaquecer(ruim.criar);
+  ruim.workers[0].onerror(new Event("error"));
+  await pausa();
+  assert(ruim.workers[0].encerrado);
+  const bom = fabrica({ aoPedido: ok });
+  assertEquals(await executarPython(pedido, { criar: bom.criar, cargaMs: 1000, execucaoMs: 1000 }), { saida: "ok", erro: null });
+  await drenar(bom);
+});
+
+Deno.test("jsDelivr fora do ar: responderPython posta o erro de carga para o servidor não esperar o prazo", async () => {
+  ambiente();
+  const f = fabrica({ inicio: null });
+  const postados = [];
+  const executar = (p, o) => {
+    const r = executarPython(p, { ...o, criar: f.criar, cargaMs: 1000 });
+    f.workers[0].onerror(new Event("error"));
+    return r;
+  };
+  await responderPython(chega, { sessao: "s", executar, postar: (c) => { postados.push(c); return Promise.resolve(); } });
+  assertEquals(postados.length, 1);
+  assert(postados[0].erro.startsWith("Não consegui carregar o Python"));
+});
+
+Deno.test("falha do worker depois de carregado (onerror) devolve o erro de falha, não trava", async () => {
+  ambiente();
+  const f = fabrica({ aoPedido: (w) => w.onerror(new Event("error")) });
+  const r = await executarPython(pedido, { criar: f.criar, ...rapido, cargaMs: 1000, execucaoMs: 1000 });
+  assertEquals(r, { saida: "", erro: "O Python do seu navegador falhou." });
+});

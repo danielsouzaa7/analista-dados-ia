@@ -26,6 +26,11 @@ from app.errors import ErroUsuario
 
 log = logging.getLogger("analista")
 log_metricas = logging.getLogger("analista.metricas")
+if not log.handlers:  # o uvicorn só configura os próprios loggers: sem isto o INFO por pergunta não saía do processo
+    _saida_log = logging.StreamHandler()
+    _saida_log.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    log.addHandler(_saida_log)
+    log.setLevel(logging.INFO)
 STATIC = config.RAIZ / "static"
 GRAVACOES = config.DATA_DIR / "gravacoes"
 
@@ -377,6 +382,9 @@ def _exemplos() -> list[dict]:
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if os.environ.get("EVAL_LLM_API_KEY"):  # falha segura: a chave da avaliação nunca fica no ambiente da demo
+            raise RuntimeError("EVAL_LLM_API_KEY está definida no ambiente da demo: remova-a (a avaliação usa "
+                               "EVAL_ENV_FILE, um arquivo fora do repositório).")
         sessions.limpar_tudo()
         _zerar_metricas()
         yield
