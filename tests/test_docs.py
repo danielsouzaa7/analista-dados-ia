@@ -1,6 +1,7 @@
 """Testes da documentação: README de uma tela, links, números e autoria (Spec, critérios 23 e 24)."""
 
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,11 @@ JARGAO = ["pass^", "cassete", "prelúdio", "prelude", "grounding"]
 
 ICONES = ["navegador", "ao-vivo", "avaliacao", "seguranca"]
 MARCADORES = ["heroi", "fluxo"] + [f"icone-{i}" for i in ICONES]
+
+IMG = DOCS / "img"
+MAX_BYTES_SVG = 30 * 1024
+SVGS_ANIMADOS = sorted([*IMG.glob("heroi*.svg"), *IMG.glob("fluxo*.svg")])  # fluxo chega em outra fatia
+SVG_NS = "{http://www.w3.org/2000/svg}"
 
 
 def _ler(caminho: Path) -> str:
@@ -122,7 +128,33 @@ def test_readme_marca_onde_entram_as_imagens_futuras():
     texto = _ler(README)
     for marcador in MARCADORES:
         assert f"<!-- {marcador} -->" in texto, marcador
-    assert "docs/img/conversa.png" in texto  # herói provisório
+
+
+def test_readme_mostra_o_heroi_com_variante_de_celular():
+    texto = _ler(README)
+    assert '<source media="(max-width: 600px)" srcset="docs/img/heroi-celular.svg">' in texto
+    assert '<img src="docs/img/heroi.svg" width="100%" alt="' in texto
+    assert "docs/img/conversa.png" not in texto  # o herói provisório saiu
+    for nome in ("heroi.svg", "heroi-celular.svg"):
+        assert (IMG / nome).exists(), nome
+
+
+@pytest.mark.parametrize("svg", SVGS_ANIMADOS, ids=lambda p: p.name)
+def test_svgs_leves_acessiveis_e_sem_recurso_externo(svg):
+    assert svg.stat().st_size <= MAX_BYTES_SVG
+    texto = _ler(svg)
+    raiz = ET.fromstring(texto)  # XML válido
+    assert raiz.get("role") == "img"
+    assert raiz.find(f"{SVG_NS}title") is not None
+    assert raiz.find(f"{SVG_NS}desc") is not None
+    assert len(raiz.findall(f".//{SVG_NS}style")) == 1
+    assert "prefers-reduced-motion" in texto
+    assert raiz.find(f".//{SVG_NS}script") is None
+    assert raiz.find(f".//{SVG_NS}foreignObject") is None
+    assert not re.search(r'href="\s*https?:', texto)
+    assert not re.search(r"url\(\s*['\"]?(?!#)", texto)  # só url(#id) local
+    assert "@import" not in texto
+    assert "animation-delay" not in texto  # loop numa linha do tempo única
 
 
 def test_readme_usa_p_em_vez_de_h3_e_details_com_linhas_em_branco():

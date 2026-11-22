@@ -1,7 +1,10 @@
 <h1 align="center">Analista de dados com IA</h1>
 
 <!-- heroi -->
-<p align="center"><img src="docs/img/conversa.png" width="100%" alt="Conversa do app: pergunta sobre tempo de entrega e nota, com plano, SQL, gráfico e o selo de números conferidos"></p>
+<picture>
+  <source media="(max-width: 600px)" srcset="docs/img/heroi-celular.svg">
+  <img src="docs/img/heroi.svg" width="100%" alt="Animação: alguém digita &quot;O tempo de entrega afeta a nota do cliente?&quot;. No servidor, o agente faz um plano e escreve o SQL; o código e os dados passam para o navegador, onde o Python calcula r = -0,506 em 5.501 pedidos. Um gráfico de dispersão mostra a nota caindo com o tempo de entrega, aparece o selo números conferidos e a resposta: quanto maior o tempo de entrega, menor a nota. Cerca de 14 segundos, custo zero.">
+</picture>
 
 <p align="center"><b>Pergunte em português. O agente planeja no servidor, roda o Python no seu navegador e mostra cada passo ao vivo.</b></p>
 
