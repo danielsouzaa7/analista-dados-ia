@@ -158,6 +158,10 @@ def hm(td: timedelta) -> str:
     return f"{minutos // 60}h{minutos % 60:02d}"
 
 
+def _x(valor: float) -> str:
+    return f"{valor:.1f}".replace(".", ",") + "x"
+
+
 def _data(d: datetime | None) -> str:
     return d.astimezone(FUSO).strftime("%d/%m/%Y %H:%M") if d else "—"
 
@@ -172,7 +176,7 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
         f"| Relógio corrido | {hm(r['corrido'])} |",
         f"| Horas paradas excluídas | {hm(r['parado'])} |",
         f"| Tempo somado dos agentes | {hm(r['agentes'])} |",
-        f"| Paralelismo médio | {r['paralelismo']:.1f}x |",
+        f"| Paralelismo médio | {_x(r['paralelismo'])} |",
         f"| Sessões | {r['n_sessoes']} |",
         f"| Agentes | {r['n_agentes']} |", "",
         "| Categoria de agente | Agentes | Tempo somado |", "|---|---|---|",
@@ -211,7 +215,7 @@ def main() -> None:
     args.saida.parent.mkdir(parents=True, exist_ok=True)
     args.saida.write_text(markdown(r), encoding="utf-8")
     print(f"Ativo {hm(r['ativo'])} | corrido {hm(r['corrido'])} | parado {hm(r['parado'])} | "
-          f"agentes {hm(r['agentes'])} ({r['paralelismo']:.1f}x) | {r['n_sessoes']} sessões, "
+          f"agentes {hm(r['agentes'])} ({_x(r['paralelismo'])}) | {r['n_sessoes']} sessões, "
           f"{r['n_agentes']} agentes\nEscrito em {args.saida}")
 
 

@@ -2,6 +2,8 @@
 
 import json
 import re
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -43,11 +45,10 @@ NUMEROS_README = [
     ("Avaliado contra o modelo real em 5 rodadas", "docs/avaliacao.md", "as 5 rodadas acima deram"),
     ("0,1 vCPU", "docs/decisoes.md", None),
     ("5 rodadas de red team", "docs/seguranca.md", "### Rodada 5"),
-    ("11h42", "docs/tempo-de-construcao.md", None),
-    ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
+    ("13h07", "docs/tempo-de-construcao.md", None),
+    ("77 agentes", "docs/tempo-de-construcao.md", "| Agentes | 77 |"),
     # Em números e Como foi construído
     ("mediana de 9,3 s", "docs/avaliacao.md", "mediana 9,3 s"),
-    ("17,1 s", "docs/como-rodar.md", "mediana de `/api/metricas`, 17,1 s"),
     ("21,4 MB", "docs/decisoes.md", "cerca de 21,4 MB decodificados"),
     ("56.229 bytes", "docs/decisoes.md", None),
     ("10 vetores de fuga", "docs/como-rodar.md", None),
@@ -62,33 +63,32 @@ NUMEROS_README = [
     ("R$ 0", "docs/arquitetura.md", "R$ 0 (plano gratuito)"),
     ("14 decisões de arquitetura", "docs/decisoes.md", "## 14. Hospedagem"),
     ("19/11/2026 02:13", "docs/tempo-de-construcao.md", None),
-    ("| Tempo ativo de relógio | 11h42 |", "docs/tempo-de-construcao.md", None),
-    ("| Relógio corrido | 67h55 |", "docs/tempo-de-construcao.md", None),
-    ("| Horas paradas excluídas | 56h13 |", "docs/tempo-de-construcao.md", None),
-    ("| Tempo somado dos agentes | 16h01 |", "docs/tempo-de-construcao.md", None),
-    ("| Paralelismo médio | 1.4x |", "docs/tempo-de-construcao.md", None),
-    ("| Sessões | 7 |", "docs/tempo-de-construcao.md", None),
-    ("| Agentes | 71 |", "docs/tempo-de-construcao.md", None),
-    ("| Revisão | 20 | 4h44 |", "docs/tempo-de-construcao.md", None),
-    ("| Implementação | 33 | 9h20 |", "docs/tempo-de-construcao.md", None),
-    ("| Spec/plano | 7 | 0h54 |", "docs/tempo-de-construcao.md", None),
+    ("| Tempo ativo de relógio | 13h07 |", "docs/tempo-de-construcao.md", None),
+    ("| Relógio corrido | 69h27 |", "docs/tempo-de-construcao.md", None),
+    ("| Horas paradas excluídas | 56h21 |", "docs/tempo-de-construcao.md", None),
+    ("| Tempo somado dos agentes | 17h44 |", "docs/tempo-de-construcao.md", None),
+    ("| Paralelismo médio | 1,4x |", "docs/tempo-de-construcao.md", None),
+    ("| Sessões | 8 |", "docs/tempo-de-construcao.md", None),
+    ("| Agentes | 77 |", "docs/tempo-de-construcao.md", None),
+    ("| Revisão | 21 | 4h51 |", "docs/tempo-de-construcao.md", None),
+    ("| Implementação | 37 | 10h32 |", "docs/tempo-de-construcao.md", None),
+    ("| Spec/plano | 8 | 1h03 |", "docs/tempo-de-construcao.md", None),
     ("| Documentação | 6 | 0h21 |", "docs/tempo-de-construcao.md", None),
-    ("| Testes | 3 | 0h32 |", "docs/tempo-de-construcao.md", None),
+    ("| Testes | 3 | 0h46 |", "docs/tempo-de-construcao.md", None),
     ("| Outros | 2 | 0h10 |", "docs/tempo-de-construcao.md", None),
     # contagens de testes, registradas com data em como-rodar
-    ("701 testes no pytest", "docs/como-rodar.md", None),
     ("42 no `deno test`", "docs/como-rodar.md", None),
     ("50 no e2e", "docs/como-rodar.md", None),
     ("97% (run #6", "docs/como-rodar.md", "97% de `app/`"),
     ("657 passed, 50 skipped", "docs/como-rodar.md", None),
     # um nome só para cada medida de horas (README e autoria)
-    ("11h42 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 11h42 |"),
-    ("16h01 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 16h01 |"),
+    ("13h07 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 13h07 |"),
+    ("17h44 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 17h44 |"),
 ]
 NUMEROS_AUTORIA = [
-    ("11h42 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 11h42 |"),
-    ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
-    ("16h01 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 16h01 |"),
+    ("13h07 de tempo ativo de relógio", "docs/tempo-de-construcao.md", "| Tempo ativo de relógio | 13h07 |"),
+    ("77 agentes", "docs/tempo-de-construcao.md", "| Agentes | 77 |"),
+    ("17h44 de trabalho somado dos agentes (em paralelo)", "docs/tempo-de-construcao.md", "| Tempo somado dos agentes | 17h44 |"),
 ]
 
 # termo -> começo da explicação entre parênteses logo depois da 1ª ocorrência (fora de blocos de código)
@@ -98,6 +98,11 @@ JARGAO = {
     "prelúdio": "funções de estatística",
     "grounding": "valores reais das colunas",
     "nonce": "código de uso único",
+    "sri": "o navegador confere o hash",
+    "spike": "teste rápido de viabilidade",
+    "wasm": "webassembly",
+    "coop/coep": "cabeçalhos que isolam",
+    "ssrf": "o servidor é levado a conectar",
 }
 JANELA_JARGAO = 80
 
@@ -158,9 +163,10 @@ def test_conteudo_do_readme_antigo_continua_em_docs(frase):
 @pytest.mark.parametrize("termo", JARGAO)
 def test_jargao_explicado_na_primeira_ocorrencia(termo):
     texto = _sem_blocos_de_codigo(_ler(README)).lower()
-    i = texto.find(termo)
-    if i < 0:
+    achado = re.search(rf"\b{re.escape(termo)}", texto)
+    if not achado:
         return  # termo ausente: nada a explicar
+    i = achado.start()
     depois = texto[i : i + len(termo) + JANELA_JARGAO]
     assert f"({JARGAO[termo]}" in depois, f"{termo} sem explicação logo depois: {depois!r}"
 
@@ -206,8 +212,10 @@ def test_readme_diagrama_com_srcset_absoluto_e_sem_legenda_duplicada():
 
 def test_readme_textos_do_resultado_sem_exagero():
     texto = _ler(README)
-    assert "6 dos 8 casos certos em todas as rodadas" in texto and "6/8" not in texto
-    assert "cada achado corrigido com teste ou publicado como risco aceito" in texto
+    assert "6 dos 8 casos certos em todas as rodadas" in texto and "6/8 em todas" not in texto
+    assert "cada achado corrigido (quase todos com teste automatizado) ou publicado como risco aceito" in texto
+    assert "cada achado corrigido com teste" not in texto
+    assert "cada achado com teste ou risco aceito" not in texto
     assert "reproduzido, fechado" not in texto
 
 
@@ -327,7 +335,8 @@ def test_demo_animada_existe_e_pesa_menos_de_5_mb():
 
 def test_tempo_do_heroi_tem_fonte_em_como_rodar():
     assert "17 s" in _ler(IMG / "heroi.svg")
-    assert "mediana de `/api/metricas`, 17,1 s" in _doc("docs/como-rodar.md")
+    assert "cerca de 17 s (`/api/metricas` da sessão de gravação)" in _doc("docs/como-rodar.md")
+    assert "mediana de uma pergunta" not in _ler(README) and "17,1" not in _ler(README)
 
 
 def test_readme_nao_descreve_a_vitrine_antiga_e_cita_a_licenca():
@@ -382,7 +391,7 @@ def test_exemplo_real_e_texto_exato_da_gravacao():
 
 def test_readme_conta_as_decisoes_da_autoria():
     linhas = [ln for ln in _ler(AUTORIA).splitlines() if re.match(r"\| \d\d/\d\d ", ln)]
-    assert f"{len(linhas)} decisões do Daniel" in _ler(README)
+    assert f"{len(linhas)} decisões minhas" in _ler(README)
 
 
 def test_tabela_da_avaliacao_por_caso_bate_com_o_relatorio():
@@ -398,3 +407,59 @@ def test_readme_nao_publica_a_tabela_por_sessao():
     assert "| Sessão | Ativo |" not in texto
     for sessao in re.findall(r"^\| ([0-9a-f]{8}) \|", _doc("docs/tempo-de-construcao.md"), flags=re.M):
         assert sessao not in texto, sessao
+
+
+def _contagem_pytest() -> int:
+    saida = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "--ignore=tests/e2e", "-p", "no:cacheprovider"],
+        cwd=RAIZ, capture_output=True, text=True, check=True,
+    ).stdout
+    return int(re.search(r"(\d+) tests? collected", saida).group(1))
+
+
+def test_contagem_de_testes_do_pytest_e_a_real():
+    n = _contagem_pytest()
+    assert f"{n} testes no pytest" in _ler(README)
+    assert f"{n} testes no pytest" in _doc("docs/como-rodar.md")
+
+
+def test_conferencia_diz_que_sql_e_codigo_enviados_tambem_sao_fonte():
+    texto = _ler(README)
+    assert "ou do SQL e do código enviados, desta pergunta ou dos últimos 3 turnos" in texto
+    assert "(ou no SQL/código que o gerou)" in texto
+    assert "um número escrito no próprio SQL ou código conta como fonte" in texto
+    assert "precisa existir num resultado de ferramenta." not in texto
+
+
+def test_risco_aceito_do_teto_em_disco_das_sessoes():
+    riscos = _doc("docs/seguranca.md").split("## Riscos aceitos")[1]
+    assert "200 sessões de 20 MB" in riscos and "teto de bytes em disco" in riscos
+
+
+def test_spec_aceita_gif_de_ate_30_s():
+    spec = _doc("Spec.md")
+    assert "15 a 25 s" not in spec and "até cerca de 30 s" in spec
+
+
+def test_legenda_do_gif_aponta_para_a_ancora_de_como_rodar():
+    assert "(docs/como-rodar.md#como-o-gif-foi-gravado)" in _ler(README)
+    assert "\n## Como o GIF foi gravado\n" in _doc("docs/como-rodar.md")
+
+
+def test_adrs_explicadas_na_primeira_vez():
+    texto = _ler(README)
+    assert "registros de decisão (ADRs)" in texto and "as 14 ADRs" not in texto
+
+
+def test_estrutura_cita_os_arquivos_novos_e_so_existentes():
+    for rel in ("scripts/tempo_construcao.py", "static/dom.js", "static/marcas.js", "static/fake-api.js"):
+        assert (RAIZ / rel).exists(), rel
+        nome = rel.split("/")[-1]
+        assert nome in _ler(README) and nome in _doc("docs/como-rodar.md"), nome
+    assert ".claude/plans/" in _ler(README)
+
+
+def test_heroi_mostra_count_no_sql():
+    for nome in ("heroi.svg", "heroi-celular.svg"):
+        textos = ["".join(t.itertext()) for t in ET.fromstring(_ler(IMG / nome)).iter(f"{SVG_NS}text")]
+        assert any("SELECT cupom, COUNT(*)," in t for t in textos), nome

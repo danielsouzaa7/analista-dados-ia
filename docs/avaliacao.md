@@ -34,7 +34,7 @@ Números omitidos: dia_hora (1.611); tempo_nota (5.501).
 
 <!-- avaliacao:fim -->
 
-"Número sem fonte" é um número da resposta que não aparece em nenhum resultado de ferramenta (SQL ou Python), com tolerância de 1%. A checagem não cobre um número certo citado no lugar errado.
+"Número sem fonte" é um número da resposta que não aparece em nenhum resultado de ferramenta (SQL ou Python) nem no SQL e no código enviados, com tolerância de 1%. A checagem não cobre um número certo citado no lugar errado.
 
 A meta da Spec (acertar todas as perguntas) não foi batida: média de 7,0/8 e 6/8 em todas as rodadas. As falhas são número omitido em `dia_hora` e `tempo_nota`, nunca número sem fonte.
 

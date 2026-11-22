@@ -108,6 +108,7 @@ def test_markdown_tem_numeros_e_nenhum_texto_de_mensagem(tmp_path):
     assert "| Relógio corrido | 1h03 |" in md
     assert "| Horas paradas excluídas | 1h00 |" in md
     assert "| Spec/plano | 1 | 0h02 |" in md
+    assert "| Paralelismo médio | 0,7x |" in md
     assert "Como foi medido" in md and "19/11/2026" in md
 
 

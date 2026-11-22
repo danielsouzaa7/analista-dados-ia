@@ -159,6 +159,7 @@ Conferido pelos revisores, sem achado (os itens sobre o Deno valem para o execut
 - **Memória do WASM no navegador do visitante**: pode chegar a cerca de 4 GB por execução. O servidor não tem mais esse risco; quem paga é a aba, e `terminate()` a libera.
 - **Rede que bloqueia o jsDelivr**: fica sem Python (cerca de 21 MB na primeira execução); o agente responde com SQL.
 - **Contadores por processo** (teto diário, sessões, semáforos): o desenho assume 1 worker.
+- **Sem teto de bytes em disco para as sessões** (resto parcial do 4.2): o teto é de contagem, não de bytes, e cabem 200 sessões de 20 MB cada.
 - **Dados vão a um terceiro**: perguntas e dados consultados são enviados ao Gemini no plano gratuito. A tela avisa para não enviar dado sensível.
 - **Tetos globais sem limite por cliente** (1 pergunta, 4 reproduções, 200 sessões): quem repete pedidos ocupa as vagas de todos. Quem segura as 4 vagas de reprodução bloqueia o caminho de reserva (gravação quando falta vaga ou cota) por até 135 s, o prazo do stream; o TTL de 10 min limita as sessões sem pergunta, contado desde a criação (keepalive não o renova; ver 4.13). O teto de 200 sessões é reservado sob lock com um contador de pendentes (`test_upload_simultaneo_nao_passa_do_teto_de_sessoes`); sob enxurrada de criação (cerca de 1,3 upload/s), o visitante novo recebe "Servidor cheio" por até 150 s depois que o atacante para, porque não há limite por IP.
 - **Prefixo NAT64 `64:ff9b::`** é aceito como global pelo `is_global`; um gateway NAT64 na rede do servidor poderia alcançar IPv4 interno.

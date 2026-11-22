@@ -7,7 +7,7 @@
 - O resultado do Python vem do navegador e não é confiável: um visitante pode forjá-lo, mas só na própria sessão (e nas métricas globais). Ver [seguranca.md](seguranca.md).
 - **Os dados e as perguntas vão para o Google Gemini** (plano gratuito, que pode usar os dados para melhorar produtos). Não envie dados sensíveis.
 - Risco aceito: a URL do Postgres informada faz o servidor abrir uma conexão de rede (SSRF): só IPs públicos são aceitos e a conexão é fixada no IP checado; resta a Internet pública, com `READ_ONLY` e timeout de até 20 s. Use um usuário só com `GRANT SELECT`.
-- A conferência verifica que o número existe nos resultados, não que está no lugar certo.
+- A conferência verifica que o número existe nos resultados (ou no SQL e no código enviados), não que está no lugar certo.
 - A detecção de dado pessoal é por nome da coluna e padrão (CPF, e-mail, telefone); não cobre outros tipos, e não impede que o visitante digite o dado na pergunta.
 - Memória de 3 turnos por sessão, sem memória entre sessões. Sessões expiram em 10 min sem pergunta e em 1 h depois da primeira pergunta; com o servidor lotado, sai a sessão sem pergunta parada há mais de 150 s.
 - A meta da Spec (acertar todas as perguntas da avaliação) não foi batida: média de 7,0/8 e 6/8 em todas as rodadas. Ver [avaliacao.md](avaliacao.md).
