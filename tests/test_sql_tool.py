@@ -138,10 +138,19 @@ def test_postgres_real(monkeypatch) -> None:
         executar(s, "SELECT * FROM postgres_execute('pg', 'DROP TABLE vendas_pg')")
     assert executar(s, "SELECT count(*) FROM vendas_pg").linhas == [(3,)]
     senha = PG_TEST_URL.split(":")[2].split("@")[0]
-    for sql in ("SELECT database_name, path FROM duckdb_databases()", "SELECT * FROM duckdb_secrets()",
-                "SELECT * FROM duckdb_settings()"):
-        assert senha not in str(executar(s, sql).linhas)
-    assert PG_TEST_URL not in str(executar(s, "SELECT path FROM duckdb_databases()").linhas)
+    catalogo = ("SELECT database_name, path FROM duckdb_databases()", "SELECT * FROM duckdb_secrets()",
+                "SELECT * FROM duckdb_settings()")
+    for sql in catalogo:  # 1ª barreira: validar_sql recusa as funções que revelam configuração
+        with pytest.raises(ErroUsuario):
+            executar(s, sql)
+    con = sql_tool.abrir(s)  # 2ª barreira: mesmo abaixo de validar_sql, a senha não fica no catálogo
+    for sql in catalogo:
+        try:
+            saida = str(con.execute(sql).fetchall())
+        except Exception as e:  # duckdb_secrets() recusa por permissão; a mensagem também não pode ter a senha
+            saida = str(e)
+        assert senha not in saida
+    assert PG_TEST_URL not in str(con.execute("SELECT path FROM duckdb_databases()").fetchall())
     with pytest.raises(ErroUsuario):
         executar(s, CADEIA)
     for sql in CONTORNOS:
