@@ -885,3 +885,11 @@ def test_como_dado_60_niveis_em_200kb_e_rapido() -> None:
     texto = ("<da" + miolo) * n + "<dados>" + ("dos>" + miolo) * n
     assert len(texto) > 190_000
     assert _tempo_como_dado(texto) < 3.0  # mesma folga de CI do teste acima
+
+
+def test_prompt_pede_citar_a_base_sem_decorar_o_gabarito() -> None:
+    s = prompts.SISTEMA
+    assert "tamanho da amostra (n)" in s and "valor absoluto de quem lidera" in s
+    assert "totais que aparecem nos resultados" in s
+    for numero in ("1.611", "5.501", "52,01", "0,51"):
+        assert numero not in s
