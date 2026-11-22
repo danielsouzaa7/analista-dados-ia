@@ -1,17 +1,26 @@
 """Mede as horas reais de construção a partir dos registros locais do Claude Code.
 
 Uso: python scripts/tempo_construcao.py [--dir PASTA] [--saida docs/tempo-de-construcao.md]
-    [--ate AAAA-MM-DDTHH:MM (horário de São Paulo)]
+    [--ate AAAA-MM-DDTHH:MM[:SS] (horário de São Paulo) | --ate-commit SHA (horário do commit, via git)]
 Lê só timestamps, tipos e metadados; nunca copia texto de mensagens.
 """
 import argparse
 import json
+import re
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 RAIZ = Path(__file__).resolve().parent.parent
-PASTA_PADRAO = Path.home() / ".claude" / "projects" / "C--Users-Daniel-Desktop-analista-dados-ia"
+
+
+def pasta_do_projeto(raiz: Path) -> Path:
+    """Pasta dos registros do Claude Code: o caminho absoluto do projeto com todo caractere não alfanumérico trocado por `-`."""
+    return Path.home() / ".claude" / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(raiz))
+
+
+PASTA_PADRAO = pasta_do_projeto(RAIZ)
 SAIDA_PADRAO = RAIZ / "docs" / "tempo-de-construcao.md"
 
 # Intervalo maior que isso entre dois eventos é parada (Daniel fora, sessão caída), não trabalho.
@@ -131,8 +140,10 @@ def medir(pasta: Path, ate: datetime | None = None) -> dict:
     agentes = timedelta(0)
     n_agentes = 0
     por_sessao = []
-    for s in sessoes:
-        eventos = _ler(s, ate)
+    lidas = [(s, _ler(s, ate)) for s in sessoes]
+    # Sessões numeradas por ordem cronológica: o ID real não é publicado.
+    lidas.sort(key=lambda p: min((e["_ts"] for e in p[1]), default=datetime.max.replace(tzinfo=FUSO)))
+    for s, eventos in lidas:
         da_sessao = [e["_ts"] for e in eventos]
         for a in sorted((s.parent / s.stem / "subagents").glob("agent-*.jsonl")):
             instantes = [e["_ts"] for e in _ler(a, ate)]
@@ -149,7 +160,7 @@ def medir(pasta: Path, ate: datetime | None = None) -> dict:
         todos += da_sessao
         segs = _segmentos(da_sessao, _esperas(eventos))
         segmentos += segs
-        por_sessao.append((s.stem[:8], _soma(segs)))
+        por_sessao.append((f"Sessão {len(por_sessao) + 1}", _soma(segs)))
     ativo = _soma(segmentos)
     corrido = max(todos) - min(todos) if todos else timedelta(0)
     return {
@@ -160,7 +171,19 @@ def medir(pasta: Path, ate: datetime | None = None) -> dict:
     }
 
 
+COMMIT_CORTE = "cec40ed"
+
+
+def corte_do_commit(sha: str, cwd: Path = RAIZ) -> datetime:
+    """Horário (com fuso) do commit, lido do git."""
+    saida = subprocess.run(["git", "show", "-s", "--format=%cI", sha], cwd=cwd, capture_output=True,
+                           text=True, check=True).stdout.strip()
+    return datetime.fromisoformat(saida)
+
+
 CORTE_AVISO = ("Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado). "
+               "Para reproduzir (exige os registros locais do Claude Code, que não são publicados): "
+               "`python scripts/tempo_construcao.py --ate-commit cec40ed`. "
                "O trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.")
 
 
@@ -174,7 +197,13 @@ def _x(valor: float) -> str:
 
 
 def _data(d: datetime | None) -> str:
-    return d.astimezone(FUSO).strftime("%d/%m/%Y %H:%M") if d else "—"
+    return d.astimezone(FUSO).strftime("%d/%m/%Y") if d else "—"
+
+
+def _periodo(ini: datetime | None, fim: datetime | None) -> str:
+    if ini and fim and ini.year == fim.year:
+        return f"{_data(ini)[:5]} a {_data(fim)}"
+    return f"{_data(ini)} a {_data(fim)}"
 
 
 def markdown(r: dict, hoje: datetime | None = None) -> str:
@@ -182,7 +211,7 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
     corte = [CORTE_AVISO, ""] if r.get("ate") else []
     linhas = [
         "# Tempo de construção", "", *corte,
-        f"Período (horário de São Paulo): {_data(r['inicio'])} a {_data(r['fim'])}.", "",
+        f"Período (datas em horário de São Paulo): {_periodo(r['inicio'], r['fim'])}.", "",
         "| Medida | Valor |", "|---|---|",
         f"| Tempo ativo de relógio | {hm(r['ativo'])} |",
         f"| Relógio corrido | {hm(r['corrido'])} |",
@@ -193,7 +222,7 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
         f"| Agentes | {r['n_agentes']} |", "",
         "| Categoria de agente | Agentes | Tempo somado |", "|---|---|---|",
         *[f"| {c} | {n} | {hm(t)} |" for c, (n, t) in r["categorias"].items()], "",
-        "| Sessão | Ativo |", "|---|---|", *[f"| {i} | {hm(t)} |" for i, t in r["por_sessao"]], "",
+        "| Sessão | Ativo |", "|---|---|", *[f"| {n} | {hm(t)} |" for n, t in r["por_sessao"]], "",
         "## Como foi medido", "",
         "1. Todos os eventos (conversa principal e subagentes) entram numa linha do tempo única.",
         f"2. Tempo ativo = soma dos intervalos entre eventos consecutivos de até {int(OCIOSO_MAX.total_seconds() // 60)}"
@@ -210,10 +239,14 @@ def markdown(r: dict, hoje: datetime | None = None) -> str:
         "comando ocorrer com a conversa ou um agente já trabalhando, esse trabalho continua contando.",
         "4. Tempo dos agentes = tempo ativo de cada subagente na sua própria linha do tempo, somado e agrupado "
         "por tipo; paralelismo = tempo somado dos agentes / tempo ativo de relógio.",
-        "5. Período = primeiro e último evento, em horário de São Paulo; relógio corrido = último menos primeiro.",
+        "5. Período = data do primeiro e do último evento, em horário de São Paulo (só datas são publicadas); "
+        "relógio corrido = último menos primeiro. As sessões são numeradas pela ordem cronológica.",
+        "6. As horas paradas somam a espera pelo Daniel e o tempo ocioso, e os registros não os separam com "
+        "exatidão: sessões se sobrepõem, e uma espera de uma sessão pode coincidir com trabalho de outra. "
+        "Por isso o total parado é publicado sem divisão.",
         "", "Limites: o tempo que o Daniel gastou pensando fora da tela não é medido; o horário vem dos registros "
         "locais do Claude Code; os números exatos dependem do limite de ociosidade (5 minutos).", "",
-        f"Gerado em {hoje.strftime('%d/%m/%Y')}.", "",
+        f"Gerado por `scripts/tempo_construcao.py` em {hoje.strftime('%d/%m/%Y')}.", "",
     ]
     return "\n".join(linhas)
 
@@ -224,8 +257,10 @@ def main() -> None:
     p.add_argument("--saida", type=Path, default=SAIDA_PADRAO)
     p.add_argument("--ate", type=lambda t: datetime.fromisoformat(t).replace(tzinfo=FUSO),
                    help="corte: eventos depois deste instante (horário de São Paulo) são ignorados")
+    p.add_argument("--ate-commit", metavar="SHA", help="corte: horário deste commit, lido do git")
     args = p.parse_args()
-    r = medir(args.dir, args.ate)
+    ate = corte_do_commit(args.ate_commit) if args.ate_commit else args.ate
+    r = medir(args.dir, ate)
     args.saida.parent.mkdir(parents=True, exist_ok=True)
     args.saida.write_text(markdown(r), encoding="utf-8")
     print(f"Ativo {hm(r['ativo'])} | corrido {hm(r['corrido'])} | parado {hm(r['parado'])} | "

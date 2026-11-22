@@ -1,4 +1,7 @@
 import json
+import os
+import re
+import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -63,7 +66,7 @@ def test_espera_pelo_humano_apos_fim_de_turno_nao_conta(tmp_path):
 
 def test_agente_em_segundo_plano_mantem_o_tempo_contando(tmp_path):
     escrever(tmp_path / "s1.jsonl", [humano(0), fim_turno(1, pendentes=1), humano(4)])
-    subagente(tmp_path, "s1", "a1", "ecc:code-reviewer", [assistente(1), assistente(3), assistente(4)])
+    subagente(tmp_path, "s1", "a1", "plugin:code-reviewer", [assistente(1), assistente(3), assistente(4)])
     r = tc.medir(tmp_path)
     assert r["ativo"] == timedelta(minutes=4)
     assert r["agentes"] == timedelta(minutes=3)
@@ -90,18 +93,18 @@ def test_resultado_de_ferramenta_nao_e_humano(tmp_path):
 
 def test_categoria_por_agent_type():
     c = tc.categoria
-    assert c("ecc:security-reviewer") == c("ecc:typescript-reviewer") == "Revisão"
-    assert c("ecc:tdd-guide") == c("build-error-resolver") == c("general-purpose") == "Implementação"
-    assert c("ecc:architect") == c("ecc:planner") == c("ecc:code-architect") == "Spec/plano"
-    assert c("ecc:doc-updater") == "Documentação"
-    assert c("ecc:e2e-runner") == c("ecc:browser-qa") == "Testes"
+    assert c("plugin:security-reviewer") == c("plugin:typescript-reviewer") == "Revisão"
+    assert c("plugin:tdd-guide") == c("build-error-resolver") == c("general-purpose") == "Implementação"
+    assert c("plugin:architect") == c("plugin:planner") == c("plugin:code-architect") == "Spec/plano"
+    assert c("plugin:doc-updater") == "Documentação"
+    assert c("plugin:e2e-runner") == c("plugin:browser-qa") == "Testes"
     assert c("algo-novo") == "Outros"
     assert c(None) == "Outros"
 
 
 def test_markdown_tem_numeros_e_nenhum_texto_de_mensagem(tmp_path):
     escrever(tmp_path / "s1.jsonl", [humano(0), assistente(60), assistente(63)])
-    subagente(tmp_path, "s1", "a1", "ecc:planner", [assistente(60), assistente(62)])
+    subagente(tmp_path, "s1", "a1", "plugin:planner", [assistente(60), assistente(62)])
     md = tc.markdown(tc.medir(tmp_path), hoje=datetime(2026, 11, 19, tzinfo=UTC))
     assert SEGREDO not in md
     assert "| Tempo ativo de relógio | 0h03 |" in md
@@ -156,7 +159,7 @@ def test_sessoes_sobrepostas_nao_contam_o_mesmo_tempo_duas_vezes(tmp_path):
 
 def test_agente_trabalhando_cobre_a_espera_da_conversa_principal(tmp_path):
     escrever(tmp_path / "s1.jsonl", [humano(0), fim_turno(1, pendentes=1), texto(7, "<task-notification>x"), humano(9)])
-    subagente(tmp_path, "s1", "a1", "ecc:planner", [assistente(2), assistente(4), assistente(6)])
+    subagente(tmp_path, "s1", "a1", "plugin:planner", [assistente(2), assistente(4), assistente(6)])
     # pendentes=1: nao ha espera; a notificacao nao muda nada e todo o intervalo (0-9) e continuo
     assert tc.medir(tmp_path)["ativo"] == timedelta(minutes=9)
 
@@ -180,3 +183,48 @@ def test_agente_que_comecou_depois_do_corte_nao_conta(tmp_path):
     assert r["n_sessoes"] == 1
     assert r["categorias"][tc.SPEC][0] == 0
     assert r["ativo"] == timedelta(minutes=2)
+
+
+def test_markdown_nao_publica_id_de_sessao_nem_horario(tmp_path):
+    escrever(tmp_path / "abcdef0123456789.jsonl", [humano(0), assistente(1)])
+    escrever(tmp_path / "fedcba9876543210.jsonl", [humano(600), assistente(601)])
+    md = tc.markdown(tc.medir(tmp_path), hoje=datetime(2026, 11, 19, tzinfo=UTC))
+    assert "abcdef01" not in md and "fedcba98" not in md
+    assert "| Sessão 1 |" in md and "| Sessão 2 |" in md
+    assert not re.search(r"\b\d{1,2}:\d{2}\b", md)
+    assert "Gerado por `scripts/tempo_construcao.py`" in md
+
+
+def test_pasta_padrao_vem_do_caminho_do_projeto_sem_usuario_no_codigo():
+    assert tc.pasta_do_projeto(Path("C:/Users/Fulano/Desktop/proj")).name == "C--Users-Fulano-Desktop-proj"
+    assert tc.pasta_do_projeto(Path("/home/x/proj")).name == "-home-x-proj"
+    assert "Users-Daniel" not in (RAIZ / "scripts" / "tempo_construcao.py").read_text(encoding="utf-8")
+
+
+def test_doc_publicado_nao_tem_id_de_sessao_caminho_local_nem_horario():
+    doc = (RAIZ / "docs" / "tempo-de-construcao.md").read_text(encoding="utf-8")
+    assert not re.search(r"\b[0-9a-f]{8,}\b", doc)
+    assert "C:\\Users" not in doc and "/Users/" not in doc
+    assert not re.search(r"\b\d{1,2}:\d{2}\b", doc)
+
+
+def test_pasta_do_projeto_troca_todo_nao_alfanumerico_por_hifen():
+    pasta = tc.pasta_do_projeto(Path(r"C:\Users\Ana Maria\meu_proj.v2"))
+    assert pasta.name == "C--Users-Ana-Maria-meu-proj-v2"
+
+
+def test_corte_do_commit_le_o_horario_do_git(tmp_path):
+    def git(*a):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=tmp_path, check=True,
+                       capture_output=True, env={**os.environ, "GIT_COMMITTER_DATE": "2026-11-21T20:02:20-03:00"})
+    git("init", "-q")
+    git("commit", "-q", "--allow-empty", "-m", "x")
+    corte = tc.corte_do_commit("HEAD", cwd=tmp_path)
+    assert corte == datetime(2026, 11, 21, 23, 2, 20, tzinfo=UTC)
+    assert corte.utcoffset() is not None
+
+
+def test_aviso_de_corte_diz_como_reproduzir():
+    assert "`python scripts/tempo_construcao.py --ate-commit cec40ed`" in tc.CORTE_AVISO
+    assert "não são publicados" in tc.CORTE_AVISO and "<" not in tc.CORTE_AVISO
+    assert not re.search(r"\d\d:\d\d", tc.CORTE_AVISO)
