@@ -3,7 +3,7 @@
 <!-- heroi -->
 <picture>
   <source media="(max-width: 600px)" srcset="https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/heroi-celular.svg">
-  <img src="docs/img/heroi.svg" width="100%" alt="Ilustração do fluxo: alguém digita &quot;O tempo de entrega afeta a nota do cliente?&quot;. No servidor, o agente faz um plano e escreve o SQL; o código e os dados passam para o navegador, onde o Python calcula r = -0,506 em 5.501 pedidos. Um gráfico de dispersão mostra a nota caindo com o tempo de entrega, aparece o selo números conferidos e a resposta: quanto maior o tempo de entrega, menor a nota. Cerca de 14 segundos, custo zero.">
+  <img src="docs/img/heroi.svg" width="100%" alt="Ilustração do fluxo: alguém digita &quot;Pedidos com cupom têm ticket médio diferente? A diferença é significativa?&quot;. No servidor, o agente faz um plano e escreve o SQL que separa 1.620 pedidos com cupom e 6.380 sem. O código e os dados passam para o navegador, onde o Python roda um teste t de Welch (p menor que 0,001). Um gráfico de barras compara o ticket médio, R$ 52,01 com cupom e R$ 63,90 sem; aparece o selo números conferidos e a resposta: sim, a diferença é significativa. Cerca de 17 segundos, 4 chamadas ao LLM, custo zero.">
 </picture>
 
 <p align="center"><b>Pergunte em português. O agente planeja no servidor, roda o Python no seu navegador e mostra cada passo ao vivo.</b></p>
@@ -30,7 +30,7 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 | Números sem fonte nas respostas avaliadas | 0 (as 5 falhas são número omitido) | [avaliação](docs/avaliacao.md) |
 | Meta da Spec (8 de 8 em todas as rodadas) | **não batida** | [avaliação](docs/avaliacao.md) |
 | Tempo por caso na avaliação | mediana de 9,3 s (Python no servidor, executor Deno) | [avaliação](docs/avaliacao.md) |
-| Tempo da pergunta do GIF, local | cerca de 14 s (13,8 s pela mediana de `/api/metricas`) | [como rodar](docs/como-rodar.md) |
+| Tempo da pergunta do GIF, local | cerca de 17 s (17,1 s pela mediana de `/api/metricas`), 4 chamadas ao LLM | [como rodar](docs/como-rodar.md) |
 | Passo Python no navegador, fluxo completo | 4,5–5,2 s por execução em Chromium, Firefox e WebKit | [decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker) |
 | Download do Python na 1ª execução | 21,4 MB em 10 requisições ao jsDelivr | [decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker) |
 | Servidor | 0,1 vCPU e 512 MB (Render, plano gratuito) | [decisões 13 e 14](docs/decisoes.md) |
@@ -46,8 +46,8 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 
 <p align="center"><picture>
 <source media="(max-width: 600px)" srcset="https://github.com/danielsouzaa7/analista-dados-ia/raw/main/docs/img/demo-celular.gif">
-<img src="docs/img/demo.gif" width="100%" alt="Gravação de tela do app em tema escuro: o CSV de exemplo é carregado, a pergunta sobre o tempo de entrega e a nota do cliente é digitada, o agente planeja, consulta, roda o Python no navegador, desenha um gráfico de dispersão e termina com a resposta escrita, com o selo números conferidos.">
-</picture><br><sub>Pergunta real, tema escuro, rodando localmente no commit 8350309; tomada única de cada versão (de até 3 permitidas); espera do carregamento inicial cortada. No GIF de computador, o gráfico mostra r = -0,91: é a correlação da nota média por minuto de tempo de entrega (82 pontos, um por minuto); a resposta cita -0,51, a correlação de Pearson pedido a pedido. No GIF de celular, o gráfico já é pedido a pedido (r = -0,51).</sub></p>
+<img src="docs/img/demo.gif" width="100%" alt="Gravação de tela do app em tema escuro: o CSV de exemplo é carregado, a pergunta sobre o ticket médio dos pedidos com cupom é digitada, o agente planeja, consulta, roda o teste t de Welch no navegador, desenha um gráfico de barras (R$ 52,01 com cupom, R$ 63,90 sem) e termina com a resposta escrita e o selo números conferidos. A versão de celular é um recorte da mesma tomada.">
+</picture><br><sub>Pergunta real digitada (&quot;Pedidos com cupom têm ticket médio diferente? A diferença é significativa?&quot;), tema escuro, rodando localmente no commit 8d412fc. Tomada real gravada sem reanálise, a melhor de 2 (a 1ª teve 1 reanálise); espera do carregamento inicial cortada; o app segura cerca de 5 s na resposta conferida. GIF de computador: 1024×640, 29,8 s, 3,1 MB, cerca de 8 quadros por segundo. GIF de celular: recorte da mesma tomada (coluna da página, 440 px de largura), 29,8 s, 10 quadros por segundo, 1,3 MB, sem aceleração e sem CSS injetado.</sub></p>
 
 ## Como foi construído
 
@@ -410,7 +410,7 @@ O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pyte
 - **Prompt versionado:** `app/prompts.py` tem `VERSAO`, que aparece no evento `metricas` e no log ([decisão 11](docs/decisoes.md)).
 - **Versões fixas:** Pyodide 0.28.3 no caminho, ECharts 5.5.0 com SRI, Deno 2.9.8 no CI, actions fixadas por hash de commit.
 - **Tela sem backend:** `static/fake-stream.html` abre a página inteira contra um servidor falso que segue o contrato de eventos.
-- **GIF:** gravado no commit `8350309`, com pergunta, data e modelo registrados em [como rodar](docs/como-rodar.md).
+- **GIF:** gravado no commit `8d412fc`, com pergunta, data e modelo registrados em [como rodar](docs/como-rodar.md).
 
 ## Limitações e o que eu faria diferente
 
@@ -501,3 +501,7 @@ As 14 decisões, com contexto, alternativas descartadas e consequências, estão
 - [Avaliação](docs/avaliacao.md): resultado por caso, falhas e como reproduzir.
 - [Como rodar](docs/como-rodar.md), [limitações](docs/limitacoes.md), [autoria](docs/autoria.md), [tempo de construção](docs/tempo-de-construcao.md) e a [Spec](Spec.md).
 - Projeto irmão, do mesmo autor: [Pulse, inteligência de decisão para marketplaces](https://github.com/danielsouzaa7/pulse-marketplace-decision-intelligence).
+
+## Licença
+
+[MIT](LICENSE), Copyright (c) 2026 Daniel Souza Valerio.

@@ -92,12 +92,12 @@ docs/         arquitetura, decisoes, seguranca, avaliacao, autoria, como-rodar, 
 
 ## Como o GIF foi gravado
 
-O GIF do README é uma gravação de tela do app real rodando localmente, com uma pergunta digitada (não um botão de exemplo, para nunca cair numa gravação de resposta). Método:
+O GIF do README é uma gravação de tela do app real rodando localmente, com a pergunta digitada (não um botão de exemplo, para nunca cair numa gravação de resposta). Método:
 
 1. Subir o `uvicorn` local com a chave do LLM no ambiente e `SESSIONS_DIR` temporário.
-2. Playwright em Chromium, janela de 1024×640 (480×800 no celular), tema escuro, com `record_video_dir`: "Usar CSV de exemplo", esperar o esquema, digitar a pergunta "O tempo de entrega afeta a nota do cliente?" e esperar a resposta final.
-3. Converter o vídeo com ffmpeg (`scale=800:-1`, paleta própria) e cortar a espera do carregamento inicial. O GIF de computador tem quadros de 120–130 ms (cerca de 8 por segundo); o de celular, de 160–170 ms (cerca de 6).
+2. Playwright em Chromium, janela de 1024×640, tema escuro, com `record_video_dir`: "Usar CSV de exemplo", esperar o esquema, digitar a pergunta "Pedidos com cupom têm ticket médio diferente? A diferença é significativa?" e esperar a resposta final.
+3. Converter o vídeo com ffmpeg e cortar a espera do carregamento inicial. O app segura cerca de 5 s na resposta conferida.
 
-Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no commit `8350309`, em tema escuro. Pergunta: "O tempo de entrega afeta a nota do cliente?". Duas tomadas, uma por GIF, cada uma já aproveitada (sem selo de gravação nem erro final; nenhuma foi escolhida entre várias): `demo.gif` (janela de 1024×640, GIF de 800×500, 18 s, quadros de 120–130 ms, a resposta levou cerca de 11 s) e `demo-celular.gif` (janela de 480×800, GIF de 440×733, 26 s, quadros de 160–170 ms, a resposta levou cerca de 20 s, com 1 reanálise; uma execução do Python falhou no meio com `NameError` e o agente refez o passo, o que aparece no GIF). Uma terceira tomada foi perdida por erro de script (tema claro), sem uso. Os tempos diferem porque cada tomada é uma chamada nova ao modelo. A espera do carregamento inicial do Python foi cortada; os GIFs não foram acelerados (o celular tem 6 quadros por segundo, 440 px de largura, para caber em 2,7 MB). Os dois terminam na resposta escrita com o selo "números conferidos".
+Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no commit `8d412fc`, em tema escuro. Foram 2 tomadas; vale a melhor: a 1ª teve 1 reanálise, a 2ª, a usada, foi uma tomada real sem reanálise. Resultado na tela: 1.620 pedidos com cupom com ticket médio de R$ 52,01 e 6.380 sem cupom com R$ 63,90; teste t de Welch com t ≈ -15,56 e p < 0,001. `demo.gif`: 1024×640, cerca de 29,8 s, cerca de 3,1 MB, cerca de 8 quadros por segundo (8,33 medidos). `demo-celular.gif` é um recorte da mesma tomada (coluna da página, x=52, largura de 920 px reduzida a 440 px), 29,8 s, 10 quadros por segundo, 1,3 MB, sem aceleração e sem CSS injetado. Os dois terminam na resposta escrita com o selo "números conferidos".
 
-Tempo da pergunta na tomada: cerca de 14 s (mediana de `/api/metricas` com 1 pergunta, 13,8 s); custo do LLM: R$ 0 (plano gratuito).
+Tempo da pergunta na tomada: cerca de 17 s (mediana de `/api/metricas`, 17,1 s), 4 chamadas ao LLM; custo do LLM: R$ 0 (plano gratuito).

@@ -47,7 +47,7 @@ NUMEROS_README = [
     ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
     # Em números e Como foi construído
     ("mediana de 9,3 s", "docs/avaliacao.md", "mediana 9,3 s"),
-    ("13,8 s", "docs/como-rodar.md", "mediana de `/api/metricas` com 1 pergunta, 13,8 s"),
+    ("17,1 s", "docs/como-rodar.md", "mediana de `/api/metricas`, 17,1 s"),
     ("21,4 MB", "docs/decisoes.md", "cerca de 21,4 MB decodificados"),
     ("56.229 bytes", "docs/decisoes.md", None),
     ("10 vetores de fuga", "docs/como-rodar.md", None),
@@ -326,8 +326,16 @@ def test_demo_animada_existe_e_pesa_menos_de_5_mb():
 
 
 def test_tempo_do_heroi_tem_fonte_em_como_rodar():
-    assert "14 s" in _ler(IMG / "heroi.svg")
-    assert "mediana de `/api/metricas` com 1 pergunta, 13,8 s" in _doc("docs/como-rodar.md")
+    assert "17 s" in _ler(IMG / "heroi.svg")
+    assert "mediana de `/api/metricas`, 17,1 s" in _doc("docs/como-rodar.md")
+
+
+def test_readme_nao_descreve_a_vitrine_antiga_e_cita_a_licenca():
+    texto = _ler(README)
+    for velho in ("-0,91", "-0,51", "8350309", "cerca de 14 s", "13,8 s"):
+        assert velho not in texto, velho
+    assert "cupom" in texto and "17 s" in texto
+    assert "MIT" in texto and (RAIZ / "LICENSE").exists()
 
 
 def _normalizar(texto: str) -> str:
