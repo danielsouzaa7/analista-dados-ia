@@ -19,7 +19,7 @@
 <!-- fluxo -->
 <p align="center"><sub>O servidor nunca executa o Python da IA (o SQL roda nele, só leitura).</sub></p>
 
-<!-- demo -->
+<p align="center"><img src="docs/img/demo.gif" width="100%" alt="Gravação de tela do app: o CSV de exemplo é carregado, a pergunta sobre o tempo de entrega e a nota do cliente é digitada, o agente planeja, consulta, roda o Python no navegador e termina com um gráfico de dispersão e a resposta conferida."><br><sub>Pergunta real, rodando localmente no commit 1f8cafe; tomada única (de até 3 permitidas); espera do carregamento inicial cortada.</sub></p>
 
 ## Como foi construído
 

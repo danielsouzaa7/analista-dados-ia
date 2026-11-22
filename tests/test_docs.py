@@ -52,7 +52,7 @@ NUMEROS_AUTORIA = [
 JARGAO = ["pass^", "cassete", "prelúdio", "prelude", "grounding"]
 
 ICONES = ["navegador", "ao-vivo", "avaliacao", "seguranca"]
-MARCADORES = ["heroi", "fluxo", "demo"] + [f"icone-{i}" for i in ICONES]
+MARCADORES = ["heroi", "fluxo"] + [f"icone-{i}" for i in ICONES]
 
 
 def _ler(caminho: Path) -> str:
@@ -188,3 +188,10 @@ def test_autoria_nao_vaza_caminho_privado_nem_sessao():
     texto = _ler(AUTORIA)
     for proibido in [".claude/CLAUDE.md", "C:\\", "C:/", "/Users/"]:
         assert proibido not in texto
+
+
+def test_demo_animada_existe_e_pesa_menos_de_5_mb():
+    gif = DOCS / "img" / "demo.gif"
+    assert gif.exists() and gif.stat().st_size < 5 * 1024 * 1024
+    assert gif.read_bytes()[:6] in (b"GIF87a", b"GIF89a")
+    assert "docs/img/demo.gif" in README.read_text(encoding="utf-8")

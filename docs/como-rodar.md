@@ -96,4 +96,4 @@ O GIF do README é uma gravação de tela do app real rodando localmente, com um
 2. Playwright em Chromium, janela de 1024×640, tema claro, com `record_video_dir`: "Usar CSV de exemplo", esperar o esquema, digitar a pergunta "O tempo de entrega afeta a nota do cliente?" e esperar a resposta final.
 3. Converter o vídeo com ffmpeg (`fps=10`, `scale=800:-1`, paleta própria) e cortar a espera do carregamento inicial.
 
-Data, modelo, commit e pergunta da tomada: a registrar aqui quando o GIF entrar no README (ainda não foi gravado).
+Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no commit `1f8cafe`. Pergunta: "O tempo de entrega afeta a nota do cliente?". É a tomada única (de até 3 permitidas) (a primeira já serviu, sem selo de gravação nem erro). A espera do carregamento inicial do Python foi cortada; o GIF não está acelerado.
