@@ -31,7 +31,7 @@
 
 ## Como foi construído
 
-Eu defini o produto e tomei as decisões de custo e risco; o código, os testes e as revisões técnicas foram feitos por agentes de IA (58 agentes, 10h05 de trabalho ativo). Quem decidiu o quê, com fonte: [autoria](docs/autoria.md). Horas: [tempo de construção](docs/tempo-de-construcao.md).
+Eu defini o produto e tomei as decisões de custo e risco; o código, os testes e as revisões técnicas foram feitos por agentes de IA (71 agentes, 11h42 de trabalho ativo). Quem decidiu o quê, com fonte: [autoria](docs/autoria.md). Horas: [tempo de construção](docs/tempo-de-construcao.md).
 
 <details>
 <summary>Rodar localmente (3 comandos)</summary>

@@ -1,24 +1,24 @@
 # Tempo de construção
 
-Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:01.
+Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 22:09.
 
 | Medida | Valor |
 |---|---|
-| Tempo ativo de relógio | 10h05 |
-| Relógio corrido | 65h48 |
-| Horas paradas excluídas | 55h43 |
-| Tempo somado dos agentes | 14h12 |
+| Tempo ativo de relógio | 11h42 |
+| Relógio corrido | 67h55 |
+| Horas paradas excluídas | 56h13 |
+| Tempo somado dos agentes | 16h01 |
 | Paralelismo médio | 1.4x |
 | Sessões | 7 |
-| Agentes | 58 |
+| Agentes | 71 |
 
 | Categoria de agente | Agentes | Tempo somado |
 |---|---|---|
-| Revisão | 19 | 4h37 |
-| Implementação | 27 | 8h15 |
-| Spec/plano | 5 | 0h35 |
-| Documentação | 3 | 0h18 |
-| Testes | 2 | 0h16 |
+| Revisão | 20 | 4h44 |
+| Implementação | 33 | 9h20 |
+| Spec/plano | 7 | 0h54 |
+| Documentação | 6 | 0h21 |
+| Testes | 3 | 0h32 |
 | Outros | 2 | 0h10 |
 
 | Sessão | Ativo |
@@ -26,7 +26,7 @@ Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:01.
 | 340e7bb2 | 2h58 |
 | 418eb7c4 | 0h03 |
 | 488ee353 | 0h01 |
-| 617cf462 | 5h26 |
+| 617cf462 | 7h02 |
 | 7111805b | 0h01 |
 | 8ace5006 | 1h40 |
 | 8dc7fd4f | 0h00 |

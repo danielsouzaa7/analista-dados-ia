@@ -41,13 +41,13 @@ NUMEROS_README = [
     ("Avaliado contra o modelo real em 5 rodadas", "docs/avaliacao.md", "as 5 rodadas acima deram"),
     ("0,1 vCPU", "docs/decisoes.md", None),
     ("5 rodadas de red team", "docs/seguranca.md", "### Rodada 5"),
-    ("10h05", "docs/tempo-de-construcao.md", None),
-    ("58 agentes", "docs/tempo-de-construcao.md", "| Agentes | 58 |"),
+    ("11h42", "docs/tempo-de-construcao.md", None),
+    ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
 ]
 NUMEROS_AUTORIA = [
-    ("10h05", "docs/tempo-de-construcao.md", None),
-    ("58 agentes", "docs/tempo-de-construcao.md", "| Agentes | 58 |"),
-    ("14h12", "docs/tempo-de-construcao.md", None),
+    ("11h42", "docs/tempo-de-construcao.md", None),
+    ("71 agentes", "docs/tempo-de-construcao.md", "| Agentes | 71 |"),
+    ("16h01", "docs/tempo-de-construcao.md", None),
 ]
 
 JARGAO = ["pass^", "cassete", "prelúdio", "prelude", "grounding"]
