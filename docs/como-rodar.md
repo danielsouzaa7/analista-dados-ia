@@ -50,7 +50,7 @@ Publicação no Render (plano gratuito): no painel, *New → Blueprint*, escolha
 .venv/Scripts/python -m ruff check .
 ```
 
-Contagem em 22/11/2026 (só coletados, `--collect-only`): 749 testes no pytest (sem `tests/e2e`; `pytest --collect-only -q --ignore=tests/e2e`, conferido por `tests/test_docs.py`), 42 no `deno test` (`tests/js/`) e 50 no e2e (`tests/e2e`, coletados com `E2E_PYODIDE=1`). Desses 50, 48 são do job `e2e-navegador` (3 arquivos, em 3 motores), 1 é `test_desconexao.py` (roda no job `testes`, com uvicorn real e sem Playwright) e 1 é `test_fluxo.py` (só à mão, com `E2E_URL`; não roda no CI). Cobertura: 97% de `app/` (`TOTAL 1511 45 97%`), medida em 21/11/2026 no CI, [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`: 657 passed, 50 skipped). Os 50 pulados ali são os 49 testes de `tests/e2e` que precisam de navegador (sem `E2E_PYODIDE` nem `E2E_URL`) e o do Postgres real (sem `PG_TEST_URL`). Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e`; por isso 657 + 50 não é a contagem atual.
+Contagem em 22/11/2026 (só coletados, `--collect-only`): 916 testes no pytest (sem `tests/e2e`; `pytest --collect-only -q --ignore=tests/e2e`, conferido por `tests/test_docs.py`), 46 no `deno test` (`tests/js/`) e 50 no e2e (`tests/e2e`, coletados com `E2E_PYODIDE=1`). Desses 50, 48 são do job `e2e-navegador` (3 arquivos, em 3 motores), 1 é `test_desconexao.py` (roda no job `testes`, com uvicorn real e sem Playwright) e 1 é `test_fluxo.py` (só à mão, com `E2E_URL`; não roda no CI). Cobertura: 97% de `app/` (`TOTAL 1511 45 97%`), medida em 21/11/2026 no CI, [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`: 657 passed, 50 skipped). Os 50 pulados ali são os 49 testes de `tests/e2e` que precisam de navegador (sem `E2E_PYODIDE` nem `E2E_URL`) e o do Postgres real (sem `PG_TEST_URL`). Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e`; por isso 657 + 50 não é a contagem atual.
 
 - Os testes usam um LLM falso. Os do sandbox rodam o Deno de verdade e são pulados sem `deno` no PATH. Os testes do sandbox levam alguns minutos.
 - Testes do cliente (`static/python.js`, `stream.js`): `deno test --allow-read tests/js/`.
@@ -83,11 +83,11 @@ Os dados têm padrões de propósito: picos no almoço (11h-14h) e no jantar (18
 app/          backend FastAPI e agente (main, agent, checker, sql_tool, python_navegador, python_tool, graficos, perfil, sessions, prompts)
 sandbox/      preludio.py (estatística, sem scipy) e, só para avaliação e testes, runner.ts (Pyodide no Deno), deno.json, deno.lock
 static/       tela sem build (index.html, app.js, turno.js, dom.js, marcas.js, graficos.js, stream.js, python.js, python-worker.js, fake-api.js, style.css) e fake-stream.html
-scripts/      gerar_exemplo.py (dados), avaliar.py (avaliação, gravações, cassetes) e tempo_construcao.py (horas de construção)
-data/         pedidos.csv, perguntas.json; gravacoes/ (gerado pela avaliação)
-tests/        testes e tests/cassetes/
-.claude/plans/ os planos de implementação, versionados
-docs/         arquitetura, decisoes, seguranca, avaliacao, autoria, como-rodar, limitacoes, tempo-de-construcao, img/
+scripts/      gerar_exemplo.py (dados), avaliar.py (avaliação, gravações, cassetes), gabarito.py (gabarito independente, gera data/gabarito.json), tempo_construcao.py (horas) e orquestracao.py (métricas de orquestração)
+data/         pedidos.csv, perguntas.json, casos_avaliacao.json, gabarito.json; gravacoes/ (gerado pela avaliação)
+tests/        testes (inclui test_confiabilidade.py, test_injecao_indireta.py, test_docs.py e test_material_publico.py) e tests/cassetes/
+docs/planos/  os planos de implementação, versionados
+docs/         arquitetura, decisoes, seguranca, confiabilidade, avaliacao, autoria, processo, orquestracao, como-rodar, limitacoes, tempo-de-construcao, img/
 .github/      workflows/ci.yml
 ```
 
@@ -100,5 +100,7 @@ O GIF do README é uma gravação de tela do app real rodando localmente, com a 
 3. Converter o vídeo com ffmpeg e cortar a espera do carregamento inicial. O app segura cerca de 5 s na resposta conferida.
 
 Gravado em 21/11/2026, rodando localmente (não no servidor publicado), com o modelo `gemini-3.5-flash-lite`, no código de `fca9c1b` (app idêntico em `8d412fc`), em tema escuro. Foram 2 tomadas; vale a melhor: a 1ª teve 1 reanálise, a 2ª, a usada, foi uma tomada real sem reanálise. Resultado na tela: 1.620 pedidos com cupom com ticket médio de R$ 52,01 e 6.380 sem cupom com R$ 63,90; teste t de Welch com t ≈ -15,56 e p < 0,001. `demo.gif`: 1024×640, cerca de 29,8 s (a Spec aceita até cerca de 30 s, incluindo cerca de 5 s parado na resposta conferida), cerca de 3,1 MB, cerca de 8 quadros por segundo (8,33 medidos). `demo-celular.gif` é um recorte da mesma tomada (coluna da página, x=52, largura de 920 px reduzida a 440 px), 29,8 s, 10 quadros por segundo, 1,3 MB, sem aceleração e sem CSS injetado. Os dois terminam na resposta escrita com o selo "números conferidos".
+
+Sobre a chave: a gravação de 21/11/2026 foi feita localmente com a chave do projeto de avaliação, colocada no ambiente como `LLM_API_KEY`, antes do isolamento descrito em [avaliação](avaliacao.md). A demo publicada no Render usa só a chave da demo. As próximas gravações usam a chave da demo.
 
 Tempo da pergunta na tomada: cerca de 17 s (`/api/metricas` da sessão de gravação), 4 chamadas ao LLM; custo do LLM: R$ 0 (plano gratuito).

@@ -95,13 +95,13 @@ Saberemos que acertamos quando **a avaliação automática acertar todas as perg
 ## Marcos
 | # | Marco | Resultado visível | Status | Plano |
 |---|---|---|---|---|
-| 1 | Ferramentas seguras | SQL só leitura e Python isolado funcionando e testados | complete | `.claude/plans/analista-dados-ia.plan.md` |
-| 2 | Agente | Pergunta → plano → ferramentas → conferência → resposta | complete | `.claude/plans/analista-dados-ia.plan.md` |
-| 3 | Interface + exemplo (v1) | Página em pt-BR, responsiva, com CSV de exemplo | complete | `.claude/plans/analista-dados-ia.plan.md` |
-| 4 | Experiência de portfólio | Streaming, acompanhamento, gráficos editoriais, trace, guardrails visíveis, avaliação, dados de delivery, perfil e LGPD, feedback e métricas, CI e documentação de engenharia | in-progress | `.claude/plans/experiencia-portfolio.plan.md` |
+| 1 | Ferramentas seguras | SQL só leitura e Python isolado funcionando e testados | complete | `docs/planos/analista-dados-ia.plan.md` |
+| 2 | Agente | Pergunta → plano → ferramentas → conferência → resposta | complete | `docs/planos/analista-dados-ia.plan.md` |
+| 3 | Interface + exemplo (v1) | Página em pt-BR, responsiva, com CSV de exemplo | complete | `docs/planos/analista-dados-ia.plan.md` |
+| 4 | Experiência de portfólio | Streaming, acompanhamento, gráficos editoriais, trace, guardrails visíveis, avaliação, dados de delivery, perfil e LGPD, feedback e métricas, CI e documentação de engenharia | in-progress | `docs/planos/experiencia-portfolio.plan.md` |
 | 5 | Publicação | App no ar em link público | pending | — |
-| 6 | Python no navegador | Python da IA rodando no navegador, sem Deno na imagem, testes de fuga do Worker e e2e real | in-progress | `.claude/plans/python-no-navegador.plan.md` |
-| 7 | README e autoria | README longo no padrão do Pulse, com herói e diagrama animados, GIF real e docs/autoria.md | in-progress | `.claude/plans/readme-autoria.plan.md`, `.claude/plans/readme-longo.plan.md` |
+| 6 | Python no navegador | Python da IA rodando no navegador, sem Deno na imagem, testes de fuga do Worker e e2e real | in-progress | `docs/planos/python-no-navegador.plan.md` |
+| 7 | README e autoria | README longo no padrão do Pulse, com herói e diagrama animados, GIF real e docs/autoria.md | in-progress | `docs/planos/readme-autoria.plan.md`, `docs/planos/readme-longo.plan.md` |
 
 ## Perguntas em aberto
 - [x] Provedor de LLM: Gemini, plano gratuito (decisão do Daniel). O modelo exato é escolhido por teste de chamada de ferramenta com a chave dele.

@@ -46,7 +46,7 @@ NUMEROS_README = [
     ("87,5%", "docs/avaliacao.md", None),
     ("Avaliado contra o modelo real em 5 rodadas", "docs/avaliacao.md", "as 5 rodadas acima deram"),
     ("0,1 vCPU", "docs/decisoes.md", None),
-    ("5 rodadas de red team", "docs/seguranca.md", "### Rodada 5"),
+    ("6 rodadas de red team", "docs/seguranca.md", "### Rodada 6"),
     ("10h06", "docs/tempo-de-construcao.md", None),
     ("58 agentes", "docs/tempo-de-construcao.md", "| Agentes | 58 |"),
     # Em números e Como foi construído
@@ -63,8 +63,8 @@ NUMEROS_README = [
     ("6, 8, 6, 7 e 8", "docs/avaliacao.md", None),
     ("8.000 pedidos fictícios", "docs/como-rodar.md", None),
     ("R$ 0", "docs/arquitetura.md", "R$ 0 (plano gratuito)"),
-    ("14 decisões de arquitetura", "docs/decisoes.md", "## 14. Hospedagem"),
-    ("19/11/2026 02:13", "docs/tempo-de-construcao.md", None),
+    ("15 decisões de arquitetura", "docs/decisoes.md", "## 15. Limpar o repositório"),
+    ("19/11 a 21/11/2026", "docs/tempo-de-construcao.md", None),
     ("| Tempo ativo de relógio | 10h06 |", "docs/tempo-de-construcao.md", None),
     ("| Relógio corrido | 65h49 |", "docs/tempo-de-construcao.md", None),
     ("| Horas paradas excluídas | 55h43 |", "docs/tempo-de-construcao.md", None),
@@ -79,13 +79,13 @@ NUMEROS_README = [
     ("| Testes | 2 | 0h16 |", "docs/tempo-de-construcao.md", None),
     ("| Outros | 2 | 0h10 |", "docs/tempo-de-construcao.md", None),
     # orquestração de agentes (docs/orquestracao.md)
-    ("58 agentes, 57 dentro da zona de qualidade", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade"),
-    ("10,1 milhões de tokens novos", "docs/orquestracao.md", "| 10.084.155 | 3.043.672 | 3,3x |"),
-    ("3,0 milhões do orquestrador (3,3x)", "docs/orquestracao.md", "| 10.084.155 | 3.043.672 | 3,3x |"),
-    ("2,03 milhões de tokens gerados", "docs/orquestracao.md", "| Tokens gerados (saída) | 2.032.359 | 582.779 | 3,5x |"),
+    ("58 agentes, 57 dentro da zona de genialidade", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade"),
+    ("9,9 milhões de tokens novos", "docs/orquestracao.md", "| 9.862.533 | 3.043.672 | 3,2x |"),
+    ("3,0 milhões do orquestrador (3,2x)", "docs/orquestracao.md", "| 9.862.533 | 3.043.672 | 3,2x |"),
+    ("2,03 milhões de tokens gerados", "docs/orquestracao.md", "| Tokens gerados (saída) | 2.027.193 | 582.779 | 3,5x |"),
     ("em 3 das 7 sessões o orquestrador passou de 300 mil", "docs/orquestracao.md", "| Orquestrador (sessões) | 4 | 3 |"),
     # contagens de testes, registradas com data em como-rodar
-    ("42 no `deno test`", "docs/como-rodar.md", None),
+    ("46 no `deno test`", "docs/como-rodar.md", None),
     ("50 no e2e", "docs/como-rodar.md", None),
     ("97% (run #6", "docs/como-rodar.md", "97% de `app/`"),
     ("657 passed, 50 skipped", "docs/como-rodar.md", None),
@@ -95,8 +95,8 @@ NUMEROS_README = [
     # papel do Daniel: método, decisões e resultados
     ("24 critérios de aceite", "docs/processo.md", "a Spec tem 24 critérios"),
     ("3 frentes andaram em paralelo", "docs/processo.md", "3 frentes com arquivos disjuntos"),
-    ("57 dos 58 ficaram até 300 mil tokens de pico", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade (pico até 300.000)"),
-    ("57 de 58 agentes dentro da zona de qualidade", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade"),
+    ("57 dos 58 ficaram dentro dela", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade (pico até 300.000)"),
+    ("57 de 58 agentes dentro da zona de genialidade", "docs/orquestracao.md", "57 de 58 agentes ficaram na zona de genialidade"),
     ("cerca de 248 MB de um contêiner de 512 MB", "docs/decisoes.md", "cerca de 248 MB residentes num contêiner de 512 MB"),
     ("pré-pagamento único de R$180", "docs/decisoes.md", None),
     ("de 4/8 a 7/8", "docs/avaliacao.md", "lotes anteriores deram 4/8, 7/8"),
@@ -483,7 +483,9 @@ def test_estrutura_cita_os_arquivos_novos_e_so_existentes():
         assert (RAIZ / rel).exists(), rel
         nome = rel.split("/")[-1]
         assert nome in _ler(README) and nome in _doc("docs/como-rodar.md"), nome
-    assert ".claude/plans/" in _ler(README)
+    assert "docs/planos/" in _ler(README)
+    for caminho in (README, RAIZ / "Spec.md", *DOCS.rglob("*.md")):
+        assert ".claude/" not in _ler(caminho), caminho
 
 
 def test_heroi_mostra_count_no_sql():
@@ -495,7 +497,7 @@ def test_heroi_mostra_count_no_sql():
 def test_readme_e_autoria_nao_citam_o_framework_nem_a_meta_como_manchete():
     for caminho in (README, AUTORIA, DOCS / "processo.md", DOCS / "orquestracao.md"):
         texto = _ler(caminho)
-        assert "ECC" not in texto
+        assert "E" + "CC" not in texto
         assert "Everything Claude Code" not in texto
     assert "não batida" not in _ler(README)
     assert "Papel | O que fez aqui | Exemplo" in _ler(README)
