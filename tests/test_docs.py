@@ -42,6 +42,8 @@ NUMEROS_README = [
     ("7,0/8", "docs/avaliacao.md", None),
     ("faixa 6–8", "docs/avaliacao.md", None),
     ("6 dos 8 casos certos em todas as rodadas", "docs/avaliacao.md", "6/8"),
+    ("35 de 40", "docs/avaliacao.md", None),
+    ("87,5%", "docs/avaliacao.md", None),
     ("Avaliado contra o modelo real em 5 rodadas", "docs/avaliacao.md", "as 5 rodadas acima deram"),
     ("0,1 vCPU", "docs/decisoes.md", None),
     ("5 rodadas de red team", "docs/seguranca.md", "### Rodada 5"),
@@ -296,7 +298,8 @@ def test_autoria_cabe_em_cerca_de_80_linhas():
 def test_autoria_assume_o_papel_e_o_que_nao_diz():
     texto = _ler(AUTORIA)
     assert "dono do produto" in texto
-    assert "Claude Code com o framework ECC" in texto
+    assert "Eu não criei esses agentes" in texto
+    assert "Papel | O que fez aqui | Exemplo" in texto
     assert "O que este documento não diz" in texto
     assert "tech lead" not in texto.lower()
 
@@ -463,3 +466,12 @@ def test_heroi_mostra_count_no_sql():
     for nome in ("heroi.svg", "heroi-celular.svg"):
         textos = ["".join(t.itertext()) for t in ET.fromstring(_ler(IMG / nome)).iter(f"{SVG_NS}text")]
         assert any("SELECT cupom, COUNT(*)," in t for t in textos), nome
+
+
+def test_readme_e_autoria_nao_citam_o_framework_nem_a_meta_como_manchete():
+    for caminho in (README, AUTORIA, DOCS / "processo.md"):
+        texto = _ler(caminho)
+        assert "ECC" not in texto
+        assert "Everything Claude Code" not in texto
+    assert "não batida" not in _ler(README)
+    assert "Papel | O que fez aqui | Exemplo" in _ler(README)

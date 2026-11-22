@@ -1,12 +1,37 @@
 # Autoria
 
-Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code com o framework ECC). Os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Eu defini o quê, o porquê e os critérios de aprovação (custo zero, projeto completo, "fugir do óbvio"); os critérios de aceite da Spec foram redigidos pelos agentes e aprovados por mim. Escolhi entre as opções que os agentes prepararam e aprovei cada publicação.
+Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu não criei esses agentes: usei agentes especializados prontos, configurados para o fluxo que defini. Os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Eu defini o quê, o porquê e os critérios de aprovação (custo zero, projeto completo, "fugir do óbvio"); os critérios de aceite da Spec foram redigidos pelos agentes e aprovados por mim. Escolhi entre as opções que os agentes prepararam e aprovei cada publicação.
+
+## Meu papel: arquitetura e direção técnica
+
+Arquitetei a solução e o processo; um time de agentes de IA especializados implementou sob portões de qualidade que eu defini, e nada foi aceito sem teste, revisão independente e número medido.
+
+- **Restrições de engenharia que impus:** hospedagem de custo zero (o servidor gratuito tem 0,1 vCPU e estourou o Python da IA, o que levou a executá-lo no navegador); a chave do LLM nunca visível aos agentes; chave de avaliação num projeto Google separado do da demo.
+- **Portões de qualidade do processo:** spec com critérios de aceite antes do código, revisão independente da spec, plano, testes primeiro, revisão de código por especialistas (Python, JavaScript, segurança), red team, teste em 3 navegadores, verificação de fatos da documentação e a minha aprovação antes de cada publicação; laço de revisão limitado a 3 voltas.
+- **Decisões de arquitetura com trade-off, entre alternativas avaliadas:** Python no navegador, sandbox aquecida ou só SQL ([ADR 13](decisoes.md)); Render grátis, HF PRO ou Cloud Run ([ADR 14](decisoes.md)); avaliação em várias rodadas em vez de uma; publicar os números reais.
+- **Verificação em vez de confiança:** saída de IA só entra com prova. As revisões independentes acharam bugs reais (p-valor inventado passando como conferido, aba congelando com saída gigante, worker de cerca de 250 MB vazando), todos corrigidos com teste ([segurança](seguranca.md), 5.16 a 5.18).
 
 ## O fluxo de trabalho
 
-O fluxo que defini para os agentes, montado sobre o ECC (um conjunto de agentes, comandos e regras para o Claude Code, de terceiros), tem 9 etapas: pedido, especificação, revisão da especificação, plano, implementação com testes primeiro, revisão independente do código, testes, minha aprovação e deploy. Se um laço de revisão passa de 3 voltas sem resolver, ele para e volta para mim. O modelo é escolhido por tarefa e o deploy só acontece depois da minha aprovação. Fonte: registro local da conversa.
+O fluxo que defini para os agentes tem 9 etapas: pedido, especificação, revisão da especificação, plano, implementação com testes primeiro, revisão independente do código, testes, minha aprovação e deploy. Se um laço de revisão passa de 3 voltas sem resolver, ele para e volta para mim. O modelo é escolhido por tarefa e o deploy só acontece depois da minha aprovação. Fonte: registro local da conversa.
 
-## Decisões minhas
+## O time, por papel
+
+| Papel | O que fez aqui | Exemplo |
+|---|---|---|
+| Planejamento | Desenhou o plano e o protocolo do Python no navegador | O protocolo `python_pedido` / `POST /api/python/resultado`, com nonce e espera no servidor ([ADR 13](decisoes.md)) |
+| Arquitetura e revisão da spec | Revisou o plano antes de haver código | Encontrou furos na regex de significância: casava com "valor por pedido" e disparava com "não foi possível calcular a significância" (H1 e H2 em `.claude/plans/python-no-navegador.plan.md`) |
+| Implementação com testes primeiro | Escreveu o teste antes do código, em lotes | Worker do Pyodide com CSP própria e testes de fuga nos três motores (commit `b140d08`; [decisão 13](decisoes.md)) |
+| Revisão de código Python | Revisou o servidor e o conferidor | Um p-valor inventado passava como conferido (5.18 em [segurança](seguranca.md)) |
+| Revisão de JavaScript | Revisou o worker e o cliente | Saída gigante congelava a aba (5.16) e execuções sobrepostas vazavam um worker de cerca de 250 MB (5.17) |
+| Segurança (red team) | 5 rodadas de ataque ao código vigente | Rodada 5: vetores de fuga do Worker (`fetch`, WebSocket, `importScripts`, `eval`) testados nos três motores ([segurança](seguranca.md)) |
+| Testes de ponta a ponta | Rodou o fluxo real no navegador | Playwright em Chromium, Firefox e WebKit, com o CSV de exemplo (`tests/e2e/`) |
+| Documentação | Manteve README e docs alinhados ao código | Relatório de red team e relatório de avaliação |
+| Verificação de fatos independente | Conferiu a autoria e o README contra as fontes | Achados aplicados no commit `0f86d70` |
+
+Por categoria, os números estão em "O que foi delegado".
+
+## Decisões minhas (de produto e de engenharia)
 
 Datas em horário de Brasília. "Registro local da conversa" é a transcrição das sessões, que não está publicada. As opções e as recomendações técnicas vieram dos agentes.
 
@@ -14,7 +39,7 @@ Datas em horário de Brasília. "Registro local da conversa" é a transcrição 
 |---|---|---|---|
 | 19/11 | Pediu um agente que responde em português sobre CSV ou banco, com SQL, Python e gráficos, e passou o diagrama de referência do fluxo (o arquivo não está no repositório) | - | [Spec](../Spec.md), "Fluxo do agente"; registro local da conversa |
 | 19/11 | Dataset de pedidos de delivery de comida, de propósito, por causa do público-alvo (confirmado por ele em 21/11) | - | [Spec](../Spec.md), "Usuários" e critério 11; registro local da conversa |
-| 19/11 | ECC como framework principal e o fluxo de 9 etapas | Superpowers (desativado) | registro local da conversa |
+| 19/11 | O fluxo de 9 etapas e a escolha de agentes especializados prontos para segui-lo | Outro conjunto de agentes (desativado) | registro local da conversa |
 | 19/11 | LLM Gemini no plano gratuito; o valor da chave nunca é mostrado aos agentes; aviso de dados sensíveis na tela | Chave paga de outro provedor | [Spec](../Spec.md), critérios 9 e 10; registro local da conversa (chave) |
 | 19/11 | Horas publicadas sem tempo parado nem as esperas por ele | - | [tempo de construção](tempo-de-construcao.md), "Como foi medido"; registro local da conversa |
 | 19/11 | Pediu "um projeto completo" (onda 2, critérios 18 a 22) | - | [plano](../.claude/plans/experiencia-portfolio.plan.md), "Onda 2" |
@@ -36,7 +61,7 @@ Eu escolhi o Cloud Run. O Google pediu um pré-pagamento único de R$180, e eu r
 
 ## O que este documento não diz
 
-Não escrevi o código nem fiz as revisões técnicas. As opções e as recomendações técnicas vieram dos agentes. Aqui só estão as decisões minhas que tenho como mostrar.
+Atuei como dono do produto e diretor técnico: defini o problema, o fluxo de trabalho e os critérios de qualidade, tomei as decisões de custo e de arquitetura e dirigi um time de agentes de IA que implementou, testou e revisou cada parte (o código, os testes, as revisões técnicas e o red team são dos agentes). As opções e as recomendações técnicas vieram dos agentes; aqui estão as decisões minhas que tenho como mostrar.
 
 ## Como verificar
 

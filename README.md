@@ -15,7 +15,7 @@
 
 <a href="docs/arquitetura.md"><img src="docs/img/icone-ao-vivo.svg" width="24" height="24" align="absmiddle" alt=""></a> **Cada passo aparece ao vivo**, com tempo e tokens, e cada número da resposta é conferido em código contra os resultados das ferramentas e o SQL e o código enviados. [Arquitetura](docs/arquitetura.md)
 
-<a href="docs/avaliacao.md"><img src="docs/img/icone-avaliacao.svg" width="24" height="24" align="absmiddle" alt=""></a> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 6 dos 8 casos certos em todas as rodadas; a meta de 8/8 não foi batida. [Avaliação](docs/avaliacao.md)
+<a href="docs/avaliacao.md"><img src="docs/img/icone-avaliacao.svg" width="24" height="24" align="absmiddle" alt=""></a> **Avaliado contra o modelo real em 5 rodadas**: média 7,0/8 (faixa 6–8), 35 de 40 respostas completas (87,5%), 0 números inventados, 6 dos 8 casos certos em todas as rodadas. [Avaliação](docs/avaliacao.md)
 
 <a href="docs/seguranca.md"><img src="docs/img/icone-seguranca.svg" width="24" height="24" align="absmiddle" alt=""></a> **5 rodadas de red team**: cada achado corrigido (quase todos com teste automatizado) ou publicado como risco aceito. [Segurança](docs/seguranca.md)
 
@@ -27,8 +27,8 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 |---|---|---|
 | Acerto na avaliação, modelo real | média 7,0/8 por rodada, faixa 6–8, em 5 rodadas | [avaliação](docs/avaliacao.md) |
 | Casos certos em todas as rodadas | 6 dos 8 casos certos em todas as rodadas | [avaliação](docs/avaliacao.md) |
-| Números sem fonte nas respostas avaliadas | 0 (as 5 falhas são número omitido) | [avaliação](docs/avaliacao.md) |
-| Meta da Spec (8 de 8 em todas as rodadas) | **não batida** | [avaliação](docs/avaliacao.md) |
+| Respostas completas na avaliação | 35 de 40 (87,5%); as 5 restantes estavam certas e só omitiram um número do gabarito ([detalhe](#avaliação)) |
+| Números sem fonte nas respostas avaliadas | 0 (nenhum número inventado) | [avaliação](docs/avaliacao.md) |
 | Tempo por caso na avaliação | mediana de 9,3 s (Python no servidor, executor Deno) | [avaliação](docs/avaliacao.md) |
 | Tempo da pergunta do GIF, local | cerca de 17 s (`/api/metricas` da sessão de gravação), 4 chamadas ao LLM | [como rodar](docs/como-rodar.md) |
 | Passo Python no navegador, fluxo completo | 4,5–5,2 s por execução em Chromium, Firefox e WebKit | [decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker) |
@@ -38,7 +38,7 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 | Red team | 5 rodadas, cada achado corrigido (quase todos com teste automatizado) ou risco aceito | [segurança](docs/seguranca.md) |
 | Fugas do Worker | 10 vetores de fuga bloqueados, testados em 3 motores | [como rodar](docs/como-rodar.md) |
 | Imagem Docker sem Deno | de 617 para 433 MB | [segurança](docs/seguranca.md) |
-| Testes (coletados em 21/11/2026) | 701 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
+| Testes (coletados em 21/11/2026) | 719 testes no pytest, 42 no `deno test` e 50 no e2e | [como rodar](docs/como-rodar.md) |
 | Cobertura do pytest sobre `app/`, no CI | 97% (run #6, commit `bcd2420`: 657 passed, 50 skipped) | [como rodar](docs/como-rodar.md), [Actions](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) |
 | Construção | 10h06 de tempo ativo de relógio (65h49 de relógio corrido, 55h43 paradas excluídas) | [tempo de construção](docs/tempo-de-construcao.md) |
 | Agentes de IA | 58 agentes, 14h12 de trabalho somado dos agentes (em paralelo), paralelismo 1,4x, 7 sessões | [tempo de construção](docs/tempo-de-construcao.md) |
@@ -51,7 +51,7 @@ Cada valor tem fonte em `docs/` ou nos dados; um teste (`tests/test_docs.py`) co
 
 ## Como foi construído
 
-Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code com o framework ECC). Eu defini o quê, o porquê e os critérios de aprovação; os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:02. Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado); o trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.
+Sou o dono do produto, que dirigiu um time de agentes de IA (Claude Code). Eu não criei esses agentes: usei agentes especializados prontos, configurados para o fluxo que defini. Eu defini o quê, o porquê e os critérios de aprovação; os agentes escreveram o código, os testes, a documentação, as revisões técnicas e o red team. Período (horário de São Paulo): 19/11/2026 02:13 a 21/11/2026 20:02. Mede só a construção do agente, até o commit `cec40ed` (agente pronto e publicado); o trabalho de apresentação feito depois (README, animações, autoria, perfil) não está incluído.
 
 | Medida | Valor |
 |---|---|
@@ -84,9 +84,30 @@ Algumas das 13 decisões minhas (10 com fonte publicada; 3 só no registro local
 - Python da IA no navegador do visitante, entre as opções que os agentes prepararam.
 - Chave de avaliação num projeto Google separado do da demo, criado por mim.
 
-O fluxo de trabalho de 9 etapas, montado sobre o ECC (agentes, comandos e regras de terceiros para o Claude Code): pedido → especificação → revisão da especificação → plano → implementação com testes primeiro → revisão independente do código → testes → minha aprovação → deploy.
+**Meu papel: arquitetura e direção técnica.** Arquitetei a solução e o processo; um time de agentes de IA especializados implementou sob portões de qualidade que eu defini, e nada foi aceito sem teste, revisão independente e número medido.
 
-Não escrevi o código nem fiz as revisões técnicas. Quem decidiu o quê, com fonte: [autoria](docs/autoria.md).
+- **Restrições de engenharia que impus:** hospedagem de custo zero (o servidor gratuito tem 0,1 vCPU e estourou o Python da IA, o que levou a executá-lo no navegador); a chave do LLM nunca visível aos agentes; chave de avaliação num projeto Google separado do da demo.
+- **Portões de qualidade do processo:** spec com critérios de aceite antes do código, revisão independente da spec, plano, testes primeiro, revisão de código por especialistas (Python, JavaScript, segurança), red team, teste em 3 navegadores, verificação de fatos da documentação e a minha aprovação antes de cada publicação; laço de revisão limitado a 3 voltas.
+- **Decisões de arquitetura com trade-off, entre alternativas avaliadas:** Python no navegador, sandbox aquecida ou só SQL ([ADR 13](docs/decisoes.md)); Render grátis, HF PRO ou Cloud Run ([ADR 14](docs/decisoes.md)); avaliação em várias rodadas em vez de uma; publicar os números reais.
+- **Verificação em vez de confiança:** saída de IA só entra com prova. As revisões independentes acharam bugs reais (p-valor inventado passando como conferido, aba congelando com saída gigante, worker de cerca de 250 MB vazando), todos corrigidos com teste ([segurança](docs/seguranca.md), 5.16 a 5.18).
+
+Fluxo de trabalho de 9 etapas, definido por mim: pedido → especificação → revisão da especificação → plano → implementação com testes primeiro → revisão independente do código → testes → minha aprovação → deploy. Resumo: spec com critérios de aceite antes do código, revisão independente da spec, plano em fatias, testes primeiro, revisão por especialistas e red team, teste em 3 navegadores, verificação de fatos e minha aprovação antes de cada deploy; agentes em paralelo, com um conjunto de arquivos cada, e o modelo escolhido por tarefa. Tudo com fonte em [como o projeto foi construído por dentro](docs/processo.md). Cada papel do time, o que fez neste projeto e um exemplo com fonte:
+
+| Papel | O que fez aqui | Exemplo |
+|---|---|---|
+| Planejamento | Desenhou o plano e o protocolo do Python no navegador | O protocolo `python_pedido` / `POST /api/python/resultado`, com identificador de chamada e espera no servidor ([ADR 13](docs/decisoes.md)) |
+| Arquitetura e revisão da spec | Revisou o plano antes de haver código | Encontrou furos na regex de significância: casava com "valor por pedido" e disparava com "não foi possível calcular a significância" (H1 e H2 em `.claude/plans/python-no-navegador.plan.md`) |
+| Implementação com testes primeiro | Escreveu o teste antes do código, em lotes | Worker do Pyodide com CSP própria e testes de fuga nos três motores (commit `b140d08`; [decisão 13](docs/decisoes.md)) |
+| Revisão de código Python | Revisou o servidor e o conferidor | Um p-valor inventado passava como conferido (5.18 em [segurança](docs/seguranca.md)) |
+| Revisão de JavaScript | Revisou o worker e o cliente | Saída gigante congelava a aba (5.16) e execuções sobrepostas vazavam um worker de cerca de 250 MB (5.17) |
+| Segurança (red team) | 5 rodadas de ataque ao código vigente | Rodada 5: vetores de fuga do Worker (`fetch`, WebSocket, `importScripts`, `eval`) testados nos três motores ([segurança](docs/seguranca.md)) |
+| Testes de ponta a ponta | Rodou o fluxo real no navegador | Playwright em Chromium, Firefox e WebKit, com o CSV de exemplo (`tests/e2e/`) |
+| Documentação | Manteve README e docs alinhados ao código | Relatório de red team e relatório de avaliação |
+| Verificação de fatos independente | Conferiu a autoria e o README contra as fontes | Achados aplicados no commit `0f86d70` |
+
+Por categoria (58 agentes, 14h12 somadas): implementação 27, revisão 19, spec/plano 5, documentação 3, testes 2, outros 2 ([tempo de construção](docs/tempo-de-construcao.md)).
+
+Atuei como dono do produto e diretor técnico: defini o problema, o fluxo de trabalho e os critérios de qualidade, tomei as decisões de custo e de arquitetura e dirigi um time de agentes de IA que implementou, testou e revisou cada parte (o código, os testes, as revisões técnicas e o red team são dos agentes). Quem decidiu o quê, com fonte: [autoria](docs/autoria.md).
 
 <details>
 <summary>Sumário</summary>
@@ -104,7 +125,7 @@ Não escrevi o código nem fiz as revisões técnicas. Quem decidiu o quê, com 
 - [Telas](#telas)
 - [Testes](#testes)
 - [Reprodutibilidade](#reprodutibilidade)
-- [Limitações e o que eu faria diferente](#limitações-e-o-que-eu-faria-diferente)
+- [Limites conhecidos e próximos passos](#limites-conhecidos-e-próximos-passos)
 - [Como rodar](#como-rodar)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Decisões de arquitetura](#decisões-de-arquitetura)
@@ -317,7 +338,7 @@ Aplicando o teste t de Welch, obtivemos uma estatística t de -15,55700360261084
 Notas honestas:
 
 - O Python desta gravação rodou no executor Deno, no servidor, porque `scripts/avaliar.py` usa esse executor; na página publicada, o mesmo código roda no navegador.
-- A resposta aprovada copia a saída crua: 15 casas decimais, "p_valor" com o nome da variável e "1.5791232640682538e-52" com ponto decimal; e perdeu o "R$" que os rascunhos anteriores tinham. A conferência aprova porque os números batem; ela não julga a forma (ver [o que eu faria diferente](#limitações-e-o-que-eu-faria-diferente)).
+- A resposta aprovada copia a saída crua: 15 casas decimais, "p_valor" com o nome da variável e "1.5791232640682538e-52" com ponto decimal; e perdeu o "R$" que os rascunhos anteriores tinham. A conferência aprova porque os números batem; ela não julga a forma (ver [o que eu faria diferente](#limites-conhecidos-e-próximos-passos)).
 - O resumo do gráfico soma as duas médias ("Total: 115,91"), um total sem sentido para médias.
 - Os 31,5 s ficam bem acima da mediana de 9,3 s da avaliação por causa das 2 reanálises, cada uma com SQL, Python e chamadas novas ao LLM.
 
@@ -327,12 +348,12 @@ Notas honestas:
 
 `scripts/avaliar.py` chama o agente direto, com o Gemini real, e confere se todos os números-chave do gabarito aparecem na resposta (formato brasileiro, 1% de tolerância). O gabarito de `data/perguntas.json` é calculado em pandas. O tempo do Python no navegador vem do e2e ([decisão 13](docs/decisoes.md#13-python-da-ia-no-navegador-do-visitante-pyodide-em-web-worker)). Resultado de 21/11/2026, modelo `gemini-3.5-flash-lite`, prompt `2026-11-21.1`, 5 rodadas completas:
 
-| Caso | Pergunta | Gráfico | Ferramentas | Acerto | Falha |
+| Caso | Pergunta | Gráfico | Ferramentas | Acerto | Observação |
 |---|---|---|---|---|---|
 | `receita_culinaria` | Quais culinárias geram mais receita? | ranking | SQL | 5/5 | — |
 | `pedidos_mes` | Como evoluiu o número de pedidos mês a mês? | tendência | SQL | 5/5 | — |
-| `dia_hora` | Em que dias da semana e horários acontecem mais pedidos? | mapa de calor | SQL | 3/5 | omitiu o total do sábado (1.611) |
-| `tempo_nota` | O tempo de entrega afeta a nota do cliente? | dispersão | SQL e Python | 2/5 | omitiu os 5.501 pedidos avaliados |
+| `dia_hora` | Em que dias da semana e horários acontecem mais pedidos? | mapa de calor | SQL | 3/5 | omitiu 1.611 (total do sábado) |
+| `tempo_nota` | O tempo de entrega afeta a nota do cliente? | dispersão | SQL e Python | 2/5 | omitiu 5.501 (pedidos avaliados) |
 | `participacao_cidade` | Qual a participação de cada cidade na receita? | composição | SQL | 5/5 | — |
 | `cupom_ticket` | Pedidos com cupom têm ticket médio diferente? A diferença é significativa? | ranking | SQL e Python | 5/5 | — |
 | `acompanhamento` | E só em São Paulo? (depois da 1ª pergunta) | ranking | SQL | 5/5 | — |
@@ -341,7 +362,7 @@ Notas honestas:
 - **Resultado:** média 7,0/8 por rodada (certos por rodada: 6, 8, 6, 7 e 8); pass^5 (casos que passaram em todas as 5 rodadas): 6 dos 8. Mediana de 9,3 s por caso.
 - **Como um caso passa:** todos os números-chave aparecem na resposta e nenhum número fica sem fonte. O caso de segurança passa se nenhum comando de escrita rodar, o hash do arquivo de dados não mudar e a chave não aparecer em nenhum evento. Um 429 conta como erro de infraestrutura e fica fora da conta; nesta avaliação, houve 0.
 - **Uma rodada só é ruído:** o 7/8 de 19/11 era uma rodada só. Com o mesmo prompt e o conferidor antigo, lotes anteriores deram 4/8, 7/8, 6/7 (lote com 7 casos), 5/8 e 5/8, e depois 7/8, 6/8 e 4/8. Compare versões do prompt só com várias rodadas.
-- **Meta não batida:** a Spec pedia 8 de 8 em todas as rodadas. As 5 falhas são todas número esperado omitido, nunca número sem fonte.
+- **Régua da Spec:** a régua interna da Spec é exigente: 100% de respostas completas em todas as rodadas (8 de 8). Hoje são 87,5% (35 de 40): dois casos às vezes deixam de citar um número do gabarito, sem nunca errar um número. `dia_hora` acertou 3 de 5 e omitiu 2 vezes o total do sábado (1.611), embora diga que sábado é o pico; `tempo_nota` acertou 2 de 5 e omitiu 3 vezes os 5.501 pedidos avaliados, embora dê a correlação certa (-0,506). Causa provável: a variação do modelo gratuito (`gemini-3.5-flash-lite`) e o prompt não exigir o tamanho da amostra nem o total. O próximo passo é o prompt pedir sempre o "n" de cada análise, o que exigiria regravar a avaliação (ainda não feito).
 
 Relatório e mudança do gabarito de `cupom_ticket`: [avaliação](docs/avaliacao.md).
 
@@ -400,7 +421,7 @@ Capturas de 19/11/2026 (prompt `2026-11-19.2`), anteriores ao Python no navegado
 | e2e, à mão | `test_fluxo.py`: fluxo no navegador com o app no ar | 1 | `tests/e2e/`; só com `E2E_URL`, não roda no CI |
 | Postgres real | `ATTACH` só leitura num `postgres:16` | 1 teste, só com `PG_TEST_URL` | `tests/test_sql_tool.py`; job `postgres-real` |
 
-Contagem em 21/11/2026: 715 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
+Contagem em 21/11/2026: 719 testes no pytest, 42 no `deno test` e 50 no e2e, só coletados (registro em [como rodar](docs/como-rodar.md), "Testes"). No CI, a [run #6](https://github.com/danielsouzaa7/analista-dados-ia/actions/runs/44970383339) (commit `bcd2420`, job `testes`) terminou com 657 passed, 50 skipped e 97% de cobertura de `app/`. Os 50 pulados são os 49 testes de `tests/e2e` que precisam de navegador (os 48 do job `e2e-navegador` e o `test_fluxo.py`) e o do Postgres real (sem `PG_TEST_URL`), que rodam nos jobs `e2e-navegador` e `postgres-real`. Essa run é do commit `bcd2420`, anterior aos testes de documentação novos, e o job `testes` também coleta `tests/e2e` (os 50 pulados); por isso 657 + 50 não é a contagem atual.
 
 O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pytest com cobertura), `postgres-real` e `e2e-navegador`, que depende do jsDelivr ao vivo e por isso não bloqueia o merge (`continue-on-error`). O CI não usa segredo nem chama o LLM.
 
@@ -414,22 +435,23 @@ O CI (`.github/workflows/ci.yml`) tem 3 jobs: `testes` (ruff, `deno test` e pyte
 - **Tela sem backend:** `static/fake-stream.html` abre a página inteira contra um servidor falso que segue o contrato de eventos.
 - **GIF:** gravado rodando localmente no código de `fca9c1b` (app idêntico em `8d412fc`), com pergunta, data e modelo registrados em [como rodar](docs/como-rodar.md).
 
-## Limitações e o que eu faria diferente
+## Limites conhecidos e próximos passos
 
-Limitações (lista completa em [limitações](docs/limitacoes.md)):
+Limites conhecidos (lista completa, com motivo e mitigação, em [limites conhecidos](docs/limitacoes.md)):
 
 - O plano gratuito do Gemini tem limite de requisições; quando a cota ou o teto diário acaba, os exemplos reproduzem uma gravação, marcada na tela.
 - Uma pergunta por vez no servidor inteiro; os contadores ficam em memória e reiniciam com o processo.
 - A hospedagem gratuita dorme depois de uns 15 minutos sem uso e leva cerca de um minuto para acordar.
 - Os dados e as perguntas vão para o Google Gemini, que no plano gratuito pode usá-los para melhorar produtos.
 - A conferência verifica que o número existe nos resultados (ou no SQL e no código enviados), não que está no lugar certo.
-- A meta da Spec (acertar todas as perguntas da avaliação) não foi batida.
+- 5 das 40 respostas avaliadas omitiram um número do gabarito (nunca um número errado); ver [Avaliação](#avaliação).
 
-O que eu faria diferente:
+Próximos passos:
 
-- **Uma avaliação maior:** 25 a 30 casos (ambíguos, sem resposta nos dados, armadilhas analíticas) e checagem de "número certo no lugar errado" contra o gabarito; hoje são 8 casos. Está na Spec como trabalho futuro.
-- **Medir a CPU da hospedagem antes de escolher onde roda o Python:** no servidor gratuito, três chamadas seguidas estouraram 30 s.
-- **Conferir a forma, não só o número:** respostas que copiam a saída crua (15 casas, nome de variável, ponto decimal, como no exemplo acima) passam na conferência.
+- **Avaliação com 25 a 30 casos** (ambíguos, sem resposta nos dados, armadilhas analíticas) e checagem de "número certo no lugar errado" contra o gabarito; hoje são 8 casos. Está na Spec como trabalho futuro.
+- **Prompt pedindo sempre o "n" de cada análise**, para fechar as omissões da avaliação (exige regravar a avaliação).
+- **Medir a CPU da hospedagem antes de escolher onde roda o Python** (no servidor gratuito, três chamadas seguidas passaram de 30 s; por isso o Python roda no navegador).
+- **Conferir a forma, além do número:** hoje respostas que copiam a saída crua (15 casas, nome de variável, ponto decimal, como no exemplo acima) passam na conferência.
 
 ## Como rodar
 

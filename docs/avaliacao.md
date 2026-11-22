@@ -36,7 +36,9 @@ Números omitidos: dia_hora (1.611); tempo_nota (5.501).
 
 "Número sem fonte" é um número da resposta que não aparece em nenhum resultado de ferramenta (SQL ou Python) nem no SQL e no código enviados, com tolerância de 1%. A checagem não cobre um número certo citado no lugar errado.
 
-A meta da Spec (acertar todas as perguntas) não foi batida: média de 7,0/8 e 6/8 em todas as rodadas. As falhas são número omitido em `dia_hora` e `tempo_nota`, nunca número sem fonte.
+Resultado: 35 de 40 respostas completas (87,5%; 8 casos × 5 rodadas, certos por rodada 6, 8, 6, 7 e 8, soma 35), 0 números sem fonte. As 5 incompletas estavam certas e só omitiram um número do gabarito.
+
+A régua interna da Spec é exigente: 8 de 8 em todas as rodadas. Os dois casos que ficaram abaixo omitiram um número esperado, nunca erraram um: `dia_hora` acertou 3 de 5 (omitiu o total do sábado, 1.611, embora diga que sábado é o pico) e `tempo_nota` acertou 2 de 5 (dá a correlação certa, -0,506, mas não diz que são 5.501 pedidos avaliados). Causa provável: a variação do modelo gratuito (`gemini-3.5-flash-lite`) e o prompt não exigir o tamanho da amostra nem o total. Melhoria possível, ainda não feita: o prompt pedir sempre o "n" de cada análise, o que exigiria regravar a avaliação.
 
 Nota: o tempo medido aqui é o do Python no servidor (executor Deno), porque `scripts/avaliar.py` chama o agente com esse executor. Em produção o Python roda no navegador do visitante, e esse tempo vem do e2e (`tests/e2e/test_python_navegador.py`; ver a decisão 13 em [decisoes.md](decisoes.md)).
 
