@@ -412,7 +412,7 @@ def escrever_relatorio_rodadas(rodadas: list[list[dict]], modelo: str, destino: 
         f"- Tempo: mediana {_seg(ag['mediana_ms'])} por caso (sem erros de infraestrutura)", "",
         f"| Caso | Acerto (k/{ag['n']}) |", "|---|---|",
         *[f"| {i} | {k}/{ag['n']} |" for i, k in ag["por_caso"].items()], "",
-        "## Falhas por tipo", "", "| Tipo | Ocorrências |", "|---|---|",
+        "## Reprovações por tipo", "", "| Tipo | Ocorrências |", "|---|---|",
         *[f"| {t} | {c} |" for t, c in ag["falhas"].items()], "",
         "Rodadas com erro de infraestrutura ficam fora do k/N, da média e do pass^N; as falhas delas entram nesta contagem.", "",
         *(["Números omitidos: " + "; ".join(

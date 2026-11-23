@@ -600,7 +600,7 @@ As 15 decisões, com contexto, alternativas descartadas e consequências, estão
 - [Arquitetura](docs/arquitetura.md): diagramas, contrato SSE, rotas, limites, módulos e glossário.
 - [Decisões](docs/decisoes.md): os 15 registros de decisão (ADRs), com as medições do Python no navegador.
 - [Segurança](docs/seguranca.md): modelo de ameaça, guardrails por camada, as 6 rodadas de red team e os riscos aceitos.
-- [Avaliação](docs/avaliacao.md): resultado por caso, falhas e como reproduzir.
+- [Avaliação](docs/avaliacao.md): resultado por caso, reprovações por tipo e como reproduzir.
 - [Como rodar](docs/como-rodar.md), [limitações](docs/limitacoes.md), [autoria](docs/autoria.md), [tempo de construção](docs/tempo-de-construcao.md) e a [Spec](Spec.md).
 - Projeto irmão, do mesmo autor: [Pulse, inteligência de decisão para marketplaces](https://github.com/danielsouzaa7/pulse-marketplace-decision-intelligence).
 
